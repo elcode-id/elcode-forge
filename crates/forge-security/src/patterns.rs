@@ -15,8 +15,20 @@ pub const RULE_UNSAFE_SHELL_EXEC: &str = "security/unsafe-shell-exec";
 /// Rule ID for overly permissive wildcard CORS headers.
 pub const RULE_PERMISSIVE_CORS: &str = "security/permissive-cors";
 
+fn is_js_ts_or_sfc_file(relative_path: &str) -> bool {
+    let lower = relative_path.to_ascii_lowercase();
+    [
+        ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".vue", ".svelte",
+    ]
+    .iter()
+    .any(|ext| lower.ends_with(ext))
+}
+
 /// Scans `content` for unsafe JavaScript/TypeScript execution and configuration patterns.
 pub fn scan_unsafe_patterns(relative_path: &str, content: &str) -> Vec<Finding> {
+    if !is_js_ts_or_sfc_file(relative_path) {
+        return Vec::new();
+    }
     let mut findings = Vec::new();
     let imports_child_process = content.contains("child_process");
 

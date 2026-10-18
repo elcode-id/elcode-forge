@@ -1,0 +1,22 @@
+# ELCODE Forge (eforge) — Self-Dogfooding Configuration
+version: "1"
+
+project_name: "elcode-forge"
+languages:
+  - "rust"
+  - "typescript"
+
+ignore_patterns:
+  - "target/**"
+  - "node_modules/**"
+  - ".eforge/**"
+  - "fixtures/**"
+
+git_enabled: true
+fail_on_severity: "high"
+
+rules:
+  quality/max-file-lines:
+    enabled: true
+    severity: "low"
+    max_lines: 500
