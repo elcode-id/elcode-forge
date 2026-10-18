@@ -1,0 +1,96 @@
+name: CI — Rust Engine
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - "crates/**"
+      - "fixtures/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/ci-rust.yml"
+  pull_request:
+    paths:
+      - "crates/**"
+      - "fixtures/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/ci-rust.yml"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust-verify:
+    name: Selective Rust Verification
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo registry and target directory
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@cargo-nextest
+
+      - name: Determine verification scope (Selective Crate Targeting)
+        id: scope
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "mode=workspace" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BASE_REF="origin/${{ github.base_ref }}"
+          CHANGED=$(git diff --name-only "$BASE_REF...HEAD" || true)
+
+          if echo "$CHANGED" | grep -Eq "^(Cargo\.toml|Cargo\.lock|crates/forge-core/|fixtures/)"; then
+            echo "mode=workspace" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CRATES=$(echo "$CHANGED" | sed -n 's|^crates/\([^/]*\)/.*|\1|p' | sort -u)
+          COUNT=$(echo "$CRATES" | sed '/^$/d' | wc -l | tr -d ' ')
+
+          if [ "$COUNT" -eq 0 ] || [ "$COUNT" -gt 2 ]; then
+            echo "mode=workspace" >> "$GITHUB_OUTPUT"
+          else
+            PKG_ARGS=""
+            for c in $CRATES; do
+              PKG_ARGS="$PKG_ARGS -p $c"
+            done
+            echo "mode=selective" >> "$GITHUB_OUTPUT"
+            echo "pkg_args=$PKG_ARGS" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check formatting (cargo fmt)
+        run: cargo fmt --all -- --check
+
+      - name: Run Clippy (Workspace)
+        if: steps.scope.outputs.mode == 'workspace'
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Run Clippy (Affected Crates)
+        if: steps.scope.outputs.mode == 'selective'
+        run: cargo clippy ${{ steps.scope.outputs.pkg_args }} --all-targets -- -D warnings
+
+      - name: Run Tests with cargo-nextest (Workspace)
+        if: steps.scope.outputs.mode == 'workspace'
+        run: cargo nextest run --workspace
+
+      - name: Run Tests with cargo-nextest (Affected Crates)
+        if: steps.scope.outputs.mode == 'selective'
+        run: cargo nextest run ${{ steps.scope.outputs.pkg_args }}
