@@ -97,3 +97,9 @@
 - **Action Surface:** Composite action accepting `command`, `path`, `base`, `format`, `strict`, `fail-on`, `sarif-output`, and `step-summary`, emitting `exit-code` and `sarif-file` outputs and writing Markdown summaries to `$GITHUB_STEP_SUMMARY`.
 - **Invariants:** `.github/workflows/eforge-dogfood.yml` continuously runs `eforge doctor` and `eforge scan` against the ELCODE Forge workspace and invokes `./integrations/github-action` against `fixtures/next-app`.
 
+## Issue #39 — `forge-mcp` Untrusted Data Envelope & Prompt-Injection Sanitizer (COMPLETED)
+- **Crate:** `crates/forge-mcp` (`src/boundary.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_mcp`):** `UntrustedEnvelope<T>`, `UNTRUSTED_REPO_DATA_LEVEL`, `UNTRUSTED_SECURITY_NOTICE`, `wrap_untrusted_payload<T: Serialize>(payload: T, raw_texts: &[&str]) -> UntrustedEnvelope<T>`, `detect_prompt_injection_signals(text: &str) -> Vec<String>`.
+- **Invariants:** Every MCP tool response payload is wrapped inside `UntrustedEnvelope<T>` with `trust_level = "untrusted_repository_data"` and deterministic prompt-injection signal detection.
+
+
