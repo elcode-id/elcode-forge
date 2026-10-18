@@ -1,5 +1,6 @@
 //! `forge-core` — Foundational Intermediate Representation (IR), error model, configuration
-//! loader, canonical path guard, `.eforge/` incremental cache, and core traits for ELCODE Forge (`eforge`).
+//! loader, canonical path guard, `.eforge/` incremental cache, explainable scoring engine,
+//! and core traits for ELCODE Forge (`eforge`).
 //!
 //! This crate is the leaf of the workspace dependency DAG and MUST NOT depend on any other
 //! internal `forge-*` crate.
@@ -9,6 +10,7 @@ pub mod config;
 pub mod error;
 pub mod ir;
 pub mod path_guard;
+pub mod scoring;
 pub mod traits;
 
 pub use cache::{CacheMetadata, ForgeCache, EFORGE_DIR};
@@ -21,4 +23,5 @@ pub use ir::{
     Severity, SourceLocation,
 };
 pub use path_guard::resolve_safe_path;
+pub use scoring::{calculate_change_risk, calculate_health_score, RiskLevel, RiskReport};
 pub use traits::Analyzer;
