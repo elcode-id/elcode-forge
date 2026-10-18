@@ -200,7 +200,7 @@ checksum = "aedcfb3409746eddb02b9e19ebda1c3394f759a152e48ee875a0844d1b955484"
 
 [[package]]
 name = "forge-analyzer"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "blake3",
  "forge-core",
@@ -211,7 +211,7 @@ dependencies = [
 
 [[package]]
 name = "forge-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "forge-analyzer",
@@ -226,7 +226,7 @@ dependencies = [
 
 [[package]]
 name = "forge-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "blake3",
  "serde",
@@ -236,7 +236,7 @@ dependencies = [
 
 [[package]]
 name = "forge-git"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "forge-core",
  "serde",
@@ -245,7 +245,7 @@ dependencies = [
 
 [[package]]
 name = "forge-mcp"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "forge-analyzer",
  "forge-core",
@@ -258,7 +258,7 @@ dependencies = [
 
 [[package]]
 name = "forge-rules"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "forge-core",
  "serde",
@@ -267,7 +267,7 @@ dependencies = [
 
 [[package]]
 name = "forge-security"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "forge-core",
  "serde",

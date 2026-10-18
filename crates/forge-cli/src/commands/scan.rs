@@ -101,7 +101,7 @@ pub fn execute_scan(opts: &ScanOptions) -> Result<(Repository, ExitCode), ForgeE
         health: None,
     };
 
-    let rule_engine = RuleEngine::with_recommended_defaults();
+    let rule_engine = RuleEngine::with_config_overrides(&config.rules);
     let mut findings: Vec<Finding> = Vec::new();
     findings.extend(dep_report.findings);
     findings.extend(rule_engine.evaluate(&repo)?);

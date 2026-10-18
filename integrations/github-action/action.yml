@@ -1,0 +1,106 @@
+name: "ELCODE Forge — Codebase Intelligence & Risk Gate"
+description: "Run deterministic repository health checks, blast-radius PR reviews, and SARIF security scans with eforge."
+author: "ELCODE (Bandung, Indonesia)"
+
+branding:
+  icon: "shield"
+  color: "orange"
+
+inputs:
+  command:
+    description: "eforge subcommand to run (doctor, scan, review, diff, security, dependencies, graph)"
+    required: false
+    default: "review"
+  path:
+    description: "Target repository root path to analyze"
+    required: false
+    default: "."
+  base:
+    description: "Base git revision for review/diff subcommands (e.g., origin/main or HEAD~1)"
+    required: false
+    default: "HEAD~1"
+  format:
+    description: "Primary output format (terminal, json, sarif, markdown)"
+    required: false
+    default: "terminal"
+  strict:
+    description: "Enable strict policy gate (non-zero exit code on high/critical findings)"
+    required: false
+    default: "false"
+  fail-on:
+    description: "Minimum severity threshold that triggers a policy gate failure (critical, high, medium, low)"
+    required: false
+    default: ""
+  sarif-output:
+    description: "Optional file path to write SARIF v2.1.0 report for GitHub Code Scanning"
+    required: false
+    default: ""
+  step-summary:
+    description: "Append Markdown report to GITHUB_STEP_SUMMARY"
+    required: false
+    default: "true"
+
+outputs:
+  exit-code:
+    description: "Exit code returned by eforge"
+    value: ${{ steps.run-eforge.outputs.exit_code }}
+  sarif-file:
+    description: "Path to generated SARIF report file (if sarif-output was set)"
+    value: ${{ steps.run-eforge.outputs.sarif_file }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Ensure eforge binary is available
+      shell: bash
+      run: |
+        if command -v eforge >/dev/null 2>&1; then
+          echo "Using pre-installed eforge: $(eforge --version)"
+        else
+          echo "Building eforge from workspace source..."
+          cargo build --release --bin eforge
+          echo "$PWD/target/release" >> "$GITHUB_PATH"
+        fi
+
+    - name: Execute eforge analysis
+      id: run-eforge
+      shell: bash
+      env:
+        INPUT_COMMAND: ${{ inputs.command }}
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_BASE: ${{ inputs.base }}
+        INPUT_FORMAT: ${{ inputs.format }}
+        INPUT_STRICT: ${{ inputs.strict }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_SARIF_OUTPUT: ${{ inputs.sarif-output }}
+        INPUT_STEP_SUMMARY: ${{ inputs.step-summary }}
+      run: |
+        set +e
+        ARGS=("$INPUT_COMMAND" "--path" "$INPUT_PATH" "--format" "$INPUT_FORMAT")
+
+        if [ "$INPUT_COMMAND" = "review" ] || [ "$INPUT_COMMAND" = "diff" ]; then
+          ARGS+=("--base" "$INPUT_BASE")
+        fi
+
+        if [ "$INPUT_STRICT" = "true" ]; then
+          ARGS+=("--strict")
+        fi
+
+        if [ -n "$INPUT_FAIL_ON" ]; then
+          ARGS+=("--fail-on" "$INPUT_FAIL_ON")
+        fi
+
+        eforge "${ARGS[@]}"
+        EXIT_CODE=$?
+        echo "exit_code=$EXIT_CODE" >> "$GITHUB_OUTPUT"
+
+        if [ -n "$INPUT_SARIF_OUTPUT" ] && { [ "$INPUT_COMMAND" = "scan" ] || [ "$INPUT_COMMAND" = "security" ]; }; then
+          eforge "$INPUT_COMMAND" --path "$INPUT_PATH" --format sarif > "$INPUT_SARIF_OUTPUT"
+          echo "sarif_file=$INPUT_SARIF_OUTPUT" >> "$GITHUB_OUTPUT"
+        fi
+
+        if [ "$INPUT_STEP_SUMMARY" = "true" ] && [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+          eforge "$INPUT_COMMAND" --path "$INPUT_PATH" --format markdown >> "$GITHUB_STEP_SUMMARY" || true
+        fi
+
+        exit $EXIT_CODE

@@ -87,6 +87,14 @@ pub fn run_doctor(repo_root: &Path) -> Result<DoctorReport, ForgeError> {
                 manifest.duplicate_packages.len()
             ),
         });
+    } else if repo_root.join("Cargo.toml").exists() {
+        let has_cargo_lock = repo_root.join("Cargo.lock").exists();
+        checks.push(DoctorCheck {
+            label: "Cargo manifest & lockfile hygiene".to_string(),
+            passed: true,
+            warning: !has_cargo_lock,
+            detail: format!("Cargo.toml present, Cargo.lock present: {has_cargo_lock}"),
+        });
     } else {
         checks.push(DoctorCheck {
             label: "Package manifest".to_string(),

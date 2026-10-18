@@ -149,5 +149,83 @@ pub fn run_cli_from_env() -> ExitCode {
                 ExitCode::ExecutionError
             }
         },
+        Some(Commands::Dependencies { path, format }) => {
+            match commands::dependencies::run_dependencies(&path, format) {
+                Ok(rendered) => {
+                    println!("{rendered}");
+                    ExitCode::Success
+                }
+                Err(err) => {
+                    eprintln!("Error running dependencies: {err}");
+                    ExitCode::ExecutionError
+                }
+            }
+        }
+        Some(Commands::Security { path, format }) => {
+            match commands::security::run_security(&path, format) {
+                Ok((rendered, exit_code)) => {
+                    println!("{rendered}");
+                    exit_code
+                }
+                Err(err) => {
+                    eprintln!("Error running security scan: {err}");
+                    ExitCode::ExecutionError
+                }
+            }
+        }
+        Some(Commands::Graph { path, format }) => match commands::graph::run_graph(&path, format) {
+            Ok(rendered) => {
+                println!("{rendered}");
+                ExitCode::Success
+            }
+            Err(err) => {
+                eprintln!("Error running graph: {err}");
+                ExitCode::ExecutionError
+            }
+        },
+        Some(Commands::Onboard { path, output } | Commands::Docs { path, output }) => {
+            let out_dir = output.unwrap_or_else(|| path.join("docs").join("forge"));
+            match commands::onboard::generate_onboarding_docs(&path, &out_dir) {
+                Ok(bundle) => {
+                    println!(
+                        "Generated {} documentation file(s) in {}",
+                        bundle.files_written.len(),
+                        bundle.output_dir.display()
+                    );
+                    ExitCode::Success
+                }
+                Err(err) => {
+                    eprintln!("Error generating documentation: {err}");
+                    ExitCode::ExecutionError
+                }
+            }
+        }
+        Some(Commands::Mcp { path }) => match commands::mcp::run_mcp(&path) {
+            Ok(()) => ExitCode::Success,
+            Err(err) => {
+                eprintln!("Error running MCP server: {err}");
+                ExitCode::ExecutionError
+            }
+        },
+        Some(Commands::Explain {
+            target,
+            path,
+            format,
+        }) => match commands::explain::execute_explain(&path, target.as_deref()) {
+            Ok(report) => match commands::explain::render_explain_report(&report, format) {
+                Ok(rendered) => {
+                    println!("{rendered}");
+                    ExitCode::Success
+                }
+                Err(err) => {
+                    eprintln!("Error formatting explain report: {err}");
+                    ExitCode::ExecutionError
+                }
+            },
+            Err(err) => {
+                eprintln!("Error running explain: {err}");
+                ExitCode::ExecutionError
+            }
+        },
     }
 }

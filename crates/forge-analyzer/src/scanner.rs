@@ -50,7 +50,13 @@ pub fn scan_repository(
 
     let custom_ignores: Vec<String> = extra_ignores
         .iter()
-        .map(|p| p.trim_matches('/').to_string())
+        .map(|p| {
+            p.trim()
+                .trim_end_matches("/**")
+                .trim_end_matches("/*")
+                .trim_matches('/')
+                .to_string()
+        })
         .filter(|p| !p.is_empty())
         .collect();
 
@@ -117,7 +123,9 @@ pub fn scan_repository(
         let line_count = count_lines(&bytes);
         let content_hash = ForgeCache::hash_bytes(&bytes);
         let language = detect_language(&relative_path);
-        let is_test = is_test_file(&relative_path);
+        let is_test = is_test_file(&relative_path)
+            || (language.as_deref() == Some("rust")
+                && std::str::from_utf8(&bytes).is_ok_and(|s| s.contains("#[cfg(test)]")));
 
         files.push(FileNode {
             relative_path,

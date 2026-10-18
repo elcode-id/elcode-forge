@@ -1,4 +1,6 @@
-use forge_core::{Analyzer, Finding, ForgeError, Repository, Severity};
+use std::collections::BTreeMap;
+
+use forge_core::{Analyzer, Finding, ForgeError, Repository, RuleOverrideConfig, Severity};
 use serde::{Deserialize, Serialize};
 
 use crate::builtin::{
@@ -58,6 +60,26 @@ impl RuleEngine {
                 },
             ],
         }
+    }
+
+    /// Creates a [`RuleEngine`] initialized with recommended defaults and merged with user
+    /// overrides from `eforge.config.yaml`.
+    pub fn with_config_overrides(overrides: &BTreeMap<String, RuleOverrideConfig>) -> Self {
+        let mut engine = Self::with_recommended_defaults();
+        for rule in &mut engine.rules {
+            if let Some(ov) = overrides.get(&rule.id) {
+                if let Some(enabled) = ov.enabled {
+                    rule.enabled = enabled;
+                }
+                if let Some(sev) = ov.severity {
+                    rule.severity = sev;
+                }
+                if let Some(max_lines) = ov.max_lines {
+                    rule.threshold = Some(max_lines);
+                }
+            }
+        }
+        engine
     }
 
     /// Returns the slice of configured rules.

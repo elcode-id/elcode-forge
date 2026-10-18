@@ -6,7 +6,8 @@ use forge_core::{FileNode, ForgeError, Module};
 use serde::{Deserialize, Serialize};
 
 use crate::ts_imports::{
-    extract_npm_package_name, extract_ts_imports_and_exports, resolve_import_specifier,
+    extract_npm_package_name, extract_sfc_script_content, extract_ts_imports_and_exports,
+    resolve_import_specifier,
 };
 
 /// Inferred architecture graph for TypeScript/JavaScript repositories.
@@ -27,7 +28,7 @@ struct ModuleAccumulator {
     exports: BTreeSet<String>,
 }
 
-/// Builds the [`ArchitectureGraph`] for all TypeScript and JavaScript files in `files`,
+/// Builds the [`ArchitectureGraph`] for all TypeScript, JavaScript, Vue, and Svelte files in `files`,
 /// inferring logical module boundaries, external npm imports, high-centrality modules, and
 /// circular dependencies using Tarjan's Strongly Connected Components (SCC) algorithm.
 pub fn build_ts_architecture_graph(
@@ -39,7 +40,7 @@ pub fn build_ts_architecture_graph(
         .filter(|f| {
             matches!(
                 f.language.as_deref(),
-                Some("typescript") | Some("javascript")
+                Some("typescript") | Some("javascript") | Some("vue") | Some("svelte")
             )
         })
         .collect();
@@ -67,10 +68,16 @@ pub fn build_ts_architecture_graph(
     for file in &ts_js_files {
         let (source_mod_id, _) = infer_module_boundary(&file.relative_path);
         let full_path = repo_root.join(&file.relative_path);
-        let content = fs::read_to_string(&full_path).map_err(|source| ForgeError::Io {
+        let raw_content = fs::read_to_string(&full_path).map_err(|source| ForgeError::Io {
             path: full_path,
             source,
         })?;
+
+        let content = if matches!(file.language.as_deref(), Some("vue") | Some("svelte")) {
+            extract_sfc_script_content(&raw_content)
+        } else {
+            raw_content
+        };
 
         let (raw_imports, file_exports) = extract_ts_imports_and_exports(&content);
 

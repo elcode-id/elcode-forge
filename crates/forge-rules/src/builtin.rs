@@ -159,7 +159,11 @@ pub fn check_max_file_lines(repo: &Repository, severity: Severity, threshold: u3
     let mut findings = Vec::new();
 
     for file in &repo.files {
-        if file.line_count > threshold {
+        let is_code_file = matches!(
+            file.language.as_deref(),
+            Some("typescript" | "javascript" | "rust" | "python" | "go")
+        );
+        if is_code_file && file.line_count > threshold {
             findings.push(Finding {
                 id: format!("QUAL-MAX-LINES-{}", file.relative_path),
                 category: "maintainability".to_string(),

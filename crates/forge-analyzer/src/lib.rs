@@ -14,5 +14,6 @@ pub use graph::{build_ts_architecture_graph, ArchitectureGraph};
 pub use package_json::{parse_package_json, ParsedManifest};
 pub use scanner::{scan_repository, DiscoverySummary};
 pub use ts_imports::{
-    extract_npm_package_name, extract_ts_imports_and_exports, resolve_import_specifier,
+    extract_npm_package_name, extract_sfc_script_content, extract_ts_imports_and_exports,
+    resolve_import_specifier,
 };

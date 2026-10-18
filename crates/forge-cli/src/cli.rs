@@ -35,7 +35,7 @@ pub struct Cli {
     pub command: Option<Commands>,
 }
 
-/// Top-level `eforge` subcommands for Phase 0 & Phase 1.
+/// Top-level `eforge` subcommands.
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     /// Initialize `eforge.config.yaml` and `.eforge/` workspace metadata.
@@ -97,6 +97,68 @@ pub enum Commands {
     },
     /// Inspect working-tree unified diff and affected architecture modules.
     Diff {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output format (`terminal`, `json`, `markdown`, `sarif`, `github`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Inspect package manifest dependencies, unused packages, and version hygiene.
+    Dependencies {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output format (`terminal`, `json`, `markdown`, `sarif`, `github`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Run focused secret detection and unsafe code pattern security analysis.
+    Security {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output format (`terminal`, `json`, `markdown`, `sarif`, `github`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Export the inferred module architecture graph (Terminal, JSON, or Mermaid Markdown).
+    Graph {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output format (`terminal`, `json`, `markdown`, `sarif`, `github`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Generate developer onboarding and architecture documentation (`docs/forge/`).
+    Onboard {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output directory for generated Markdown docs (defaults to `<path>/docs/forge`).
+        #[arg(long, short = 'o')]
+        output: Option<PathBuf>,
+    },
+    /// Generate deterministic architecture, module, dependency, and risk documentation (`docs/forge/`).
+    Docs {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output directory for generated Markdown docs (defaults to `<path>/docs/forge`).
+        #[arg(long, short = 'o')]
+        output: Option<PathBuf>,
+    },
+    /// Start the native Model Context Protocol (MCP) JSON-RPC 2.0 stdio server (`eforge_*` tools).
+    Mcp {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+    },
+    /// Explain the structural role, files, imports, dependents, exports, and findings for a project or module.
+    Explain {
+        /// Optional module ID or file path prefix (defaults to "." for full project overview).
+        target: Option<String>,
         /// Target repository directory.
         #[arg(long, short = 'p', default_value = ".")]
         path: PathBuf,
