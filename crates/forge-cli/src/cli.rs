@@ -131,4 +131,22 @@ pub enum Commands {
         #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
         format: OutputFormat,
     },
+    /// Generate developer onboarding and architecture documentation (`docs/forge/`).
+    Onboard {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output directory for generated Markdown docs (defaults to `<path>/docs/forge`).
+        #[arg(long, short = 'o')]
+        output: Option<PathBuf>,
+    },
+    /// Generate deterministic architecture, module, dependency, and risk documentation (`docs/forge/`).
+    Docs {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output directory for generated Markdown docs (defaults to `<path>/docs/forge`).
+        #[arg(long, short = 'o')]
+        output: Option<PathBuf>,
+    },
 }
