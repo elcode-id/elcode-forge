@@ -5,6 +5,8 @@ pub mod commands;
 pub mod exit_code;
 pub mod formatters;
 
+use std::fs;
+
 use clap::Parser;
 pub use cli::{Cli, Commands, OutputFormat};
 pub use exit_code::{parse_severity_threshold, ExitCode};
@@ -49,7 +51,57 @@ pub fn run_cli_from_env() -> ExitCode {
                 ExitCode::ExecutionError
             }
         },
-        Some(Commands::Scan { .. } | Commands::Review { .. } | Commands::Diff { .. }) => {
+        Some(Commands::Scan {
+            path,
+            format,
+            full,
+            incremental,
+            fail_on,
+            output,
+        }) => {
+            let opts = commands::scan::ScanOptions {
+                repo_root: path,
+                incremental: incremental && !full,
+                format,
+            };
+            match commands::scan::execute_scan(&opts) {
+                Ok((repo, mut exit_code)) => {
+                    if let Some(raw_thresh) = fail_on {
+                        if let Some(sev) = parse_severity_threshold(&raw_thresh) {
+                            exit_code = ExitCode::evaluate_findings(&repo.findings, Some(sev));
+                        } else {
+                            eprintln!("Invalid --fail-on severity: {raw_thresh}");
+                            return ExitCode::ConfigurationError;
+                        }
+                    }
+                    match render_repository_report(&repo, format) {
+                        Ok(rendered) => {
+                            if let Some(out_path) = output {
+                                if let Err(err) = fs::write(&out_path, &rendered) {
+                                    eprintln!(
+                                        "Failed to write output to '{}': {err}",
+                                        out_path.display()
+                                    );
+                                    return ExitCode::ExecutionError;
+                                }
+                            } else {
+                                println!("{rendered}");
+                            }
+                            exit_code
+                        }
+                        Err(err) => {
+                            eprintln!("Error formatting scan report: {err}");
+                            ExitCode::ExecutionError
+                        }
+                    }
+                }
+                Err(err) => {
+                    eprintln!("Error running scan: {err}");
+                    ExitCode::ExecutionError
+                }
+            }
+        }
+        Some(Commands::Review { .. } | Commands::Diff { .. }) => {
             println!("{}", version_banner());
             ExitCode::Success
         }
