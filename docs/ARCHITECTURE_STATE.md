@@ -71,3 +71,8 @@
 - **Crate:** `crates/forge-cli` (`src/commands/scan.rs`, `src/commands/mod.rs`, `src/lib.rs`)
 - **Public Types & Functions (`forge_cli::commands::scan`):** `ScanOptions`, `execute_scan(opts: &ScanOptions) -> Result<(Repository, ExitCode), ForgeError>`.
 - **Invariants:** `execute_scan` orchestrates config loading, repository file discovery, TS/JS architecture graph & Tarjan cycle detection, npm dependency health analysis, `.eforge/metadata.json` BLAKE3 incremental hashing, built-in architectural/quality rules, secret/unsafe-pattern scanning, and 8-dimension health scoring with deterministic `(Severity::desc, id::asc)` finding ordering.
+
+## Issue #15 — `forge-cli` `eforge review` & `eforge diff` Commands — Milestone 1 Complete (COMPLETED)
+- **Crate:** `crates/forge-cli` (`src/commands/{review.rs,diff.rs,mod.rs}`, `src/lib.rs`)
+- **Public Types & Functions (`forge_cli::commands::{review, diff}`):** `ReviewReport`, `execute_review(repo_root: &Path, diff_input: Option<&str>, fast_mode: bool) -> Result<(ReviewReport, ExitCode), ForgeError>`, `render_review_report`, `execute_diff(repo_root: &Path, diff_input: Option<&str>) -> Result<ChangeImpactReport, ForgeError>`, `render_diff_report`.
+- **Invariants:** All Phase 0 & Phase 1 milestone CLI commands (`eforge init`, `eforge doctor`, `eforge scan`, `eforge review`, `eforge diff`) are wired into both `eforge` and `elcode-forge` binaries with deterministic `ExitCode` (`0..=4`) policy evaluation.

@@ -101,9 +101,53 @@ pub fn run_cli_from_env() -> ExitCode {
                 }
             }
         }
-        Some(Commands::Review { .. } | Commands::Diff { .. }) => {
-            println!("{}", version_banner());
-            ExitCode::Success
-        }
+        Some(Commands::Review {
+            path,
+            format,
+            fast,
+            changed,
+            fail_on,
+        }) => match commands::review::execute_review(&path, None, fast || changed) {
+            Ok((report, mut exit_code)) => {
+                if let Some(raw_thresh) = fail_on {
+                    if let Some(sev) = parse_severity_threshold(&raw_thresh) {
+                        exit_code = ExitCode::evaluate_findings(&report.findings, Some(sev));
+                    } else {
+                        eprintln!("Invalid --fail-on severity: {raw_thresh}");
+                        return ExitCode::ConfigurationError;
+                    }
+                }
+                match commands::review::render_review_report(&report, format) {
+                    Ok(rendered) => {
+                        println!("{rendered}");
+                        exit_code
+                    }
+                    Err(err) => {
+                        eprintln!("Error formatting review report: {err}");
+                        ExitCode::ExecutionError
+                    }
+                }
+            }
+            Err(err) => {
+                eprintln!("Error running review: {err}");
+                ExitCode::ExecutionError
+            }
+        },
+        Some(Commands::Diff { path, format }) => match commands::diff::execute_diff(&path, None) {
+            Ok(report) => match commands::diff::render_diff_report(&report, format) {
+                Ok(rendered) => {
+                    println!("{rendered}");
+                    ExitCode::Success
+                }
+                Err(err) => {
+                    eprintln!("Error formatting diff report: {err}");
+                    ExitCode::ExecutionError
+                }
+            },
+            Err(err) => {
+                eprintln!("Error running diff: {err}");
+                ExitCode::ExecutionError
+            }
+        },
     }
 }
