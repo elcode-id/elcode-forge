@@ -1,3 +1,88 @@
-//! `forge-security` — Secret detection and unsafe code pattern analysis.
+//! `forge-security` — Secret detection (with mandatory redaction) and unsafe code pattern analysis.
+
+use std::fs;
+use std::path::Path;
+
+use forge_core::{FileNode, Finding, ForgeError};
+
+pub mod patterns;
+pub mod secrets;
 
 pub use forge_core::Analyzer;
+pub use patterns::{
+    scan_unsafe_patterns, RULE_NO_DANGEROUS_INNER_HTML, RULE_NO_EVAL, RULE_NO_IMPLIED_EVAL,
+    RULE_PERMISSIVE_CORS, RULE_UNSAFE_SHELL_EXEC,
+};
+pub use secrets::{scan_secrets, RULE_HARDCODED_SECRET, RULE_PRIVATE_KEY};
+
+/// Deterministic security scanner combining redacted secret detection and unsafe pattern checks.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct SecurityScanner;
+
+impl SecurityScanner {
+    /// Scans an individual file's `content` for secrets and unsafe patterns.
+    pub fn scan_file_content(relative_path: &str, content: &str) -> Vec<Finding> {
+        let mut findings = scan_secrets(relative_path, content);
+        findings.extend(scan_unsafe_patterns(relative_path, content));
+        findings.sort_by(|a, b| b.severity.cmp(&a.severity).then_with(|| a.id.cmp(&b.id)));
+        findings
+    }
+
+    /// Scans all text source files in `files` within `repo_root` and returns deterministically
+    /// sorted security [`Finding`]s.
+    pub fn scan_repository_files(
+        repo_root: &Path,
+        files: &[FileNode],
+    ) -> Result<Vec<Finding>, ForgeError> {
+        let mut all_findings = Vec::new();
+
+        for file in files {
+            let full_path = repo_root.join(&file.relative_path);
+            let Ok(content) = fs::read_to_string(&full_path) else {
+                continue;
+            };
+            all_findings.extend(Self::scan_file_content(&file.relative_path, &content));
+        }
+
+        all_findings.sort_by(|a, b| b.severity.cmp(&a.severity).then_with(|| a.id.cmp(&b.id)));
+        Ok(all_findings)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn detects_and_redacts_secrets_and_unsafe_patterns_in_vulnerable_fixture() {
+        let fixture_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("fixtures")
+            .join("vulnerable-ts-app")
+            .join("src")
+            .join("unsafe.ts");
+
+        let content = fs::read_to_string(&fixture_file);
+        assert!(content.is_ok());
+
+        if let Ok(src) = content {
+            let findings = SecurityScanner::scan_file_content("src/unsafe.ts", &src);
+            let rule_ids: Vec<&str> = findings.iter().map(|f| f.rule_id.as_str()).collect();
+
+            assert!(rule_ids.contains(&RULE_HARDCODED_SECRET));
+            assert!(rule_ids.contains(&RULE_NO_EVAL));
+            assert!(rule_ids.contains(&RULE_UNSAFE_SHELL_EXEC));
+            assert!(rule_ids.contains(&RULE_PERMISSIVE_CORS));
+
+            // Verify that raw secret strings are NEVER exposed in finding evidence
+            for f in &findings {
+                if f.rule_id == RULE_HARDCODED_SECRET {
+                    assert!(f.evidence.contains("****REDACTED****"));
+                    assert!(!f.evidence.contains("1234567890abcdefghijklmnop"));
+                }
+            }
+        }
+    }
+}
