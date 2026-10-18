@@ -207,5 +207,25 @@ pub fn run_cli_from_env() -> ExitCode {
                 ExitCode::ExecutionError
             }
         },
+        Some(Commands::Explain {
+            target,
+            path,
+            format,
+        }) => match commands::explain::execute_explain(&path, target.as_deref()) {
+            Ok(report) => match commands::explain::render_explain_report(&report, format) {
+                Ok(rendered) => {
+                    println!("{rendered}");
+                    ExitCode::Success
+                }
+                Err(err) => {
+                    eprintln!("Error formatting explain report: {err}");
+                    ExitCode::ExecutionError
+                }
+            },
+            Err(err) => {
+                eprintln!("Error running explain: {err}");
+                ExitCode::ExecutionError
+            }
+        },
     }
 }

@@ -112,6 +112,12 @@
 - **Public Functions (`forge_mcp` / `forge_cli`):** `handle_jsonrpc_line(repo_root: &Path, raw_line: &str) -> Option<String>`, `serve_mcp_stdio(repo_root: &Path) -> Result<(), ForgeError>`, `run_mcp(repo_root: &Path) -> Result<(), ForgeError>`, `Commands::Mcp`.
 - **Invariants:** `handle_jsonrpc_line` implements JSON-RPC 2.0 (`initialize`, `notifications/initialized`, `ping`, `tools/list`, `tools/call`) with protocol version `"2024-11-05"` and server name `"eforge-mcp"`.
 
+## Issue #42 — `forge-cli` `eforge explain [target]` Command — Phase 2 Complete (COMPLETED)
+- **Crate:** `crates/forge-cli` (`src/commands/explain.rs`, `src/commands/mod.rs`, `src/cli.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_cli::commands::explain`):** `ExplainReport`, `execute_explain(repo_root: &Path, target_module_or_file: Option<&str>) -> Result<ExplainReport, ForgeError>`, `render_explain_report(report: &ExplainReport, format: OutputFormat) -> Result<String, ForgeError>`, `Commands::Explain`.
+- **Invariants:** Deterministically resolves matching files, outgoing `imports`, incoming `imported_by`, `exports`, and `related_findings` for either the entire repository (`None` / `"."`) or a specific module/file path prefix.
+
+
 
 
 
