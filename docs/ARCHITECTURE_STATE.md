@@ -107,5 +107,11 @@
 - **Public Types & Functions (`forge_mcp`):** `McpToolDescriptor`, `list_mcp_tools() -> Vec<McpToolDescriptor>`, `call_mcp_tool(repo_root: &Path, tool_name: &str, arguments: &Value) -> Result<Value, ForgeError>`.
 - **Invariants:** Exposes 6 deterministic tools in the `eforge_*` namespace (`eforge_project_info`, `eforge_get_architecture`, `eforge_get_dependencies`, `eforge_get_findings`, `eforge_get_change_impact`, `eforge_explain_module`), each wrapped in `UntrustedEnvelope<T>`.
 
+## Issue #41 — `forge-mcp` & `forge-cli` JSON-RPC 2.0 Stdio MCP Server (`eforge mcp`) (COMPLETED)
+- **Crates:** `crates/forge-mcp` (`src/server.rs`, `src/lib.rs`), `crates/forge-cli` (`src/commands/mcp.rs`, `src/commands/mod.rs`, `src/cli.rs`, `src/lib.rs`)
+- **Public Functions (`forge_mcp` / `forge_cli`):** `handle_jsonrpc_line(repo_root: &Path, raw_line: &str) -> Option<String>`, `serve_mcp_stdio(repo_root: &Path) -> Result<(), ForgeError>`, `run_mcp(repo_root: &Path) -> Result<(), ForgeError>`, `Commands::Mcp`.
+- **Invariants:** `handle_jsonrpc_line` implements JSON-RPC 2.0 (`initialize`, `notifications/initialized`, `ping`, `tools/list`, `tools/call`) with protocol version `"2024-11-05"` and server name `"eforge-mcp"`.
+
+
 
 

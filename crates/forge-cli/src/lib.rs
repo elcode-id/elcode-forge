@@ -200,5 +200,12 @@ pub fn run_cli_from_env() -> ExitCode {
                 }
             }
         }
+        Some(Commands::Mcp { path }) => match commands::mcp::run_mcp(&path) {
+            Ok(()) => ExitCode::Success,
+            Err(err) => {
+                eprintln!("Error running MCP server: {err}");
+                ExitCode::ExecutionError
+            }
+        },
     }
 }

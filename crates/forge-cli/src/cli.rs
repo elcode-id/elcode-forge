@@ -149,4 +149,10 @@ pub enum Commands {
         #[arg(long, short = 'o')]
         output: Option<PathBuf>,
     },
+    /// Start the native Model Context Protocol (MCP) JSON-RPC 2.0 stdio server (`eforge_*` tools).
+    Mcp {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+    },
 }
