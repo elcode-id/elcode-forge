@@ -183,5 +183,22 @@ pub fn run_cli_from_env() -> ExitCode {
                 ExitCode::ExecutionError
             }
         },
+        Some(Commands::Onboard { path, output } | Commands::Docs { path, output }) => {
+            let out_dir = output.unwrap_or_else(|| path.join("docs").join("forge"));
+            match commands::onboard::generate_onboarding_docs(&path, &out_dir) {
+                Ok(bundle) => {
+                    println!(
+                        "Generated {} documentation file(s) in {}",
+                        bundle.files_written.len(),
+                        bundle.output_dir.display()
+                    );
+                    ExitCode::Success
+                }
+                Err(err) => {
+                    eprintln!("Error generating documentation: {err}");
+                    ExitCode::ExecutionError
+                }
+            }
+        }
     }
 }
