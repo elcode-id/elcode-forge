@@ -81,3 +81,8 @@
 - **Crates:** `crates/forge-core` (`src/config.rs`, `src/lib.rs`), `crates/forge-rules` (`src/engine.rs`), `crates/forge-analyzer` (`src/ts_imports.rs`, `src/graph.rs`, `src/package_json.rs`), `crates/forge-cli` (`src/commands/scan.rs`)
 - **Public Types & Functions:** `RuleOverrideConfig`, `ForgeConfig::rules`, `RuleEngine::with_config_overrides(&BTreeMap<String, RuleOverrideConfig>)`, `extract_sfc_script_content(raw_sfc: &str) -> String`.
 - **Invariants:** `parse_config_yaml` supports per-rule overrides (`enabled`, `severity`, `max_lines`/`threshold`); `build_ts_architecture_graph` extracts `<script>` blocks from `.vue` and `.svelte` files; `parse_package_json` resolves locked versions from `package-lock.json` and `pnpm-lock.yaml`.
+
+## Issue #36 — `forge-cli` `eforge dependencies`, `eforge security` & `eforge graph` Subcommands (COMPLETED)
+- **Crate:** `crates/forge-cli` (`src/commands/{dependencies.rs,security.rs,graph.rs,mod.rs}`, `src/cli.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_cli::commands::{dependencies, security, graph}`):** `run_dependencies(repo_root: &Path, format: OutputFormat) -> Result<String, ForgeError>`, `run_security(repo_root: &Path, format: OutputFormat) -> Result<(String, ExitCode), ForgeError>`, `run_graph(repo_root: &Path, format: OutputFormat) -> Result<String, ForgeError>`.
+- **Invariants:** `run_graph` renders Mermaid `flowchart TD` diagrams in Markdown format, full `ArchitectureGraph` JSON in JSON format, and module dependency lists in Terminal format.

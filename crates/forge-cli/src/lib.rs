@@ -149,5 +149,39 @@ pub fn run_cli_from_env() -> ExitCode {
                 ExitCode::ExecutionError
             }
         },
+        Some(Commands::Dependencies { path, format }) => {
+            match commands::dependencies::run_dependencies(&path, format) {
+                Ok(rendered) => {
+                    println!("{rendered}");
+                    ExitCode::Success
+                }
+                Err(err) => {
+                    eprintln!("Error running dependencies: {err}");
+                    ExitCode::ExecutionError
+                }
+            }
+        }
+        Some(Commands::Security { path, format }) => {
+            match commands::security::run_security(&path, format) {
+                Ok((rendered, exit_code)) => {
+                    println!("{rendered}");
+                    exit_code
+                }
+                Err(err) => {
+                    eprintln!("Error running security scan: {err}");
+                    ExitCode::ExecutionError
+                }
+            }
+        }
+        Some(Commands::Graph { path, format }) => match commands::graph::run_graph(&path, format) {
+            Ok(rendered) => {
+                println!("{rendered}");
+                ExitCode::Success
+            }
+            Err(err) => {
+                eprintln!("Error running graph: {err}");
+                ExitCode::ExecutionError
+            }
+        },
     }
 }
