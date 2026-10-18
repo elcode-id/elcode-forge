@@ -35,7 +35,7 @@ pub struct Cli {
     pub command: Option<Commands>,
 }
 
-/// Top-level `eforge` subcommands for Phase 0 & Phase 1.
+/// Top-level `eforge` subcommands.
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     /// Initialize `eforge.config.yaml` and `.eforge/` workspace metadata.
@@ -97,6 +97,33 @@ pub enum Commands {
     },
     /// Inspect working-tree unified diff and affected architecture modules.
     Diff {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output format (`terminal`, `json`, `markdown`, `sarif`, `github`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Inspect package manifest dependencies, unused packages, and version hygiene.
+    Dependencies {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output format (`terminal`, `json`, `markdown`, `sarif`, `github`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Run focused secret detection and unsafe code pattern security analysis.
+    Security {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output format (`terminal`, `json`, `markdown`, `sarif`, `github`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Export the inferred module architecture graph (Terminal, JSON, or Mermaid Markdown).
+    Graph {
         /// Target repository directory.
         #[arg(long, short = 'p', default_value = ".")]
         path: PathBuf,
