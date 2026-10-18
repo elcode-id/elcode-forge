@@ -1,0 +1,17 @@
+[package]
+name = "forge-security"
+description = "Secret detection, unsafe pattern rules, and security scanner adapters for ELCODE Forge"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+forge-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

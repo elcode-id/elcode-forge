@@ -1,0 +1,21 @@
+[package]
+name = "forge-mcp"
+description = "Native Model Context Protocol (MCP) server (eforge_* tools) for ELCODE Forge"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+forge-core.workspace = true
+forge-analyzer.workspace = true
+forge-git.workspace = true
+forge-rules.workspace = true
+forge-security.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

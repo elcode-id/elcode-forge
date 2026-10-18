@@ -1,0 +1,40 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/forge-core",
+    "crates/forge-analyzer",
+    "crates/forge-git",
+    "crates/forge-rules",
+    "crates/forge-security",
+    "crates/forge-mcp",
+    "crates/forge-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "MIT"
+repository = "https://github.com/elcode-id/elcode-forge"
+authors = ["R. Luki Rahayu Agung / ELCODE"]
+
+[workspace.dependencies]
+forge-core = { path = "crates/forge-core" }
+forge-analyzer = { path = "crates/forge-analyzer" }
+forge-git = { path = "crates/forge-git" }
+forge-rules = { path = "crates/forge-rules" }
+forge-security = { path = "crates/forge-security" }
+forge-mcp = { path = "crates/forge-mcp" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"

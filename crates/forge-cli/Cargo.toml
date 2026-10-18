@@ -1,0 +1,31 @@
+[package]
+name = "forge-cli"
+description = "Primary CLI binary (eforge / elcode-forge) for ELCODE Forge"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+default-run = "eforge"
+
+[[bin]]
+name = "eforge"
+path = "src/main.rs"
+
+[[bin]]
+name = "elcode-forge"
+path = "src/bin/elcode-forge.rs"
+
+[dependencies]
+forge-core.workspace = true
+forge-analyzer.workspace = true
+forge-git.workspace = true
+forge-rules.workspace = true
+forge-security.workspace = true
+forge-mcp.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
