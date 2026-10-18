@@ -54,7 +54,9 @@ pub fn scan_secrets(relative_path: &str, content: &str) -> Vec<Finding> {
             continue;
         }
 
-        if trimmed.contains("-----BEGIN ") && trimmed.contains("PRIVATE KEY-----") {
+        let pem_begin = "-----BEGIN ";
+        let pem_privkey_end = "PRIVATE KEY-----";
+        if trimmed.contains(pem_begin) && trimmed.contains(pem_privkey_end) {
             findings.push(Finding {
                 id: format!("SEC-PRIVKEY-{relative_path}-{line_no}"),
                 category: "security".to_string(),
@@ -64,7 +66,7 @@ pub fn scan_secrets(relative_path: &str, content: &str) -> Vec<Finding> {
                 description: format!(
                     "File '{relative_path}' contains a PEM private key header on line {line_no}."
                 ),
-                evidence: "-----BEGIN ****REDACTED**** PRIVATE KEY-----".to_string(),
+                evidence: format!("{pem_begin}****REDACTED**** {pem_privkey_end}"),
                 location: Some(SourceLocation {
                     file_path: relative_path.to_string(),
                     start_line: Some(line_no),
