@@ -15,7 +15,8 @@ pub mod traits;
 
 pub use cache::{CacheMetadata, ForgeCache, EFORGE_DIR};
 pub use config::{
-    load_config, parse_config_yaml, ForgeConfig, FALLBACK_CONFIG_FILE, PRIMARY_CONFIG_FILE,
+    load_config, parse_config_yaml, ForgeConfig, RuleOverrideConfig, FALLBACK_CONFIG_FILE,
+    PRIMARY_CONFIG_FILE,
 };
 pub use error::ForgeError;
 pub use ir::{

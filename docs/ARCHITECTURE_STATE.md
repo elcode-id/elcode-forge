@@ -76,3 +76,8 @@
 - **Crate:** `crates/forge-cli` (`src/commands/{review.rs,diff.rs,mod.rs}`, `src/lib.rs`)
 - **Public Types & Functions (`forge_cli::commands::{review, diff}`):** `ReviewReport`, `execute_review(repo_root: &Path, diff_input: Option<&str>, fast_mode: bool) -> Result<(ReviewReport, ExitCode), ForgeError>`, `render_review_report`, `execute_diff(repo_root: &Path, diff_input: Option<&str>) -> Result<ChangeImpactReport, ForgeError>`, `render_diff_report`.
 - **Invariants:** All Phase 0 & Phase 1 milestone CLI commands (`eforge init`, `eforge doctor`, `eforge scan`, `eforge review`, `eforge diff`) are wired into both `eforge` and `elcode-forge` binaries with deterministic `ExitCode` (`0..=4`) policy evaluation.
+
+## Issue #35 — `forge-core`, `forge-rules`, `forge-analyzer` Config Rule Overrides, Vue/Svelte SFC & `pnpm-lock.yaml` (COMPLETED)
+- **Crates:** `crates/forge-core` (`src/config.rs`, `src/lib.rs`), `crates/forge-rules` (`src/engine.rs`), `crates/forge-analyzer` (`src/ts_imports.rs`, `src/graph.rs`, `src/package_json.rs`), `crates/forge-cli` (`src/commands/scan.rs`)
+- **Public Types & Functions:** `RuleOverrideConfig`, `ForgeConfig::rules`, `RuleEngine::with_config_overrides(&BTreeMap<String, RuleOverrideConfig>)`, `extract_sfc_script_content(raw_sfc: &str) -> String`.
+- **Invariants:** `parse_config_yaml` supports per-rule overrides (`enabled`, `severity`, `max_lines`/`threshold`); `build_ts_architecture_graph` extracts `<script>` blocks from `.vue` and `.svelte` files; `parse_package_json` resolves locked versions from `package-lock.json` and `pnpm-lock.yaml`.
