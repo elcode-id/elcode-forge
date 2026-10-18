@@ -1,12 +1,14 @@
 use std::collections::BTreeSet;
 use std::path::{Component, Path, PathBuf};
 
-/// Candidate TypeScript/JavaScript extensions tried when resolving extensionless imports.
+/// Candidate TypeScript/JavaScript/SFC extensions tried when resolving extensionless imports.
 const TS_JS_EXTENSIONS: &[&str] = &[
     ".ts",
     ".tsx",
     ".js",
     ".jsx",
+    ".vue",
+    ".svelte",
     ".mts",
     ".cts",
     ".mjs",
@@ -254,9 +256,52 @@ fn strip_comments(source: &str) -> String {
     out
 }
 
+/// Extracts the contents of all `<script ...>...</script>` blocks from a `.vue` or `.svelte`
+/// Single-File Component (SFC) so TypeScript/JavaScript imports and exports can be analyzed.
+pub fn extract_sfc_script_content(raw_sfc: &str) -> String {
+    let mut extracted = String::new();
+    let mut remaining = raw_sfc;
+
+    while let Some(open_idx) = remaining.find("<script") {
+        let after_open = &remaining[open_idx + "<script".len()..];
+        let Some(tag_end_idx) = after_open.find('>') else {
+            break;
+        };
+        let body_start = &after_open[tag_end_idx + 1..];
+        let Some(close_idx) = body_start.find("</script>") else {
+            break;
+        };
+        if !extracted.is_empty() {
+            extracted.push('\n');
+        }
+        extracted.push_str(&body_start[..close_idx]);
+        remaining = &body_start[close_idx + "</script>".len()..];
+    }
+
+    extracted
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn extracts_sfc_script_blocks_from_vue_and_svelte() {
+        let vue_sfc = r#"
+<template>
+  <div>{{ title }}</div>
+</template>
+<script setup lang="ts">
+import { ref } from 'vue';
+import { fetchUser } from '../services/userService';
+export const title = ref('Hello');
+</script>
+"#;
+        let script = extract_sfc_script_content(vue_sfc);
+        let (imports, exports) = extract_ts_imports_and_exports(&script);
+        assert_eq!(imports, vec!["../services/userService", "vue"]);
+        assert_eq!(exports, vec!["title"]);
+    }
 
     #[test]
     fn extracts_imports_exports_and_ignores_comments() {

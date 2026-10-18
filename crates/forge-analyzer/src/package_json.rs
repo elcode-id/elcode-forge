@@ -83,22 +83,45 @@ pub fn parse_package_json(repo_root: &Path) -> Result<ParsedManifest, ForgeError
 fn read_npm_lockfile_versions(repo_root: &Path) -> BTreeMap<String, String> {
     let mut versions = BTreeMap::new();
     let lock_path = repo_root.join("package-lock.json");
-    if !lock_path.is_file() {
-        return versions;
+    if lock_path.is_file() {
+        if let Ok(raw) = fs::read_to_string(&lock_path) {
+            if let Ok(json) = serde_json::from_str::<Value>(&raw) {
+                if let Some(packages) = json.get("packages").and_then(Value::as_object) {
+                    for (pkg_key, pkg_val) in packages {
+                        if let Some(name) = pkg_key.strip_prefix("node_modules/") {
+                            if let Some(ver) = pkg_val.get("version").and_then(Value::as_str) {
+                                versions.insert(name.to_string(), ver.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if !versions.is_empty() {
+            return versions;
+        }
     }
 
-    let Ok(raw) = fs::read_to_string(&lock_path) else {
-        return versions;
-    };
-    let Ok(json) = serde_json::from_str::<Value>(&raw) else {
-        return versions;
-    };
-
-    if let Some(packages) = json.get("packages").and_then(Value::as_object) {
-        for (pkg_key, pkg_val) in packages {
-            if let Some(name) = pkg_key.strip_prefix("node_modules/") {
-                if let Some(ver) = pkg_val.get("version").and_then(Value::as_str) {
-                    versions.insert(name.to_string(), ver.to_string());
+    let pnpm_path = repo_root.join("pnpm-lock.yaml");
+    if pnpm_path.is_file() {
+        if let Ok(raw) = fs::read_to_string(&pnpm_path) {
+            for line in raw.lines() {
+                let trimmed = line.trim().trim_end_matches(':');
+                let key = trimmed.trim_matches('\'').trim_matches('"');
+                let key = key.strip_prefix('/').unwrap_or(key);
+                if let Some((pkg, ver_part)) = key.rsplit_once('@') {
+                    if !pkg.is_empty()
+                        && ver_part
+                            .chars()
+                            .next()
+                            .map(|c| c.is_ascii_digit())
+                            .unwrap_or(false)
+                    {
+                        let clean_ver = ver_part.split('(').next().unwrap_or(ver_part).trim();
+                        versions
+                            .entry(pkg.to_string())
+                            .or_insert_with(|| clean_ver.to_string());
+                    }
                 }
             }
         }
