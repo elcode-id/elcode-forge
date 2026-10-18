@@ -28,6 +28,7 @@ forge-mcp = { path = "crates/forge-mcp" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
+blake3 = "1.5"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
