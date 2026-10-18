@@ -1,0 +1,48 @@
+name: CI — Self-Dogfooding (eforge)
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  dogfood:
+    name: Self-Dogfood ELCODE Forge
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo registry and target directory
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build eforge release binary
+        run: cargo build --release --bin eforge
+
+      - name: Dogfood 1 — Run eforge doctor on ELCODE Forge workspace
+        run: ./target/release/eforge doctor --path . --format terminal
+
+      - name: Dogfood 2 — Run eforge scan on ELCODE Forge workspace
+        run: ./target/release/eforge scan --path . --format terminal
+
+      - name: Dogfood 3 — Run composite GitHub Action on fixtures/next-app
+        uses: ./integrations/github-action
+        with:
+          command: doctor
+          path: fixtures/next-app
+          step-summary: "true"
