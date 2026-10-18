@@ -3,6 +3,7 @@
 pub mod dependencies;
 pub mod diff;
 pub mod doctor;
+pub mod explain;
 pub mod graph;
 pub mod init;
 pub mod mcp;

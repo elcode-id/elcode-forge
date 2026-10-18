@@ -155,4 +155,15 @@ pub enum Commands {
         #[arg(long, short = 'p', default_value = ".")]
         path: PathBuf,
     },
+    /// Explain the structural role, files, imports, dependents, exports, and findings for a project or module.
+    Explain {
+        /// Optional module ID or file path prefix (defaults to "." for full project overview).
+        target: Option<String>,
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output format (`terminal`, `json`, `markdown`, `sarif`, `github`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
 }
