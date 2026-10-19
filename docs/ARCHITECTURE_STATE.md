@@ -172,6 +172,11 @@
 - **Public Types & Functions:** `HistorySnapshot`, `HistoryApiResponse`, `loadHistory(baseUrl: string, limit?: number): Promise<HistorySnapshot[]>`, `Sparkline`.
 - **Invariants:** `loadHistory` strictly enforces local loopback URLs; Trends screen provides clear fallback for static file mode explaining `eforge report --save-history` + `eforge serve` requirement; Sparkline rendered as accessible, dependency-free SVG polylines; Changes screen surfaces blast radius breakdown, missing test warnings, and Git churn hotspots.
 
+## Issue #67 — `dashboard` E2E Smoke, Dogfood Integration & Phase 3 Docs (COMPLETED)
+- **App & CI:** `apps/dashboard` (`playwright.config.ts`, `serve-preview.js`, `e2e/screens.spec.ts`, `e2e/fixtures/next-app.bundle.json`, `package.json`), `.github/workflows/eforge-dogfood.yml`, `README.md`.
+- **Public Capabilities:** End-to-end smoke testing across all 7 dashboard screens (Overview, Architecture, Findings, Security, Dependencies, Changes, Trends); Dogfood GitHub Action generates deterministic report bundle, builds dashboard SPA, and uploads `forge-report.json` artifact; full user-facing dashboard documentation in README.md.
+- **Milestone Status:** Closes EPIC #55 and completes **Phase 3 (Report Bundle, Local Daemon & Web Intelligence Dashboard)**.
+
 
 
 

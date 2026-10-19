@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import type { Core } from "cytoscape";
   import { dashboardState } from "$lib/data/store.svelte.js";
   import { toElements, type GraphNodeData } from "$lib/graph/toElements.js";
@@ -7,7 +6,7 @@
   import type { Finding } from "@elcode-forge/schema";
 
   let containerEl: HTMLDivElement | null = $state(null);
-  let cyInstance: Core | null = $state(null);
+  let cyInstance: Core | null = null;
   let selectedNodeId: string | null = $state(null);
   let viewMode: "canvas" | "list" = $state("canvas");
 
@@ -56,21 +55,17 @@
     });
   }
 
-  onMount(() => {
-    mountCytoscape();
+  $effect(() => {
+    // When switching to canvas mode or containerEl mounts, render cytoscape
+    if (containerEl && viewMode === "canvas" && elements.nodes.length > 0) {
+      mountCytoscape();
+    }
     return () => {
       if (cyInstance) {
         cyInstance.destroy();
         cyInstance = null;
       }
     };
-  });
-
-  $effect(() => {
-    // Re-mount or re-render if bundle/elements change
-    if (elements && containerEl && viewMode === "canvas") {
-      mountCytoscape();
-    }
   });
 
   function handleSelectNode(nodeId: string) {

@@ -107,7 +107,14 @@
 
         <label class="px-3 py-1.5 rounded bg-[#1a1e2e] hover:bg-slate-800 border border-[#262c3f] cursor-pointer transition-colors font-medium">
           <span>Load JSON</span>
-          <input type="file" accept=".json" class="hidden" onchange={handleFileSelect} />
+          <input
+            id="file-upload"
+            data-testid="file-upload"
+            type="file"
+            accept=".json"
+            class="hidden"
+            onchange={handleFileSelect}
+          />
         </label>
 
         <div class="flex items-center gap-1">
