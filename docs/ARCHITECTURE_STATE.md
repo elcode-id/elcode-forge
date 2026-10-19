@@ -147,6 +147,12 @@
 - **Public Types & Functions (`forge_cli::commands::history`):** `HistorySnapshot`, `HISTORY_DIR` (`"history"`), `save_history_snapshot(repo_root: &Path, bundle: &ReportBundle) -> Result<Option<PathBuf>, ForgeError>`, `load_history(repo_root: &Path, limit: usize) -> Result<Vec<HistorySnapshot>, ForgeError>`, `--save-history` CLI flag, `/api/v1/history?limit=` endpoint.
 - **Invariants:** Snapshot files stored as `.eforge/history/<commit_unix_ts>-<sha12>.json`; strictly idempotent per commit; skipped when no git revision is present; `load_history` sorts ascending by commit timestamp and ignores corrupted/malformed files.
 
+## Issue #62 — `forge-ui` ELCODE Design Tokens & Svelte 5 Core Primitives (COMPLETED)
+- **Package:** `packages/forge-ui` (`src/tokens.css`, `src/lib/{ScoreRing,SeverityBadge,DataTable,Card,EmptyState,KeyValue}.svelte`, `src/index.ts`)
+- **Public Components & Types (`@elcode-forge/ui`):** `ScoreRing`, `SeverityBadge`, `DataTable`, `Column`, `Card`, `EmptyState`, `KeyValue`.
+- **Invariants:** Built on Svelte 5 runes (`$props()`, `$derived()`); strictly avoids `{@html}`; zero external CDN or runtime font downloads; fully accessible with WCAG AA contrast and explicit `aria-*` tags.
+
+
 
 
 
