@@ -180,6 +180,9 @@ pub enum Commands {
         /// Skip Git history and working tree diff inspection.
         #[arg(long)]
         no_git: bool,
+        /// Persist a deterministic history snapshot to .eforge/history/ for trends analysis.
+        #[arg(long)]
+        save_history: bool,
     },
     /// Export the JSON Schema for ReportBundle (single source of truth for dashboard).
     Schema {
