@@ -165,6 +165,21 @@ pub enum Commands {
         /// Output format (`terminal`, `json`, `markdown`, `sarif`, `github`).
         #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
         format: OutputFormat,
+        /// Augment structural explanation with AI interpretation.
+        #[arg(long)]
+        ai: bool,
+        /// AI provider override (`openai`, `anthropic`, `gemini`, `mock`).
+        #[arg(long)]
+        provider: Option<String>,
+        /// Model identifier override.
+        #[arg(long)]
+        model: Option<String>,
+        /// Output context pack and token estimates without calling AI provider.
+        #[arg(long)]
+        dry_run: bool,
+        /// Bypass AI response cache.
+        #[arg(long)]
+        no_cache: bool,
     },
     /// Generate a deterministic ReportBundle JSON for dashboard consumption.
     Report {

@@ -1,5 +1,6 @@
 //! `forge-cli` — Shared CLI execution library for `eforge` and `elcode-forge`.
 
+pub mod ai;
 pub mod cli;
 pub mod commands;
 pub mod exit_code;
@@ -212,22 +213,36 @@ pub fn run_cli_from_env() -> ExitCode {
             target,
             path,
             format,
-        }) => match commands::explain::execute_explain(&path, target.as_deref()) {
-            Ok(report) => match commands::explain::render_explain_report(&report, format) {
-                Ok(rendered) => {
-                    println!("{rendered}");
-                    ExitCode::Success
-                }
+            ai,
+            provider,
+            model,
+            dry_run,
+            no_cache,
+        }) => {
+            let ai_opts = ai::AiExplainOptions {
+                ai,
+                provider,
+                model,
+                dry_run,
+                no_cache,
+            };
+            match commands::explain::execute_explain_with_ai(&path, target.as_deref(), &ai_opts) {
+                Ok(report) => match commands::explain::render_explain_report(&report, format) {
+                    Ok(rendered) => {
+                        println!("{rendered}");
+                        ExitCode::Success
+                    }
+                    Err(err) => {
+                        eprintln!("Error formatting explain report: {err}");
+                        ExitCode::ExecutionError
+                    }
+                },
                 Err(err) => {
-                    eprintln!("Error formatting explain report: {err}");
+                    eprintln!("Error running explain: {err}");
                     ExitCode::ExecutionError
                 }
-            },
-            Err(err) => {
-                eprintln!("Error running explain: {err}");
-                ExitCode::ExecutionError
             }
-        },
+        }
         Some(Commands::Report {
             path,
             output,
