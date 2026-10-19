@@ -58,7 +58,7 @@ cargo install --path crates/forge-cli
 Verify installation:
 ```bash
 eforge --version
-# ELCODE Forge (eforge) v0.2.0
+# ELCODE Forge (eforge) v0.3.0
 ```
 
 ---
