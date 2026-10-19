@@ -50,15 +50,20 @@ mod tests {
 
     #[test]
     fn ensure_ai_enabled_guards_disabled_state() {
-        let mut cfg = AiConfig::default();
-        cfg.enabled = false;
-        let res = ensure_ai_enabled(&cfg);
+        let disabled_cfg = AiConfig {
+            enabled: false,
+            ..Default::default()
+        };
+        let res = ensure_ai_enabled(&disabled_cfg);
         assert!(res.is_err());
         if let Err(e) = res {
             assert!(e.to_string().contains("AI capabilities are disabled"));
         }
 
-        cfg.enabled = true;
-        assert!(ensure_ai_enabled(&cfg).is_ok());
+        let enabled_cfg = AiConfig {
+            enabled: true,
+            ..Default::default()
+        };
+        assert!(ensure_ai_enabled(&enabled_cfg).is_ok());
     }
 }
