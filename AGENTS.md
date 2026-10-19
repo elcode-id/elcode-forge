@@ -22,6 +22,7 @@ Every line of code, test, and commit you produce must strictly adhere to this op
 - `crates/forge-rules/` — Rule engine, built-in rules, rule evaluation pipeline
 - `crates/forge-git/` — Git history, diff parser, hotspot & blast-radius impact analysis
 - `crates/forge-security/` — Secret detection, unsafe pattern rules, OSV/external scanner adapters
+- `crates/forge-ai/` — AI provider abstraction, context retrieval builder, cost controls
 - `crates/forge-mcp/` — Native Model Context Protocol (MCP) server (`eforge mcp`)
 - `apps/dashboard/` — Web intelligence UI (SvelteKit + TypeScript + Tailwind CSS)
 - `apps/docs/` — Documentation site
@@ -33,7 +34,7 @@ Every line of code, test, and commit you produce must strictly adhere to this op
 
 ### Strict Dependency Direction (DAG)
 1. `forge-core` is the foundational leaf crate. It MUST NOT depend on any other internal `forge-*` crate.
-2. `forge-analyzer`, `forge-git`, `forge-rules`, and `forge-security` depend ONLY on `forge-core` (and approved external crates).
+2. `forge-analyzer`, `forge-git`, `forge-rules`, `forge-security`, and `forge-ai` depend ONLY on `forge-core` (and approved external crates).
 3. `forge-mcp` and `forge-cli` orchestrate domain crates.
 4. Circular dependencies between crates or modules are strictly forbidden.
 

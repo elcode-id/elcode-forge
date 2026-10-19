@@ -7,6 +7,7 @@ members = [
     "crates/forge-rules",
     "crates/forge-security",
     "crates/forge-mcp",
+    "crates/forge-ai",
     "crates/forge-cli",
 ]
 
@@ -25,12 +26,14 @@ forge-git = { path = "crates/forge-git" }
 forge-rules = { path = "crates/forge-rules" }
 forge-security = { path = "crates/forge-security" }
 forge-mcp = { path = "crates/forge-mcp" }
+forge-ai = { path = "crates/forge-ai" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
 blake3 = "1.5"
 schemars = { version = "0.8", features = ["derive"] }
 tiny_http = "0.12"
+ureq = { version = "2.12", default-features = false, features = ["tls", "json"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
