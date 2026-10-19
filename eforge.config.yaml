@@ -20,3 +20,17 @@ rules:
     enabled: true
     severity: "low"
     max_lines: 500
+
+# Optional AI Assistant & Code Review Configuration (Phase 4)
+# ai:
+#   enabled: false
+#   provider: "openai"              # openai | anthropic | gemini | openai-compatible | mock
+#   model: "gpt-4o"
+#   # base_url: "http://localhost:11434/v1"  # For local Ollama / LM Studio
+#   # api_key_env: "OPENAI_API_KEY"
+#   max_tokens: 1024
+#   max_context_tokens: 8000
+#   temperature: 0.2
+#   timeout_secs: 30
+#   cache_enabled: true
+#   budget_daily_usd: 2.00

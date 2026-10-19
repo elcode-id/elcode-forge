@@ -25,7 +25,11 @@ pub struct RuleOverrideConfig {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum AiProviderKind {
-    #[serde(rename = "openai-compatible", alias = "openai_compatible", alias = "openai")]
+    #[serde(
+        rename = "openai-compatible",
+        alias = "openai_compatible",
+        alias = "openai"
+    )]
     OpenAiCompatible,
     #[serde(rename = "anthropic")]
     Anthropic,
@@ -263,11 +267,12 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                     match sub_name.as_str() {
                         "budget" => match key {
                             "daily_usd" | "daily" => {
-                                let parsed = val.parse::<f64>().map_err(|_| ForgeError::Config {
-                                    message: format!(
+                                let parsed =
+                                    val.parse::<f64>().map_err(|_| ForgeError::Config {
+                                        message: format!(
                                         "line {line_no}: invalid float for budget daily_usd '{val}'"
                                     ),
-                                })?;
+                                    })?;
                                 config.ai.budget_daily_usd = Some(parsed);
                             }
                             _ => {}
@@ -703,7 +708,10 @@ ai:
             assert!(cfg.ai_enabled);
             assert_eq!(cfg.ai.provider, Some(AiProviderKind::OpenAiCompatible));
             assert_eq!(cfg.ai.model.as_deref(), Some("gpt-4o"));
-            assert_eq!(cfg.ai.base_url.as_deref(), Some("https://api.openai.com/v1"));
+            assert_eq!(
+                cfg.ai.base_url.as_deref(),
+                Some("https://api.openai.com/v1")
+            );
             assert_eq!(cfg.ai.api_key_env.as_deref(), Some("OPENAI_API_KEY"));
             assert_eq!(cfg.ai.max_tokens, 2048);
             assert_eq!(cfg.ai.max_context_tokens, 12000);
@@ -766,4 +774,3 @@ ai:
         assert!(matches!(res, Err(ForgeError::Config { .. })));
     }
 }
-
