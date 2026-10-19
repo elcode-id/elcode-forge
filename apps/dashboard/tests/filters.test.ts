@@ -1,0 +1,90 @@
+import { describe, it, expect } from "vitest";
+import { parseFilter, serializeFilter, applyFilter } from "../src/lib/filters.js";
+import type { Finding } from "@elcode-forge/schema";
+
+describe("Finding filters helper", () => {
+  it("parses and serializes URLSearchParams accurately", () => {
+    const params = new URLSearchParams("severity=critical,high&confidence=certain&rulePrefix=arch/&pathPrefix=src/db");
+    const filter = parseFilter(params);
+
+    expect(filter.severity).toEqual(["critical", "high"]);
+    expect(filter.confidence).toEqual(["certain"]);
+    expect(filter.rulePrefix).toBe("arch/");
+    expect(filter.pathPrefix).toBe("src/db");
+
+    const serialized = serializeFilter(filter);
+    expect(serialized.get("severity")).toBe("critical,high");
+    expect(serialized.get("confidence")).toBe("certain");
+    expect(serialized.get("rulePrefix")).toBe("arch/");
+    expect(serialized.get("pathPrefix")).toBe("src/db");
+  });
+
+  it("applies filters accurately with stable ordering preserved", () => {
+    const findings: Finding[] = [
+      {
+        id: "f-1",
+        rule_id: "arch/no-direct-db-in-ui",
+        severity: "critical",
+        confidence: "certain",
+        title: "Layer violation",
+        description: "UI component directly imports database client",
+        evidence: "import db from '../db/client'",
+        recommendation: "Move database access to a service layer",
+        category: "architecture",
+        location: {
+          file_path: "src/components/UserCard.tsx",
+          start_line: 5,
+        },
+      },
+      {
+        id: "f-2",
+        rule_id: "security/hardcoded-secret",
+        severity: "critical",
+        confidence: "high",
+        title: "Hardcoded API Token",
+        description: "Bearer token detected in source code",
+        evidence: "apiKey = ****REDACTED****",
+        recommendation: "Use environment variables",
+        category: "security",
+        location: {
+          file_path: "src/services/api.ts",
+          start_line: 12,
+        },
+      },
+      {
+        id: "f-3",
+        rule_id: "deps/unused-dependency",
+        severity: "low",
+        confidence: "certain",
+        title: "Unused Dependency",
+        description: "Dependency unused-analytics-sdk is never imported",
+        evidence: "unused-analytics-sdk",
+        recommendation: "Remove unused dependency",
+        category: "dependencies",
+        location: {
+          file_path: "package.json",
+        },
+      },
+    ];
+
+    // Filter by severity
+    const criticals = applyFilter(findings, { severity: ["critical"], confidence: [] });
+    expect(criticals.map((f: Finding) => f.id)).toEqual(["f-1", "f-2"]);
+
+    // Filter by rule prefix
+    const archs = applyFilter(findings, { severity: [], confidence: [], rulePrefix: "arch/" });
+    expect(archs.map((f: Finding) => f.id)).toEqual(["f-1"]);
+
+    // Filter by path prefix
+    const serviceFindings = applyFilter(findings, { severity: [], confidence: [], pathPrefix: "services" });
+    expect(serviceFindings.map((f: Finding) => f.id)).toEqual(["f-2"]);
+
+    // Combined filter
+    const combined = applyFilter(findings, {
+      severity: ["critical"],
+      confidence: ["certain"],
+      rulePrefix: "arch/",
+    });
+    expect(combined.map((f: Finding) => f.id)).toEqual(["f-1"]);
+  });
+});
