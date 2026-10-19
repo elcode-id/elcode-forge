@@ -76,6 +76,18 @@
           >
             Dependencies
           </a>
+          <a
+            href="/changes"
+            class="px-2.5 py-1 rounded text-xs text-slate-300 hover:text-white hover:bg-slate-800 transition-colors font-medium"
+          >
+            Changes
+          </a>
+          <a
+            href="/trends"
+            class="px-2.5 py-1 rounded text-xs text-slate-300 hover:text-white hover:bg-slate-800 transition-colors font-medium"
+          >
+            Trends
+          </a>
         </nav>
       </div>
 
