@@ -181,4 +181,10 @@ pub enum Commands {
         #[arg(long)]
         no_git: bool,
     },
+    /// Export the JSON Schema for ReportBundle (single source of truth for dashboard).
+    Schema {
+        /// Optional file path to write the rendered JSON Schema.
+        #[arg(long, short = 'o')]
+        output: Option<PathBuf>,
+    },
 }

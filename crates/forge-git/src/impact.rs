@@ -2,12 +2,13 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::Path;
 
 use forge_core::Module;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::diff::FileChange;
 
 /// Blast-radius change impact report for a Git diff.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ChangeImpactReport {
     pub changed_files: Vec<FileChange>,
     pub directly_affected_modules: Vec<String>,

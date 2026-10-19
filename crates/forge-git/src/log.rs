@@ -2,10 +2,11 @@ use std::path::Path;
 use std::process::Command;
 
 use forge_core::ForgeError;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Git HEAD revision metadata.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct GitRevision {
     pub head_sha: String,
     pub commit_unix_ts: i64,

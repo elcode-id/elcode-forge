@@ -244,5 +244,19 @@ pub fn run_cli_from_env() -> ExitCode {
                 ExitCode::ExecutionError
             }
         },
+        Some(Commands::Schema { output }) => {
+            match commands::schema::run_schema(output.as_deref()) {
+                Ok(rendered) => {
+                    if output.is_none() {
+                        println!("{rendered}");
+                    }
+                    ExitCode::Success
+                }
+                Err(err) => {
+                    eprintln!("Error exporting schema: {err}");
+                    ExitCode::ExecutionError
+                }
+            }
+        }
     }
 }
