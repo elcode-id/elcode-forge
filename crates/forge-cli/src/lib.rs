@@ -227,5 +227,22 @@ pub fn run_cli_from_env() -> ExitCode {
                 ExitCode::ExecutionError
             }
         },
+        Some(Commands::Report {
+            path,
+            output,
+            hotspots,
+            no_git,
+        }) => match commands::report::run_report(&path, output.as_deref(), hotspots, no_git) {
+            Ok(rendered) => {
+                if output.is_none() {
+                    println!("{rendered}");
+                }
+                ExitCode::Success
+            }
+            Err(err) => {
+                eprintln!("Error generating report bundle: {err}");
+                ExitCode::ExecutionError
+            }
+        },
     }
 }

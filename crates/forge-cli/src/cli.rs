@@ -166,4 +166,19 @@ pub enum Commands {
         #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
         format: OutputFormat,
     },
+    /// Generate a deterministic ReportBundle JSON for dashboard consumption.
+    Report {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Optional file path to write the rendered ReportBundle JSON.
+        #[arg(long, short = 'o')]
+        output: Option<PathBuf>,
+        /// Top N churn hotspots to include.
+        #[arg(long, default_value_t = 10)]
+        hotspots: usize,
+        /// Skip Git history and working tree diff inspection.
+        #[arg(long)]
+        no_git: bool,
+    },
 }
