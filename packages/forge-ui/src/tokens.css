@@ -1,0 +1,34 @@
+/* ELCODE Design Tokens — High-density, restrained engineering aesthetic (Tailwind CSS compatible) */
+:root {
+  --elcode-bg-primary: #090a0f;
+  --elcode-bg-surface: #12151f;
+  --elcode-bg-subtle: #1a1e2e;
+  --elcode-border: #262c3f;
+  --elcode-border-focus: #3b82f6;
+
+  --elcode-text-primary: #f8fafc;
+  --elcode-text-secondary: #94a3b8;
+  --elcode-text-muted: #64748b;
+
+  --elcode-sev-critical: #ef4444;
+  --elcode-sev-high: #f97316;
+  --elcode-sev-medium: #eab308;
+  --elcode-sev-low: #3b82f6;
+  --elcode-sev-info: #64748b;
+
+  --elcode-health-good: #10b981;
+  --elcode-health-warning: #f59e0b;
+  --elcode-health-bad: #ef4444;
+}
+
+.elcode-card {
+  background-color: var(--elcode-bg-surface);
+  border: 1px solid var(--elcode-border);
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.elcode-focus-ring:focus-visible {
+  outline: 2px solid var(--elcode-border-focus);
+  outline-offset: 2px;
+}

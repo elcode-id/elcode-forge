@@ -1,0 +1,579 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ReportBundle",
+  "description": "Versioned, deterministic intelligence bundle consumable by the web dashboard.",
+  "type": "object",
+  "required": [
+    "architecture",
+    "hotspots",
+    "repository",
+    "schema_version",
+    "tool_version"
+  ],
+  "properties": {
+    "architecture": {
+      "$ref": "#/definitions/ArchitectureSummary"
+    },
+    "change_impact": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ChangeImpactReport"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "change_risk": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/RiskReport"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "hotspots": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/HotspotEntry"
+      }
+    },
+    "repository": {
+      "$ref": "#/definitions/Repository"
+    },
+    "revision": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/GitRevision"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schema_version": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    },
+    "tool_version": {
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "ArchitectureSummary": {
+      "description": "High-level architecture summary for the dashboard.",
+      "type": "object",
+      "required": [
+        "circular_dependencies",
+        "high_centrality_modules"
+      ],
+      "properties": {
+        "circular_dependencies": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "high_centrality_modules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ChangeImpactReport": {
+      "description": "Blast-radius change impact report for a Git diff.",
+      "type": "object",
+      "required": [
+        "changed_files",
+        "changed_files_without_tests",
+        "directly_affected_modules",
+        "transitively_affected_modules"
+      ],
+      "properties": {
+        "changed_files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FileChange"
+          }
+        },
+        "changed_files_without_tests": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "directly_affected_modules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "transitively_affected_modules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Confidence": {
+      "description": "Normalized confidence levels ordered from lowest (`Low`) to highest (`Certain`).",
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "certain"
+      ]
+    },
+    "Dependency": {
+      "description": "External package dependency metadata.",
+      "type": "object",
+      "required": [
+        "ecosystem",
+        "is_dev",
+        "is_direct",
+        "name",
+        "version_req"
+      ],
+      "properties": {
+        "ecosystem": {
+          "type": "string"
+        },
+        "is_dev": {
+          "type": "boolean"
+        },
+        "is_direct": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "resolved_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version_req": {
+          "type": "string"
+        }
+      }
+    },
+    "DimensionScore": {
+      "description": "Explainable health score for an individual engineering dimension.",
+      "type": "object",
+      "required": [
+        "dimension",
+        "reasons",
+        "score",
+        "weight_pct"
+      ],
+      "properties": {
+        "dimension": {
+          "type": "string"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "score": {
+          "type": "integer",
+          "format": "uint8",
+          "minimum": 0.0
+        },
+        "weight_pct": {
+          "type": "integer",
+          "format": "uint8",
+          "minimum": 0.0
+        }
+      }
+    },
+    "FileChange": {
+      "description": "Normalized file-level change extracted from a unified Git diff.",
+      "type": "object",
+      "required": [
+        "added_lines",
+        "deleted_lines",
+        "is_deleted",
+        "is_new",
+        "path"
+      ],
+      "properties": {
+        "added_lines": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "deleted_lines": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "is_deleted": {
+          "type": "boolean"
+        },
+        "is_new": {
+          "type": "boolean"
+        },
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "FileNode": {
+      "description": "Normalized file metadata node in the repository graph.",
+      "type": "object",
+      "required": [
+        "content_hash",
+        "is_test",
+        "line_count",
+        "relative_path",
+        "size_bytes"
+      ],
+      "properties": {
+        "content_hash": {
+          "type": "string"
+        },
+        "is_test": {
+          "type": "boolean"
+        },
+        "language": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line_count": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "relative_path": {
+          "type": "string"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    },
+    "Finding": {
+      "description": "Normalized finding emitted by deterministic analyzers, rules, or security scanners.",
+      "type": "object",
+      "required": [
+        "category",
+        "confidence",
+        "description",
+        "evidence",
+        "id",
+        "recommendation",
+        "rule_id",
+        "severity",
+        "title"
+      ],
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "confidence": {
+          "$ref": "#/definitions/Confidence"
+        },
+        "description": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/SourceLocation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recommendation": {
+          "type": "string"
+        },
+        "rule_id": {
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/definitions/Severity"
+        },
+        "title": {
+          "type": "string"
+        }
+      }
+    },
+    "GitRevision": {
+      "description": "Git HEAD revision metadata.",
+      "type": "object",
+      "required": [
+        "commit_unix_ts",
+        "head_sha"
+      ],
+      "properties": {
+        "commit_unix_ts": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "head_sha": {
+          "type": "string"
+        }
+      }
+    },
+    "HealthScore": {
+      "description": "Transparent overall codebase health score (`0..=100`) and breakdown.",
+      "type": "object",
+      "required": [
+        "dimensions",
+        "overall"
+      ],
+      "properties": {
+        "dimensions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DimensionScore"
+          }
+        },
+        "overall": {
+          "type": "integer",
+          "format": "uint8",
+          "minimum": 0.0
+        }
+      }
+    },
+    "HotspotEntry": {
+      "description": "File-level churn hotspot summary computed from Git commit history.",
+      "type": "object",
+      "required": [
+        "commit_count",
+        "contributors_count",
+        "path"
+      ],
+      "properties": {
+        "commit_count": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "contributors_count": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0.0
+        },
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "Module": {
+      "description": "Logical module boundary inferred from repository structure and import relationships.",
+      "type": "object",
+      "required": [
+        "exports",
+        "files",
+        "id",
+        "imports",
+        "name",
+        "root_path"
+      ],
+      "properties": {
+        "exports": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "id": {
+          "type": "string"
+        },
+        "imports": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "root_path": {
+          "type": "string"
+        }
+      }
+    },
+    "Repository": {
+      "description": "Language-neutral Intermediate Representation (IR) of an analyzed repository.",
+      "type": "object",
+      "required": [
+        "dependencies",
+        "detected_frameworks",
+        "detected_languages",
+        "files",
+        "findings",
+        "modules",
+        "name",
+        "package_managers",
+        "root_path"
+      ],
+      "properties": {
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Dependency"
+          }
+        },
+        "detected_frameworks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "detected_languages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FileNode"
+          }
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Finding"
+          }
+        },
+        "health": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/HealthScore"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "modules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Module"
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "package_managers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "root_path": {
+          "type": "string"
+        }
+      }
+    },
+    "RiskLevel": {
+      "description": "Categorical risk level for a pull request or working-tree change set.",
+      "type": "string",
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    "RiskReport": {
+      "description": "Explainable change risk assessment (distinct from overall project health).",
+      "type": "object",
+      "required": [
+        "level",
+        "reasons",
+        "score"
+      ],
+      "properties": {
+        "level": {
+          "$ref": "#/definitions/RiskLevel"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "score": {
+          "type": "integer",
+          "format": "uint8",
+          "minimum": 0.0
+        }
+      }
+    },
+    "Severity": {
+      "description": "Normalized finding severity levels ordered from lowest (`Info`) to highest (`Critical`).",
+      "type": "string",
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    },
+    "SourceLocation": {
+      "description": "Source code location for a finding or symbol within the repository.",
+      "type": "object",
+      "required": [
+        "file_path"
+      ],
+      "properties": {
+        "end_line": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "file_path": {
+          "type": "string"
+        },
+        "start_line": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      }
+    }
+  }
+}

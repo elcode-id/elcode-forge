@@ -1,9 +1,12 @@
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::ir::{DimensionScore, Finding, HealthScore, Repository, Severity};
 
 /// Categorical risk level for a pull request or working-tree change set.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum RiskLevel {
     Low,
@@ -13,7 +16,7 @@ pub enum RiskLevel {
 }
 
 /// Explainable change risk assessment (distinct from overall project health).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct RiskReport {
     pub level: RiskLevel,
     pub score: u8,

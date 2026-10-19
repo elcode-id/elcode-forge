@@ -4,6 +4,7 @@ pub mod cli;
 pub mod commands;
 pub mod exit_code;
 pub mod formatters;
+pub mod serve;
 
 use std::fs;
 
@@ -227,5 +228,63 @@ pub fn run_cli_from_env() -> ExitCode {
                 ExitCode::ExecutionError
             }
         },
+        Some(Commands::Report {
+            path,
+            output,
+            hotspots,
+            no_git,
+            save_history,
+        }) => match commands::report::run_report(
+            &path,
+            output.as_deref(),
+            hotspots,
+            no_git,
+            save_history,
+        ) {
+            Ok(rendered) => {
+                if output.is_none() {
+                    println!("{rendered}");
+                }
+                ExitCode::Success
+            }
+            Err(err) => {
+                eprintln!("Error generating report bundle: {err}");
+                ExitCode::ExecutionError
+            }
+        },
+        Some(Commands::Schema { output }) => {
+            match commands::schema::run_schema(output.as_deref()) {
+                Ok(rendered) => {
+                    if output.is_none() {
+                        println!("{rendered}");
+                    }
+                    ExitCode::Success
+                }
+                Err(err) => {
+                    eprintln!("Error exporting schema: {err}");
+                    ExitCode::ExecutionError
+                }
+            }
+        }
+        Some(Commands::Serve {
+            path,
+            port,
+            allow_origin,
+            static_dir,
+        }) => {
+            let opts = serve::ServeOptions {
+                repo_root: path,
+                port,
+                allow_origin,
+                static_dir,
+            };
+            match serve::run_serve(&opts) {
+                Ok(()) => ExitCode::Success,
+                Err(err) => {
+                    eprintln!("Error running server: {err}");
+                    ExitCode::ExecutionError
+                }
+            }
+        }
     }
 }

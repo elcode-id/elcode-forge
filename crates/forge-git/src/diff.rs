@@ -2,10 +2,11 @@ use std::path::Path;
 use std::process::Command;
 
 use forge_core::ForgeError;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Normalized file-level change extracted from a unified Git diff.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct FileChange {
     pub path: String,
     pub added_lines: u32,

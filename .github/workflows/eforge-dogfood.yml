@@ -46,3 +46,30 @@ jobs:
           command: doctor
           path: fixtures/next-app
           step-summary: "true"
+
+      - name: Dogfood 4 — Generate deterministic report bundle
+        run: ./target/release/eforge report --path . --output forge-report.json
+
+      - name: Setup Node & pnpm for dashboard
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Dashboard SPA
+        run: pnpm --filter @elcode-forge/dashboard run build
+
+      - name: Upload Report Bundle Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: forge-report-bundle
+          path: forge-report.json
+          if-no-files-found: error

@@ -117,6 +117,68 @@
 - **Public Types & Functions (`forge_cli::commands::explain`):** `ExplainReport`, `execute_explain(repo_root: &Path, target_module_or_file: Option<&str>) -> Result<ExplainReport, ForgeError>`, `render_explain_report(report: &ExplainReport, format: OutputFormat) -> Result<String, ForgeError>`, `Commands::Explain`.
 - **Invariants:** Deterministically resolves matching files, outgoing `imports`, incoming `imported_by`, `exports`, and `related_findings` for either the entire repository (`None` / `"."`) or a specific module/file path prefix.
 
+## Issue #56 — `forge-git` Commit Log & HEAD Revision Collection (COMPLETED)
+- **Crate:** `crates/forge-git` (`src/log.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_git`):** `GitRevision`, `read_head_revision(repo_root: &Path) -> Result<Option<GitRevision>, ForgeError>`, `collect_commit_log(repo_root: &Path, max_commits: usize) -> Result<String, ForgeError>`.
+- **Invariants:** Invokes `git` with fixed argument vectors without shell evaluation; gracefully returns `Ok(None)` or empty log text if `repo_root` is not a Git repository or `git` fails.
+
+## Issue #57 — `forge-cli` Deterministic `ReportBundle` and `eforge report` Command (COMPLETED)
+- **Crate:** `crates/forge-cli` (`src/commands/report.rs`, `src/cli.rs`, `src/commands/mod.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_cli::commands::report`):** `REPORT_SCHEMA_VERSION`, `ReportBundle`, `ArchitectureSummary`, `ReportOptions`, `build_report_bundle(repo_root: &Path, opts: &ReportOptions) -> Result<ReportBundle, ForgeError>`, `run_report(repo_root: &Path, output: Option<&Path>, hotspots_top_n: usize, no_git: bool) -> Result<String, ForgeError>`, `Commands::Report`.
+- **Invariants:** `ReportBundle` contains no wall-clock timestamp; identical repository state and configuration produces byte-for-byte identical JSON output; bundles architecture circular dependencies and high-centrality modules alongside inventory, findings, and health score.
+
+## Issue #58 — `forge-core`, `forge-git`, `forge-cli` JsonSchema Export (`eforge schema`) (COMPLETED)
+- **Crates:** `Cargo.toml`, `crates/forge-core`, `crates/forge-git`, `crates/forge-cli`
+- **Public Types & Functions:** `JsonSchema` derived on all types reachable from `ReportBundle` (`Severity`, `Confidence`, `SourceLocation`, `Finding`, `FileNode`, `Module`, `Dependency`, `DimensionScore`, `HealthScore`, `Repository`, `RiskLevel`, `RiskReport`, `FileChange`, `HotspotEntry`, `ChangeImpactReport`, `GitRevision`, `ArchitectureSummary`, `ReportBundle`), `render_report_schema() -> Result<String, ForgeError>`, `run_schema(output: Option<&Path>) -> Result<String, ForgeError>`, `Commands::Schema`.
+- **Invariants:** Rust types are the single source of truth for the JSON schema; `render_report_schema()` is deterministic and powers schema validation and TypeScript type generation in `@elcode-forge/schema`.
+
+## Issue #59 — `forge-schema` Workspace Bootstrap, Types & CI (COMPLETED)
+- **Packages & Workflows:** `package.json`, `pnpm-workspace.yaml`, `.npmrc`, `packages/forge-schema`, `.github/workflows/ci-web.yml`
+- **Public TypeScript Exports (`@elcode-forge/schema`):** `SUPPORTED_SCHEMA_VERSION = 1`, `parseReportBundle(input: unknown) -> ParseReportBundleResult`, and generated types (`ReportBundle`, `Repository`, `Finding`, `HealthScore`, `Module`, etc.).
+- **Invariants:** `parseReportBundle` validates untrusted JSON input against `report-bundle.schema.json` using Ajv and verifies `schema_version == 1`; `ci-web.yml` runs path-filtered CI and enforces zero-drift between `eforge schema` and the checked-in JSON Schema.
+
+## Issue #60 — `forge-cli` Read-Only Local `eforge serve` HTTP API (COMPLETED)
+- **Crate:** `crates/forge-cli` (`src/serve/{mod.rs, routes.rs}`, `src/cli.rs`, `src/lib.rs`, `Cargo.toml`)
+- **Public Types & Functions (`forge_cli::serve`):** `ServeOptions`, `ApiResponse`, `ServeState`, `route_request(state: &ServeState, method: &str, url: &str) -> ApiResponse`, `run_serve(opts: &ServeOptions) -> Result<(), ForgeError>`, `Commands::Serve`.
+- **Invariants:** Binds loopback `127.0.0.1:<port>` strictly; only `GET` and `OPTIONS` supported (others return 405); CORS wildcard forbidden (only explicit origin echoed); headers `X-Content-Type-Options: nosniff` and `Cache-Control: no-store` enforced; static file paths validated via `resolve_safe_path`.
+
+## Issue #61 — `forge-cli` History Snapshots & Trends API (COMPLETED)
+- **Crate:** `crates/forge-cli` (`src/commands/history.rs`, `src/commands/report.rs`, `src/serve/routes.rs`, `src/cli.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_cli::commands::history`):** `HistorySnapshot`, `HISTORY_DIR` (`"history"`), `save_history_snapshot(repo_root: &Path, bundle: &ReportBundle) -> Result<Option<PathBuf>, ForgeError>`, `load_history(repo_root: &Path, limit: usize) -> Result<Vec<HistorySnapshot>, ForgeError>`, `--save-history` CLI flag, `/api/v1/history?limit=` endpoint.
+- **Invariants:** Snapshot files stored as `.eforge/history/<commit_unix_ts>-<sha12>.json`; strictly idempotent per commit; skipped when no git revision is present; `load_history` sorts ascending by commit timestamp and ignores corrupted/malformed files.
+
+## Issue #62 — `forge-ui` ELCODE Design Tokens & Svelte 5 Core Primitives (COMPLETED)
+- **Package:** `packages/forge-ui` (`src/tokens.css`, `src/lib/{ScoreRing,SeverityBadge,DataTable,Card,EmptyState,KeyValue}.svelte`, `src/index.ts`)
+- **Public Components & Types (`@elcode-forge/ui`):** `ScoreRing`, `SeverityBadge`, `DataTable`, `Column`, `Card`, `EmptyState`, `KeyValue`.
+- **Invariants:** Built on Svelte 5 runes (`$props()`, `$derived()`); strictly avoids `{@html}`; zero external CDN or runtime font downloads; fully accessible with WCAG AA contrast and explicit `aria-*` tags.
+
+## Issue #63 — `dashboard` SvelteKit SPA Scaffold, Dual Data Source & Overview (COMPLETED)
+- **App:** `apps/dashboard` (`src/app.html`, `src/lib/data/{source.ts, store.svelte.ts}`, `src/routes/{+layout.svelte, +layout.ts, +page.svelte}`)
+- **Public Types & Functions:** `DataSource`, `LoadResult`, `loadFromFile(file: File) -> Promise<LoadResult>`, `loadFromApi(baseUrl: string) -> Promise<LoadResult>`, `dashboardState`.
+- **Invariants:** Static SPA compiled via `@sveltejs/adapter-static` with fallback `index.html`; validates all bundles through `parseReportBundle` before rendering; restricts live API URLs strictly to loopback (`127.0.0.1`, `localhost`, `::1`); enforces strict Content-Security-Policy; zero `{@html}`.
+
+## Issue #64 — `dashboard` Interactive Architecture Graph with Cycle Highlighting (COMPLETED)
+- **App:** `apps/dashboard` (`src/lib/graph/{toElements.ts, cytoscape.ts}`, `src/routes/architecture/+page.svelte`, `tests/graph.test.ts`, `package.json`)
+- **Public Types & Functions:** `GraphNodeData`, `GraphNode`, `GraphEdgeData`, `GraphEdge`, `GraphElements`, `toElements(bundle: ReportBundle): GraphElements`, `initCytoscape(options: CytoscapeOptions): Core`.
+- **Invariants:** Pure `toElements` marks cyclic dependency edges (`inCycle: true`) and nodes (`hasCycle: true`) from `bundle.architecture.circular_dependencies`; Dagre layout with technical dark theme; includes keyboard-accessible module table as a non-visual alternative (WCAG AA); detail panel provides parity with `eforge explain` (files, inbound/outbound imports, related findings); zero `{@html}`.
+
+## Issue #65 — `dashboard` Findings, Security, and Dependencies Screens (COMPLETED)
+- **App:** `apps/dashboard` (`src/lib/filters.ts`, `src/routes/{findings,security,dependencies}/+page.svelte`, `tests/filters.test.ts`, `src/routes/+layout.svelte`)
+- **Public Types & Functions:** `FindingFilter`, `parseFilter(params: URLSearchParams): FindingFilter`, `serializeFilter(filter: FindingFilter): URLSearchParams`, `applyFilter(findings: Finding[], filter: FindingFilter): Finding[]`.
+- **Invariants:** Stable ordering preserved in `applyFilter`; filters synchronized with URL search params; evidence is strictly plain-text in untrusted hostiles envelope (zero `{@html}`); dependencies screen flags unpinned/unused/duplicate packages from `deps/*` findings.
+
+## Issue #66 — `dashboard` Changes & Trends Screens (COMPLETED)
+- **App:** `apps/dashboard` (`src/lib/data/history.ts`, `src/lib/charts/Sparkline.svelte`, `src/routes/{changes,trends}/+page.svelte`, `tests/history.test.ts`, `src/routes/+layout.svelte`)
+- **Public Types & Functions:** `HistorySnapshot`, `HistoryApiResponse`, `loadHistory(baseUrl: string, limit?: number): Promise<HistorySnapshot[]>`, `Sparkline`.
+- **Invariants:** `loadHistory` strictly enforces local loopback URLs; Trends screen provides clear fallback for static file mode explaining `eforge report --save-history` + `eforge serve` requirement; Sparkline rendered as accessible, dependency-free SVG polylines; Changes screen surfaces blast radius breakdown, missing test warnings, and Git churn hotspots.
+
+## Issue #67 — `dashboard` E2E Smoke, Dogfood Integration & Phase 3 Docs (COMPLETED)
+- **App & CI:** `apps/dashboard` (`playwright.config.ts`, `serve-preview.js`, `e2e/screens.spec.ts`, `e2e/fixtures/next-app.bundle.json`, `package.json`), `.github/workflows/eforge-dogfood.yml`, `README.md`.
+- **Public Capabilities:** End-to-end smoke testing across all 7 dashboard screens (Overview, Architecture, Findings, Security, Dependencies, Changes, Trends); Dogfood GitHub Action generates deterministic report bundle, builds dashboard SPA, and uploads `forge-report.json` artifact; full user-facing dashboard documentation in README.md.
+- **Milestone Status:** Closes EPIC #55 and completes **Phase 3 (Report Bundle, Local Daemon & Web Intelligence Dashboard)**.
+
+
+
 
 
 

@@ -166,4 +166,43 @@ pub enum Commands {
         #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
         format: OutputFormat,
     },
+    /// Generate a deterministic ReportBundle JSON for dashboard consumption.
+    Report {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Optional file path to write the rendered ReportBundle JSON.
+        #[arg(long, short = 'o')]
+        output: Option<PathBuf>,
+        /// Top N churn hotspots to include.
+        #[arg(long, default_value_t = 10)]
+        hotspots: usize,
+        /// Skip Git history and working tree diff inspection.
+        #[arg(long)]
+        no_git: bool,
+        /// Persist a deterministic history snapshot to .eforge/history/ for trends analysis.
+        #[arg(long)]
+        save_history: bool,
+    },
+    /// Export the JSON Schema for ReportBundle (single source of truth for dashboard).
+    Schema {
+        /// Optional file path to write the rendered JSON Schema.
+        #[arg(long, short = 'o')]
+        output: Option<PathBuf>,
+    },
+    /// Start the read-only local loopback HTTP server for dashboard live intelligence.
+    Serve {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Port to bind the HTTP server to (127.0.0.1:<port>).
+        #[arg(long, default_value_t = 7878)]
+        port: u16,
+        /// Allowed origin for CORS (explicit origin only, wildcard forbidden).
+        #[arg(long)]
+        allow_origin: Option<String>,
+        /// Optional directory from which to serve static dashboard assets.
+        #[arg(long)]
+        static_dir: Option<PathBuf>,
+    },
 }
