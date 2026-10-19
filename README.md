@@ -1,8 +1,12 @@
 # ELCODE Forge (`eforge`)
 
 > **Know your code. Ship with confidence.**  
-> Deterministic Codebase Intelligence, Architecture Analysis, Change Blast-Radius, Release Readiness & Native MCP Engine — built in Rust by **ELCODE**.
+> Deterministic Codebase Intelligence, Architecture Analysis, Change Blast-Radius, Release Readiness & Native MCP Engine — built in Rust by **[ELCODE](https://elcode.id/)**.
 
+[![CI — Rust Engine](https://github.com/elcode-id/elcode-forge/actions/workflows/ci-rust.yml/badge.svg)](https://github.com/elcode-id/elcode-forge/actions/workflows/ci-rust.yml)
+[![CI — Web, Dashboard & Schemas](https://github.com/elcode-id/elcode-forge/actions/workflows/ci-web.yml/badge.svg)](https://github.com/elcode-id/elcode-forge/actions/workflows/ci-web.yml)
+[![CI — Self-Dogfooding](https://github.com/elcode-id/elcode-forge/actions/workflows/eforge-dogfood.yml/badge.svg)](https://github.com/elcode-id/elcode-forge/actions/workflows/eforge-dogfood.yml)
+[![CI — Security & Supply-Chain Durability](https://github.com/elcode-id/elcode-forge/actions/workflows/security-durability.yml/badge.svg)](https://github.com/elcode-id/elcode-forge/actions/workflows/security-durability.yml)
 [![Release](https://img.shields.io/github/v/release/elcode-id/elcode-forge?label=release)](https://github.com/elcode-id/elcode-forge/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![Rust](https://img.shields.io/badge/Rust-1.75%2B-orange.svg)](https://www.rust-lang.org)
@@ -13,13 +17,19 @@
 
 Modern codebases grow faster than teams can map them—especially with AI-assisted coding. Most developer tools either check syntax at the single-file level (linters) or send unindexed source trees to an LLM and hope for the best.
 
-**ELCODE Forge (`eforge`)** is a **local-first, deterministic codebase intelligence layer**. Before any AI model or code reviewer looks at a repository, `eforge` builds a normalized **Intermediate Representation (IR)** of your repository's files, module boundaries, import graph, circular dependencies, npm/pnpm/Cargo manifest hygiene, Git blast radius, security/secret signals, and an **explainable 8-dimension Health Score**—and exposes it via both a fast CLI and a native **Model Context Protocol (MCP)** server (`eforge mcp`).
+**ELCODE Forge (`eforge`)** is a **local-first, deterministic codebase intelligence layer**. Before any AI model or code reviewer looks at a repository, `eforge` builds a normalized **Intermediate Representation (IR)** of your repository's files, module boundaries, import graph, circular dependencies, npm/pnpm/Cargo manifest hygiene, Git blast radius, security/secret signals, and an **explainable 8-dimension Health Score**—and exposes it via a high-speed CLI, a zero-telemetry Web Dashboard, and a native **Model Context Protocol (MCP)** server (`eforge mcp`).
 
-### Core Engineering Principles
-- **Deterministic before generative:** Identical repository state + identical `eforge.config.yaml` always produces byte-for-byte identical JSON, Markdown, and SARIF v2.1.0 output.
-- **Zero-Panic Guarantee:** Built in a strict Rust workspace (`unsafe_code = "forbid"`, zero `.unwrap()`/`.expect()` in production crates).
-- **Local-First & Hostile-Input Safe:** Never executes arbitrary project scripts during scans, enforces canonical path-traversal guards (`../`), wraps MCP tool responses inside an `UntrustedEnvelope<T>` with prompt-injection signal detection, and automatically masks detected secrets (`****REDACTED****`).
-- **Collision-Free CLI & Cache:** Primary binary is **`eforge`** (with secondary alias `elcode-forge`), configuration is **`eforge.config.yaml`** (with automatic fallback to `forge.config.yaml`), and incremental BLAKE3 cache state lives in **`.eforge/`**.
+### The ELCODE Studio Manifesto (`elcode.id`)
+
+Every architectural boundary, CLI contract, and CI/CD workflow in `elcode-forge` is engineered around the five studio principles of **[ELCODE](https://elcode.id/)**:
+
+| # | Studio Principle | How It Manifests in `elcode-forge` |
+| :---: | :--- | :--- |
+| **`01`** | **Software should feel like an instrument, not a compromise.** | Collision-free **`eforge`** binary (`elcode-forge` alias), deterministic exit codes (`0..=4`), single-file **`eforge.config.yaml`**, and instant local execution without cloud lock-in or mandatory daemons. |
+| **`02`** | **Code quality is visible in product behavior, speed, and durability.** | **Behavior:** Zero-panic Rust engine (`unsafe_code = "forbid"`, zero `.unwrap()`/`.expect()` in library crates).<br>**Speed:** `eforge doctor` completes in **`~18–65ms`** and full workspace scans in **`< 100ms`** using `blake3` content hashing (`.eforge/`).<br>**Durability:** Strict crate DAG, canonical `ReportBundle` JSON Schema drift enforcement, and continuous supply-chain auditing (`cargo audit`). |
+| **`03`** | **We use AI as leverage, not as identity.** | **Deterministic before generative.** All AI outputs (`eforge explain --ai`, `eforge ai-review`) are grounded against the deterministic IR via `apply_deterministic_guard`, isolated inside `<untrusted_repository_data>` envelopes, and support offline local models (Ollama / LM Studio). |
+| **`04`** | **We prefer precision over decoration.** | Byte-for-byte reproducible JSON, Markdown, and OASIS SARIF v2.1.0 output (`BTreeMap`/`BTreeSet` ordering). Every finding carries explicit `severity`, `confidence`, file/line span, and mathematical 8-dimension health score deductions—zero vague scores or decorative fluff. |
+| **`05`** | **We build things worth keeping.** | Self-contained offline dashboard bundles (`eforge report`), append-only historical commit trend tracking (`.eforge/history/`), and automated living onboarding documentation (`eforge onboard`). |
 
 ---
 
@@ -377,19 +387,40 @@ flowchart TD
 
 ---
 
-## Development & Verification
+## CI/CD & GitFlow Quality Gate Discipline
 
-Run the workspace verification suite:
+In alignment with ELCODE Principle `02` (*"Code quality is visible in product behavior, speed, and durability."*) and Principle `04` (*"We prefer precision over decoration."*), every change follows a strict **GitFlow (`feat/* -> develop -> main`)** and **100% Green-CI Pre-Merge Gate**:
+
+### Automated GitHub Actions Workflows (`.github/workflows/`)
+
+| Workflow | File | Enforcement Gate |
+| :--- | :--- | :--- |
+| **CI — Rust Engine** | [`.github/workflows/ci-rust.yml`](./.github/workflows/ci-rust.yml) | Path-aware selective verification (`cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test` + CLI smoke test on `fixtures/`). |
+| **CI — Web, Dashboard & Schemas** | [`.github/workflows/ci-web.yml`](./.github/workflows/ci-web.yml) | Canonical JSON Schema drift check (`eforge schema` + `git diff --exit-code`), TypeScript strict check, ESLint, Vitest, and SvelteKit static build. |
+| **CI — Self-Dogfooding (`eforge`)** | [`.github/workflows/eforge-dogfood.yml`](./.github/workflows/eforge-dogfood.yml) | Runs `eforge doctor`, `eforge scan --fail-on high`, `eforge review --fast`, `eforge explain --ai --dry-run`, `eforge ai-review --dry-run`, and `eforge report` against this repository itself. |
+| **CI — Security & Supply-Chain Durability** | [`.github/workflows/security-durability.yml`](./.github/workflows/security-durability.yml) | Runs `cargo audit` against the RustSec Advisory Database on `Cargo.lock` and executes `eforge security --format sarif`. |
+| **Release — Cross-Platform Binaries** | [`.github/workflows/release-binaries.yml`](./.github/workflows/release-binaries.yml) | Builds `--locked` release binaries (`eforge` & `elcode-forge`) for Linux (`x86_64`), macOS (`aarch64`), and Windows (`x86_64`) with `SHA256SUMS.txt` verification. |
+
+### Mandatory Pre-Merge Protocol
+
+No Pull Request may be squash-merged into `develop` or `main` until both local verification and live GitHub Actions checks pass with exit code `0`:
 
 ```bash
-# Format check
+# 1. Local Rust Engine Gate
 cargo fmt --all -- --check
-
-# Strict Clippy linter (denies unwrap, expect, panic, todo, unimplemented, and warnings)
 cargo clippy --workspace --all-targets -- -D warnings
-
-# Run all unit and fixture integration tests
 cargo test --workspace --lib --bins
+
+# 2. Local Web & Schema Drift Gate
+cargo run --bin eforge -- schema --out-dir packages/forge-schema/schemas
+git diff --exit-code packages/forge-schema/schemas
+pnpm run lint
+pnpm run check
+pnpm run test
+
+# 3. Live GitHub Actions Green-CI Gate (Mandatory before squash-merge)
+gh pr checks <PR_NUMBER> --watch
+gh pr merge <PR_NUMBER> --squash --delete-branch
 ```
 
 ---
@@ -397,4 +428,4 @@ cargo test --workspace --lib --bins
 ## License
 
 Released under the [MIT License](./LICENSE).  
-Built with precision by **ELCODE** (Bandung, Indonesia).
+Built with precision by **[ELCODE](https://elcode.id/)** (Bandung, Indonesia).

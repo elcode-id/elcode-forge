@@ -231,3 +231,10 @@
   - `docs/AI_AND_PRIVACY.md`: Comprehensive privacy architecture guide detailing zero data exfiltration with local providers (Ollama, LM Studio), prompt injection defense envelopes, in-flight secret redaction, and token budgeting.
   - **Milestone Status:** Closes EPIC #84 and marks **Phase 4 (AI Engine & Codebase Intelligence)** fully completed.
 
+## ELCODE Studio Manifesto (`01`–`05`) & Green-CI Workflow Discipline (COMPLETED)
+- **Files:** `.github/workflows/{ci-rust.yml, ci-web.yml, eforge-dogfood.yml, security-durability.yml, release-binaries.yml}`, `README.md`, `AGENTS.md`.
+- **Invariants:**
+  - All 5 ELCODE Studio Manifesto principles (`https://elcode.id/`: `01` Instrument not compromise, `02` Code quality visible in behavior/speed/durability, `03` AI as leverage not identity, `04` Precision over decoration, `05` Build things worth keeping) are embedded in `README.md` and `AGENTS.md`.
+  - Node/pnpm workflows (`ci-web.yml`, `eforge-dogfood.yml`) use deterministic `npm install -g pnpm@12.8.1` + `actions/cache@v4` on `pnpm store path --silent` to avoid `pnpm/action-setup@v4` self-installer incompatibilities.
+  - `security-durability.yml` enforces `cargo audit` (RustSec Advisory DB) and `eforge security --format sarif`; `release-binaries.yml` builds cross-platform `--locked` binaries with `SHA256SUMS.txt`.
+  - **Mandatory Green-CI Pre-Merge Gate:** Every PR must pass `gh pr checks <PR_NUMBER> --watch` 100% green before running `gh pr merge --squash`.
