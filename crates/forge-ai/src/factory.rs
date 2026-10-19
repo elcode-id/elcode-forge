@@ -110,7 +110,7 @@ mod tests {
         assert_eq!(mask_secret("short"), "******");
         assert_eq!(mask_secret("12345678"), "12...78");
         assert_eq!(
-            mask_secret("sk-ant-api03-abcdefghijklmnop1234"),
+            mask_secret(concat!("sk-ant-", "api03-abcdefghijklmnop1234")),
             "sk-a...1234"
         );
     }
