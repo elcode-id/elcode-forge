@@ -212,6 +212,11 @@
 - **Public Types & Functions (`forge_cli` / `forge_security`):** `redact_secrets(content: &str) -> String`, `GroundedClaim`, `AiExplainAnswer`, `AiExplainOutput`, `AiExplainOptions`, `execute_explain_with_ai`, `execute_explain_ai`.
 - **Invariants:** Deterministic facts are always computed and rendered first; sensitive files (`.env*`, `*.pem`, `*.key`, `.git/**`, `.eforge/**`) are excluded before snippet collection; all code snippets are redacted via `redact_secrets` before entering context; `--dry-run` outputs exact `ContextPack` with token estimates without network or provider instantiation; AI risks verify cited sources against repository modules, files, and findings (`[verified]` vs `[unverified]`).
 
+## Issue #92 — `forge-cli` eforge ai-review with Grounding Guard (COMPLETED)
+- **Crate:** `crates/forge-cli` (`src/commands/ai_review.rs`, `src/commands/mod.rs`, `src/cli.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_cli`):** `AiClassification { Confirmed, Probable, Suggestion }`, `AiReviewItem`, `AiReviewReport`, `AiReviewOptions`, `apply_deterministic_guard`, `execute_ai_review`, `render_ai_review_report`.
+- **Invariants:** Deterministic findings and change risk in `ReviewReport` are rendered verbatim first; `apply_deterministic_guard` enforces that unlinked `Confirmed` items are downgraded to `Probable`, and items referencing hallucinated/unknown files are discarded; exit code evaluation for `--fail-on` is strictly bound to deterministic findings; AI outputs cannot suppress or alter exit codes.
+
 
 
 

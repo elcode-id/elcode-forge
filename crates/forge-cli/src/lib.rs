@@ -135,6 +135,47 @@ pub fn run_cli_from_env() -> ExitCode {
                 ExitCode::ExecutionError
             }
         },
+        Some(Commands::AiReview {
+            path,
+            base: _base,
+            head: _head,
+            fast,
+            fail_on,
+            provider,
+            model,
+            dry_run,
+            no_cache,
+            format,
+        }) => {
+            let opts = commands::ai_review::AiReviewOptions {
+                fast,
+                base: _base,
+                head: _head,
+                fail_on,
+                provider,
+                model,
+                dry_run,
+                no_cache,
+            };
+            match commands::ai_review::execute_ai_review(&path, None, &opts) {
+                Ok((report, exit_code)) => {
+                    match commands::ai_review::render_ai_review_report(&report, format) {
+                        Ok(rendered) => {
+                            println!("{rendered}");
+                            exit_code
+                        }
+                        Err(err) => {
+                            eprintln!("Error formatting ai-review report: {err}");
+                            ExitCode::ExecutionError
+                        }
+                    }
+                }
+                Err(err) => {
+                    eprintln!("Error running ai-review: {err}");
+                    ExitCode::ExecutionError
+                }
+            }
+        }
         Some(Commands::Diff { path, format }) => match commands::diff::execute_diff(&path, None) {
             Ok(report) => match commands::diff::render_diff_report(&report, format) {
                 Ok(rendered) => {
