@@ -14,13 +14,17 @@
   },
   "dependencies": {
     "@elcode-forge/schema": "workspace:*",
-    "@elcode-forge/ui": "workspace:*"
+    "@elcode-forge/ui": "workspace:*",
+    "cytoscape": "^3.34.4",
+    "cytoscape-dagre": "^4.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@sveltejs/adapter-static": "^3.0.0",
     "@sveltejs/kit": "^2.0.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "@types/cytoscape": "^3.31.0",
+    "@types/cytoscape-dagre": "^2.3.4",
     "@types/node": "^20.14.0",
     "autoprefixer": "^10.4.19",
     "eslint": "^9.0.0",

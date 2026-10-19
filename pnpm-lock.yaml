@@ -174,6 +174,12 @@ importers:
       '@elcode-forge/ui':
         specifier: workspace:*
         version: link:../../packages/forge-ui
+      cytoscape:
+        specifier: ^3.34.4
+        version: 3.34.4
+      cytoscape-dagre:
+        specifier: ^4.0.1
+        version: 4.0.1(cytoscape@3.34.4)
     devDependencies:
       '@eslint/js':
         specifier: ^10.0.1
@@ -187,6 +193,12 @@ importers:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^5.0.0
         version: 5.1.1(supports-color@7.2.0)(svelte@5.57.2(@typescript-eslint/types@8.71.2))(vite@6.4.4(@types/node@20.19.43)(jiti@1.21.7)(lightningcss@1.33.0))
+      '@types/cytoscape':
+        specifier: ^3.31.0
+        version: 3.31.0
+      '@types/cytoscape-dagre':
+        specifier: ^2.3.4
+        version: 2.3.4
       '@types/node':
         specifier: ^20.14.0
         version: 20.19.43
@@ -1060,6 +1072,13 @@ packages:
   '@types/cookie@0.6.0':
     resolution: {integrity: sha512-4Kh9a6B2bQciAhf7FSuMRRkUWecJgJu9nPnx3yzpsfXX/c50REIqpHY4C82bXP90qrLtXtkDxTZosYO3UpOwlA==}
 
+  '@types/cytoscape-dagre@2.3.4':
+    resolution: {integrity: sha512-uOGXuPfPLFoKZaegjHl9oj4tqONNJuhUl180FiJgRZ35rVijBs6J4UP1Ah6mA6S46h+7pv4ICqpgfdC3EADZlw==}
+
+  '@types/cytoscape@3.31.0':
+    resolution: {integrity: sha512-EXHOHxqQjGxLDEh5cP4te6J0bi7LbCzmZkzsR6f703igUac8UGMdEohMyU3GHAayCTZrLQOMnaE/lqB2Ekh8Ww==}
+    deprecated: This is a stub types definition. cytoscape provides its own type definitions, so you do not need this installed.
+
   '@types/deep-eql@4.0.2':
     resolution: {integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==}
 
@@ -1354,6 +1373,15 @@ packages:
     resolution: {integrity: sha512-/Tb/JcjK111nNScGob5MNtsntNM1aCNUDipB/TkwZFhyDrrE47SOx/18wF2bbjgc3ZzCSKW1T5nt5EbFoAz/Vg==}
     engines: {node: '>=4'}
     hasBin: true
+
+  cytoscape-dagre@4.0.1:
+    resolution: {integrity: sha512-hyNdh8Vp1nwzBcjHnM4c71G81bFhPmQYLXD2HM9AZIvl+8TrMzWEOPW45hF/XOBQiEguPcDQzi6VrXR1XBcXOA==}
+    peerDependencies:
+      cytoscape: ^3.2.22
+
+  cytoscape@3.34.4:
+    resolution: {integrity: sha512-msY99tMY8iWTg+sIPGfSqDcPNOt4xcj+v/K/7qUFaCUxxlqnMkUYLBjRUzn9W5CU/R2hrmtJa5+UtovrEM2ctg==}
+    engines: {node: '>=0.10'}
 
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
@@ -2866,6 +2894,14 @@ snapshots:
 
   '@types/cookie@0.6.0': {}
 
+  '@types/cytoscape-dagre@2.3.4':
+    dependencies:
+      cytoscape: 3.34.4
+
+  '@types/cytoscape@3.31.0':
+    dependencies:
+      cytoscape: 3.34.4
+
   '@types/deep-eql@4.0.2': {}
 
   '@types/estree@1.0.9': {}
@@ -3199,6 +3235,12 @@ snapshots:
       which: 2.0.2
 
   cssesc@3.0.0: {}
+
+  cytoscape-dagre@4.0.1(cytoscape@3.34.4):
+    dependencies:
+      cytoscape: 3.34.4
+
+  cytoscape@3.34.4: {}
 
   debug@4.4.3(supports-color@7.2.0):
     dependencies:
