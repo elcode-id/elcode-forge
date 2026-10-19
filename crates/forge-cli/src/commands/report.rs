@@ -116,6 +116,7 @@ pub fn run_report(
     output: Option<&Path>,
     hotspots_top_n: usize,
     no_git: bool,
+    save_history: bool,
 ) -> Result<String, ForgeError> {
     let opts = ReportOptions {
         hotspots_top_n,
@@ -126,6 +127,10 @@ pub fn run_report(
         serde_json::to_string_pretty(&bundle).map_err(|e| ForgeError::Serialization {
             message: e.to_string(),
         })?;
+
+    if save_history {
+        let _ = crate::commands::history::save_history_snapshot(repo_root, &bundle)?;
+    }
 
     if let Some(out_path) = output {
         fs::write(out_path, &rendered).map_err(|source| ForgeError::Io {

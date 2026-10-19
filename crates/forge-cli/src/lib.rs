@@ -233,7 +233,14 @@ pub fn run_cli_from_env() -> ExitCode {
             output,
             hotspots,
             no_git,
-        }) => match commands::report::run_report(&path, output.as_deref(), hotspots, no_git) {
+            save_history,
+        }) => match commands::report::run_report(
+            &path,
+            output.as_deref(),
+            hotspots,
+            no_git,
+            save_history,
+        ) {
             Ok(rendered) => {
                 if output.is_none() {
                     println!("{rendered}");

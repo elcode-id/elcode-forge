@@ -267,6 +267,27 @@ pub fn route_request(state: &ServeState, method: &str, url: &str) -> ApiResponse
                 ),
             }
         }
+        "/api/v1/history" => {
+            let limit = query
+                .get("limit")
+                .and_then(|l| l.parse::<usize>().ok())
+                .unwrap_or(0);
+            match crate::commands::history::load_history(&state.repo_root, limit) {
+                Ok(snapshots) => match serde_json::to_string_pretty(&snapshots) {
+                    Ok(body) => ApiResponse::json(200, body, allow_origin),
+                    Err(err) => ApiResponse::json(
+                        500,
+                        json!({ "error": format!("{err}") }).to_string(),
+                        allow_origin,
+                    ),
+                },
+                Err(err) => ApiResponse::json(
+                    500,
+                    json!({ "error": format!("{err}") }).to_string(),
+                    allow_origin,
+                ),
+            }
+        }
         _ => {
             if let Some(static_root) = &state.static_dir {
                 serve_static_file(static_root, path, allow_origin)
@@ -372,6 +393,19 @@ mod tests {
             .headers
             .iter()
             .any(|(k, v)| k == "Access-Control-Allow-Origin" && v == "http://localhost:5173"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_route_history() -> Result<(), ForgeError> {
+        let state = test_state()?;
+        let resp = route_request(&state, "GET", "/api/v1/history?limit=10");
+        assert_eq!(resp.status, 200);
+        let val: serde_json::Value =
+            serde_json::from_slice(&resp.body).map_err(|err| ForgeError::Serialization {
+                message: err.to_string(),
+            })?;
+        assert!(val.is_array());
         Ok(())
     }
 }
