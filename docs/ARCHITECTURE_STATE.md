@@ -192,6 +192,12 @@
 - **Public Types & Functions (`forge_ai`):** `OpenAiCompatProvider::new(base_url, api_key, model, timeout_secs) -> Result<Self, ForgeError>`, `AiProvider` implementation (`generate`, `stream` via SSE, `embed`, `structured_output`), `create_agent`, `read_bounded_body`, `map_ureq_error`, `MAX_RESPONSE_BYTES` (4 MiB).
 - **Invariants:** Compatible with OpenAI, OpenRouter, Ollama, LM Studio, vLLM; optional `api_key` for local models; zero leaking of raw API keys in HTTP error diagnostics; bounded 4 MiB response reads prevent memory exhaustion.
 
+## Issue #88 — `forge-ai` Anthropic, Gemini, and Provider Factory (COMPLETED)
+- **Crate:** `crates/forge-ai` (`src/providers/{anthropic.rs, gemini.rs}`, `src/factory.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_ai`):** `AnthropicProvider`, `GeminiProvider`, `build_provider(cfg: &AiConfig, env_lookup: &dyn Fn(&str) -> Option<String>) -> Result<Box<dyn AiProvider>, ForgeError>`, `mask_secret(raw: &str) -> String`.
+- **Invariants:** Credentials resolved exclusively via `env_lookup(api_key_env)` or standard vendor fallback env vars; `mask_secret` safely redacts keys for display; `AnthropicProvider::embed` returns explicit `ForgeError::Ai` unsupported error; closes Epic #82 and completes **Phase 4A (AI Foundation & Provider Abstraction)**.
+
+
 
 
 
