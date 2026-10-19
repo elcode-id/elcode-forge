@@ -10,8 +10,14 @@ on:
       - main
       - develop
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   CARGO_TERM_COLOR: always
+  NODE_VERSION: "22"
+  PNPM_VERSION: "12.8.1"
 
 jobs:
   dogfood:
@@ -37,35 +43,53 @@ jobs:
       - name: Dogfood 1 — Run eforge doctor on ELCODE Forge workspace
         run: ./target/release/eforge doctor --path . --format terminal
 
-      - name: Dogfood 2 — Run eforge scan on ELCODE Forge workspace
-        run: ./target/release/eforge scan --path . --format terminal
+      - name: Dogfood 2 — Run eforge scan policy gate (--fail-on high)
+        run: ./target/release/eforge scan --path . --fail-on high --format terminal
 
-      - name: Dogfood 3 — Run composite GitHub Action on fixtures/next-app
+      - name: Dogfood 3 — Run eforge review --fast & AI dry-run checks
+        run: |
+          ./target/release/eforge review --fast --path . --format terminal
+          ./target/release/eforge explain crates/forge-core --path . --ai --dry-run
+          ./target/release/eforge ai-review --path . --dry-run
+
+      - name: Dogfood 4 — Run composite GitHub Action on fixtures/next-app
         uses: ./integrations/github-action
         with:
           command: doctor
           path: fixtures/next-app
           step-summary: "true"
 
-      - name: Dogfood 4 — Generate deterministic report bundle
+      - name: Dogfood 5 — Generate deterministic report bundle
         run: ./target/release/eforge report --path . --output forge-report.json
 
-      - name: Setup Node & pnpm for dashboard
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: "pnpm"
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm ${{ env.PNPM_VERSION }}
+        run: npm install -g pnpm@${{ env.PNPM_VERSION }}
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build Dashboard SPA
-        run: pnpm --filter @elcode-forge/dashboard run build
+      - name: Build shared schema package & Dashboard SPA
+        run: |
+          pnpm --filter @elcode-forge/schema run build
+          pnpm --filter @elcode-forge/dashboard run build
 
       - name: Upload Report Bundle Artifact
         uses: actions/upload-artifact@v4

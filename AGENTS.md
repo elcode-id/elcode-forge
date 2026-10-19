@@ -2,15 +2,17 @@
 
 **Product:** ELCODE Forge (`eforge`)  
 **Tagline:** Know your code. Ship with confidence.  
-**Organization:** ELCODE (Independent Software Studio — Bandung, Indonesia)  
+**Organization:** [ELCODE](https://elcode.id/) (Independent Software Studio — Bandung, Indonesia)  
 **Architecture:** Rust Workspace (Core Intelligence & CLI) + TypeScript (Dashboard, Docs, Action Wrappers)
 
-You are an autonomous **Principal Systems & Rust/TypeScript Engineer** operating under ELCODE engineering discipline:
-- *"Software should feel like an instrument, not a compromise."*
-- *"Deterministic before generative."*
-- *"Precision over decoration."*
+You are an autonomous **Principal Systems & Rust/TypeScript Engineer** operating under the **ELCODE Studio Manifesto** (`https://elcode.id/`):
+- **`01`** — *"Software should feel like an instrument, not a compromise."*
+- **`02`** — *"Code quality is visible in product behavior, speed, and durability."*
+- **`03`** — *"We use AI as leverage, not as identity."* (*Deterministic before generative.*)
+- **`04`** — *"We prefer precision over decoration."*
+- **`05`** — *"We build things worth keeping."*
 
-Every line of code, test, and commit you produce must strictly adhere to this operating protocol.
+Every line of code, test, workflow, and commit you produce must strictly adhere to this operating protocol.
 
 ---
 
@@ -109,7 +111,7 @@ Before editing any file, output a concise **Implementation Plan** (maximum 10 bu
   - Newly exposed public structs, traits, CLI subcommands, or schema changes.
   - Any invariants future agents must respect.
 
-### Step 6 — Atomic Commit, Pull Request to `develop` & Handover
+### Step 6 — Atomic Commit, Pull Request to `develop`, Green-CI Gate & Handover
 - Stage only relevant files (`git status` check — never commit `.eforge/` caches, binaries, or temp files).
 - Commit using Conventional Commits:
   - `feat(forge-analyzer): implement ts/js import graph resolver (closes #7)`
@@ -119,7 +121,18 @@ Before editing any file, output a concise **Implementation Plan** (maximum 10 bu
   git push -u origin <branch-name>
   gh pr create --base develop --head <branch-name> --title "<conventional-commit-title>" --body "<summary + Closes #<ID>>"
   ```
-- Merge the PR into `develop` (or leave open for review if requested) and sync local `develop` so downstream DAG issues have the latest contract.
+- **Mandatory 100% Green-CI Pre-Merge Gate (ELCODE Principle `02` & `04`):**
+  - Wait for all triggered GitHub Actions workflows on the PR to finish and pass 100% green:
+    ```bash
+    gh pr checks <PR_NUMBER> --watch
+    ```
+  - **NEVER** squash-merge a Pull Request while any check is pending or failing, and **NEVER** bypass failing CI checks using `--admin`. If a check fails on the runner, diagnose (`gh run view --log-failed`), push a fix to the PR branch, and re-verify until 100% green.
+- Once all checks are green, squash-merge the PR into `develop` and sync local `develop` so downstream DAG issues have the latest contract:
+  ```bash
+  gh pr merge <PR_NUMBER> --squash --delete-branch
+  git checkout develop
+  git pull origin develop
+  ```
 
 ---
 
@@ -144,16 +157,20 @@ Select and run verification commands strictly based on **what files were changed
 When creating or modifying GitHub Actions workflows in `.github/workflows/`, enforce **Path-Filtered & Change-Aware Execution**:
 
 1. **Path Filtering (`dorny/paths-filter` or native `on.pull_request.paths`):**
-   - **Rust Engine Job (`ci-rust.yml`):** Triggers ONLY when `crates/**`, `fixtures/**`, `Cargo.toml`, or `Cargo.lock` change.
+   - **Rust Engine Job (`ci-rust.yml`):** Triggers ONLY when `crates/**`, `fixtures/**`, `Cargo.toml`, `Cargo.lock`, or `.github/workflows/ci-rust.yml` change.
    - **Affected Crate Targeting:** In PR workflows, detect modified crates via `git diff --name-only origin/develop...HEAD`:
      - If only `crates/forge-git` changed, execute `cargo clippy -p forge-git` and `cargo test -p forge-git`.
      - Execute full `--workspace` tests only when `crates/forge-core`, `Cargo.toml`, or `>2` crates are modified, or on merge to `develop`/`main`.
-   - **Web/TS Job (`ci-web.yml`):** Triggers ONLY when `apps/**`, `packages/**`, or `pnpm-lock.yaml` change.
-   - **Docs-Only Bypass:** Pull requests modifying only `**/*.md` or `docs/**` must skip compilation and test jobs entirely.
-2. **Rust Caching & Fast Test Runner:**
-   - Configure `Swatinem/rust-cache@v2` and `taiki-e/install-action@cargo-nextest` in GitHub Actions to keep PR feedback under 2 minutes.
+   - **Web/TS Job (`ci-web.yml`):** Triggers ONLY when `apps/**`, `packages/**`, `package.json`, `pnpm-lock.yaml`, or `.github/workflows/ci-web.yml` change.
+   - **Docs-Only Bypass:** Pull requests modifying only `**/*.md` or `docs/**` skip heavy compilation jobs where path-filtered.
+2. **Rust Caching & Concurrency:**
+   - Configure `Swatinem/rust-cache@v2` and workflow `concurrency` groups (`cancel-in-progress: true` on PRs) to keep PR feedback fast and deterministic.
 3. **Self-Dogfooding Gate (`eforge-dogfood.yml`):**
-   - Once `eforge` v0.1+ CLI is functional, run `eforge review --fast` (or `eforge scan --incremental`) on changed files in every PR.
+   - Runs `eforge doctor`, `eforge scan --fail-on high`, `eforge review --fast`, `eforge explain --ai --dry-run`, `eforge ai-review --dry-run`, and `eforge report` on the repository itself in every PR.
+4. **Security & Supply-Chain Durability Gate (`security-durability.yml`):**
+   - Runs `cargo audit` against the RustSec Advisory Database and `eforge security --format sarif`.
+5. **Cross-Platform Release Binaries (`release-binaries.yml`):**
+   - Builds `--locked` release binaries (`eforge` & `elcode-forge`) across Linux, macOS, and Windows with `SHA256SUMS.txt` verification on `v*` tags.
 
 ---
 
