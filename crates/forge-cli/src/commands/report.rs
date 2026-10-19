@@ -10,6 +10,7 @@ use forge_git::{
     collect_commit_log, compute_hotspots_from_log, read_head_revision, ChangeImpactReport,
     GitRevision, HotspotEntry,
 };
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::commands::diff::execute_diff;
@@ -19,14 +20,14 @@ use crate::commands::scan::{execute_scan, ScanOptions};
 pub const REPORT_SCHEMA_VERSION: u32 = 1;
 
 /// High-level architecture summary for the dashboard.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ArchitectureSummary {
     pub circular_dependencies: Vec<Vec<String>>,
     pub high_centrality_modules: Vec<String>,
 }
 
 /// Versioned, deterministic intelligence bundle consumable by the web dashboard.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ReportBundle {
     pub schema_version: u32,
     pub tool_version: String,

@@ -1,7 +1,10 @@
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Normalized finding severity levels ordered from lowest (`Info`) to highest (`Critical`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum Severity {
     Info,
@@ -12,7 +15,9 @@ pub enum Severity {
 }
 
 /// Normalized confidence levels ordered from lowest (`Low`) to highest (`Certain`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum Confidence {
     Low,
@@ -22,7 +27,7 @@ pub enum Confidence {
 }
 
 /// Source code location for a finding or symbol within the repository.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct SourceLocation {
     pub file_path: String,
     pub start_line: Option<u32>,
@@ -30,7 +35,7 @@ pub struct SourceLocation {
 }
 
 /// Normalized finding emitted by deterministic analyzers, rules, or security scanners.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Finding {
     pub id: String,
     pub category: String,
@@ -45,7 +50,7 @@ pub struct Finding {
 }
 
 /// Normalized file metadata node in the repository graph.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct FileNode {
     pub relative_path: String,
     pub language: Option<String>,
@@ -56,7 +61,7 @@ pub struct FileNode {
 }
 
 /// Logical module boundary inferred from repository structure and import relationships.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Module {
     pub id: String,
     pub name: String,
@@ -67,7 +72,7 @@ pub struct Module {
 }
 
 /// External package dependency metadata.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Dependency {
     pub name: String,
     pub version_req: String,
@@ -78,7 +83,7 @@ pub struct Dependency {
 }
 
 /// Explainable health score for an individual engineering dimension.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct DimensionScore {
     pub dimension: String,
     pub score: u8,
@@ -87,14 +92,14 @@ pub struct DimensionScore {
 }
 
 /// Transparent overall codebase health score (`0..=100`) and breakdown.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct HealthScore {
     pub overall: u8,
     pub dimensions: Vec<DimensionScore>,
 }
 
 /// Language-neutral Intermediate Representation (IR) of an analyzed repository.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Repository {
     pub root_path: String,
     pub name: String,

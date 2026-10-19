@@ -1,9 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// File-level churn hotspot summary computed from Git commit history.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct HotspotEntry {
     pub path: String,
     pub commit_count: u32,

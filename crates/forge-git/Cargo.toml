@@ -10,6 +10,7 @@ authors.workspace = true
 
 [dependencies]
 forge-core.workspace = true
+schemars = { workspace = true }
 serde.workspace = true
 serde_json.workspace = true
 
