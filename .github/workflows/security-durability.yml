@@ -1,0 +1,62 @@
+name: CI — Security & Durability Gate
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "crates/forge-security/**"
+      - ".github/workflows/security-durability.yml"
+  pull_request:
+    paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "crates/forge-security/**"
+      - ".github/workflows/security-durability.yml"
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  security-durability:
+    name: Supply-Chain Audit & SARIF Secret Gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo registry and target directory
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@cargo-audit
+
+      - name: Run RustSec supply-chain vulnerability audit
+        run: cargo audit
+
+      - name: Run eforge security scan and emit SARIF v2.1.0 report
+        run: |
+          cargo run --release --bin eforge -- security --path . --format sarif > eforge-security.sarif
+          test -s eforge-security.sarif
+
+      - name: Upload SARIF security report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eforge-security-sarif
+          path: eforge-security.sarif
+          if-no-files-found: error
