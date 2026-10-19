@@ -254,4 +254,35 @@ pub enum Commands {
         #[arg(long)]
         static_dir: Option<PathBuf>,
     },
+    /// Manage AI configuration, check provider status, and inspect usage ledgers.
+    Ai {
+        #[command(subcommand)]
+        action: AiAction,
+    },
+}
+
+/// Actions available under `eforge ai`.
+#[derive(Debug, Subcommand)]
+pub enum AiAction {
+    /// Inspect effective AI configuration, credentials status, and connectivity.
+    Status {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Test live provider reachability and measure round-trip latency.
+        #[arg(long)]
+        ping: bool,
+        /// Output format (`terminal`, `json`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Summarize AI token consumption, response cache hits, and daily spend.
+    Usage {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output format (`terminal`, `json`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
 }

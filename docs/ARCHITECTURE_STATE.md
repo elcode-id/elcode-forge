@@ -217,6 +217,11 @@
 - **Public Types & Functions (`forge_cli`):** `AiClassification { Confirmed, Probable, Suggestion }`, `AiReviewItem`, `AiReviewReport`, `AiReviewOptions`, `apply_deterministic_guard`, `execute_ai_review`, `render_ai_review_report`.
 - **Invariants:** Deterministic findings and change risk in `ReviewReport` are rendered verbatim first; `apply_deterministic_guard` enforces that unlinked `Confirmed` items are downgraded to `Probable`, and items referencing hallucinated/unknown files are discarded; exit code evaluation for `--fail-on` is strictly bound to deterministic findings; AI outputs cannot suppress or alter exit codes.
 
+## Issue #93 — `forge-cli` eforge ai status and usage commands (COMPLETED)
+- **Crate:** `crates/forge-cli` (`src/commands/ai_admin.rs`, `src/commands/mod.rs`, `src/cli.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_cli`):** `AiStatusReport`, `AiUsageReport`, `run_ai_status(repo_root: &Path, ping: bool) -> Result<AiStatusReport, ForgeError>`, `run_ai_usage(repo_root: &Path) -> Result<AiUsageReport, ForgeError>`, `render_ai_status_report`, `render_ai_usage_report`.
+- **Invariants:** `eforge ai status` without `--ping` makes zero network calls; API credentials are never output in raw form and are strictly masked via `mask_secret`; `eforge ai usage` summarizes `.eforge/ai-usage.jsonl` safely and tracks remaining daily budget against `budget_daily_usd`.
+
 
 
 

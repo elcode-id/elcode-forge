@@ -342,5 +342,47 @@ pub fn run_cli_from_env() -> ExitCode {
                 }
             }
         }
+        Some(Commands::Ai { action }) => match action {
+            cli::AiAction::Status { path, ping, format } => {
+                match commands::ai_admin::run_ai_status(&path, ping) {
+                    Ok(report) => {
+                        match commands::ai_admin::render_ai_status_report(&report, format) {
+                            Ok(rendered) => {
+                                println!("{rendered}");
+                                ExitCode::Success
+                            }
+                            Err(err) => {
+                                eprintln!("Error formatting AI status report: {err}");
+                                ExitCode::ExecutionError
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        eprintln!("Error checking AI status: {err}");
+                        ExitCode::ExecutionError
+                    }
+                }
+            }
+            cli::AiAction::Usage { path, format } => {
+                match commands::ai_admin::run_ai_usage(&path) {
+                    Ok(report) => {
+                        match commands::ai_admin::render_ai_usage_report(&report, format) {
+                            Ok(rendered) => {
+                                println!("{rendered}");
+                                ExitCode::Success
+                            }
+                            Err(err) => {
+                                eprintln!("Error formatting AI usage report: {err}");
+                                ExitCode::ExecutionError
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        eprintln!("Error retrieving AI usage: {err}");
+                        ExitCode::ExecutionError
+                    }
+                }
+            }
+        },
     }
 }
