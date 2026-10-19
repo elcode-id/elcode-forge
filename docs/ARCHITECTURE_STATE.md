@@ -222,14 +222,12 @@
 - **Public Types & Functions (`forge_cli`):** `AiStatusReport`, `AiUsageReport`, `run_ai_status(repo_root: &Path, ping: bool) -> Result<AiStatusReport, ForgeError>`, `run_ai_usage(repo_root: &Path) -> Result<AiUsageReport, ForgeError>`, `render_ai_status_report`, `render_ai_usage_report`.
 - **Invariants:** `eforge ai status` without `--ping` makes zero network calls; API credentials are never output in raw form and are strictly masked via `mask_secret`; `eforge ai usage` summarizes `.eforge/ai-usage.jsonl` safely and tracks remaining daily budget against `budget_daily_usd`.
 
-
-
-
-
-
-
-
-
-
-
+## Issue #94 — AI Quality Evaluation Suite, GitHub Action, Privacy Docs & v0.4.0 (COMPLETED)
+- **Crates & Files:** `fixtures/ai-eval/questions.json`, `crates/forge-cli/tests/ai_eval.rs`, `integrations/github-action/{action.yml, README.md}`, `docs/AI_AND_PRIVACY.md`, `eforge.config.yaml`, `README.md`.
+- **Public Capabilities & Invariants:**
+  - `fixtures/ai-eval/questions.json`: Golden benchmark dataset covering `next-app`, `ts-circular`, and `secret-leak` with deterministic grounding facts and anti-hallucination assertions.
+  - `crates/forge-cli/tests/ai_eval.rs`: Comprehensive test suite for retrieval recall, secret redaction before prompt building, deterministic grounding guards (downgrading ungrounded `Confirmed` items, dropping hallucinated files), and report byte determinism.
+  - `integrations/github-action`: Added opt-in `ai-review: 'false'` input (defaulting strictly to false), allowing automated AI PR reviews when API keys are passed via GitHub secrets.
+  - `docs/AI_AND_PRIVACY.md`: Comprehensive privacy architecture guide detailing zero data exfiltration with local providers (Ollama, LM Studio), prompt injection defense envelopes, in-flight secret redaction, and token budgeting.
+  - **Milestone Status:** Closes EPIC #84 and marks **Phase 4 (AI Engine & Codebase Intelligence)** fully completed.
 

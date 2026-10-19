@@ -35,6 +35,10 @@ inputs:
     description: "Optional file path to write SARIF v2.1.0 report for GitHub Code Scanning"
     required: false
     default: ""
+  ai-review:
+    description: "Enable optional AI-assisted PR review (defaults strictly to false; requires API key in env)"
+    required: false
+    default: "false"
   step-summary:
     description: "Append Markdown report to GITHUB_STEP_SUMMARY"
     required: false
@@ -73,20 +77,23 @@ runs:
         INPUT_STRICT: ${{ inputs.strict }}
         INPUT_FAIL_ON: ${{ inputs.fail-on }}
         INPUT_SARIF_OUTPUT: ${{ inputs.sarif-output }}
+        INPUT_AI_REVIEW: ${{ inputs.ai-review }}
         INPUT_STEP_SUMMARY: ${{ inputs.step-summary }}
       run: |
         set +e
+        if [ "$INPUT_AI_REVIEW" = "true" ] && [ "$INPUT_COMMAND" = "review" ]; then
+          INPUT_COMMAND="ai-review"
+        fi
+
         ARGS=("$INPUT_COMMAND" "--path" "$INPUT_PATH" "--format" "$INPUT_FORMAT")
 
-        if [ "$INPUT_COMMAND" = "review" ] || [ "$INPUT_COMMAND" = "diff" ]; then
+        if [ "$INPUT_COMMAND" = "ai-review" ] && [ -n "$INPUT_BASE" ]; then
           ARGS+=("--base" "$INPUT_BASE")
         fi
 
-        if [ "$INPUT_STRICT" = "true" ]; then
-          ARGS+=("--strict")
-        fi
-
-        if [ -n "$INPUT_FAIL_ON" ]; then
+        if [ "$INPUT_STRICT" = "true" ] && [ -z "$INPUT_FAIL_ON" ]; then
+          ARGS+=("--fail-on" "high")
+        elif [ -n "$INPUT_FAIL_ON" ]; then
           ARGS+=("--fail-on" "$INPUT_FAIL_ON")
         fi
 
