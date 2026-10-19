@@ -177,6 +177,12 @@
 - **Public Capabilities:** End-to-end smoke testing across all 7 dashboard screens (Overview, Architecture, Findings, Security, Dependencies, Changes, Trends); Dogfood GitHub Action generates deterministic report bundle, builds dashboard SPA, and uploads `forge-report.json` artifact; full user-facing dashboard documentation in README.md.
 - **Milestone Status:** Closes EPIC #55 and completes **Phase 3 (Report Bundle, Local Daemon & Web Intelligence Dashboard)**.
 
+## Issue #85 — `forge-core` AI Configuration Section, Untrusted Boundary, and ForgeError::Ai (COMPLETED)
+- **Crate:** `crates/forge-core` (`src/config.rs`, `src/untrusted.rs`, `src/error.rs`, `src/lib.rs`) and `crates/forge-mcp` (`src/boundary.rs`)
+- **Public Types & Functions (`forge_core::{config, untrusted, error}`):** `AiProviderKind { OpenAiCompatible, Anthropic, Gemini }`, `AiConfig`, `ForgeConfig.ai`, `ForgeError::Ai`, `ForgeError::AiBudgetExceeded`, `UntrustedEnvelope<T>`, `detect_prompt_injection_signals`, `wrap_untrusted_payload`, `UNTRUSTED_REPO_DATA_LEVEL`, `UNTRUSTED_SECURITY_NOTICE`.
+- **Invariants:** `ai.enabled` defaults to `false`; secret keys (`api_key`, `token`, `secret`, `password`) in `ai:` configuration are strictly rejected with `ForgeError::Config`; credentials must be passed via environment variable names (`api_key_env`); `forge-mcp::boundary` re-exports canonical implementations from `forge_core::untrusted`.
+
+
 
 
 
