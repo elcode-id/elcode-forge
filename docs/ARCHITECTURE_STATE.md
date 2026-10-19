@@ -167,6 +167,11 @@
 - **Public Types & Functions:** `FindingFilter`, `parseFilter(params: URLSearchParams): FindingFilter`, `serializeFilter(filter: FindingFilter): URLSearchParams`, `applyFilter(findings: Finding[], filter: FindingFilter): Finding[]`.
 - **Invariants:** Stable ordering preserved in `applyFilter`; filters synchronized with URL search params; evidence is strictly plain-text in untrusted hostiles envelope (zero `{@html}`); dependencies screen flags unpinned/unused/duplicate packages from `deps/*` findings.
 
+## Issue #66 — `dashboard` Changes & Trends Screens (COMPLETED)
+- **App:** `apps/dashboard` (`src/lib/data/history.ts`, `src/lib/charts/Sparkline.svelte`, `src/routes/{changes,trends}/+page.svelte`, `tests/history.test.ts`, `src/routes/+layout.svelte`)
+- **Public Types & Functions:** `HistorySnapshot`, `HistoryApiResponse`, `loadHistory(baseUrl: string, limit?: number): Promise<HistorySnapshot[]>`, `Sparkline`.
+- **Invariants:** `loadHistory` strictly enforces local loopback URLs; Trends screen provides clear fallback for static file mode explaining `eforge report --save-history` + `eforge serve` requirement; Sparkline rendered as accessible, dependency-free SVG polylines; Changes screen surfaces blast radius breakdown, missing test warnings, and Git churn hotspots.
+
 
 
 
