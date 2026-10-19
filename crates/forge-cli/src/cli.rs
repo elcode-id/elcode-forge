@@ -187,4 +187,19 @@ pub enum Commands {
         #[arg(long, short = 'o')]
         output: Option<PathBuf>,
     },
+    /// Start the read-only local loopback HTTP server for dashboard live intelligence.
+    Serve {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Port to bind the HTTP server to (127.0.0.1:<port>).
+        #[arg(long, default_value_t = 7878)]
+        port: u16,
+        /// Allowed origin for CORS (explicit origin only, wildcard forbidden).
+        #[arg(long)]
+        allow_origin: Option<String>,
+        /// Optional directory from which to serve static dashboard assets.
+        #[arg(long)]
+        static_dir: Option<PathBuf>,
+    },
 }
