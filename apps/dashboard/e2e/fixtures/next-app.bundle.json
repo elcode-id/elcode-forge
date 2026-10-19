@@ -1,0 +1,374 @@
+{
+  "schema_version": 1,
+  "tool_version": "0.2.0",
+  "revision": null,
+  "repository": {
+    "root_path": "fixtures/next-app",
+    "name": "next-app",
+    "detected_languages": [
+      "typescript"
+    ],
+    "detected_frameworks": [
+      "nextjs",
+      "react"
+    ],
+    "package_managers": [
+      "npm"
+    ],
+    "files": [
+      {
+        "relative_path": "package.json",
+        "language": null,
+        "size_bytes": 417,
+        "line_count": 21,
+        "content_hash": "28228cc45f3a640c342263ccff0cb598ed2d6233febfa6e8c6a78cf64f58bc9e",
+        "is_test": false
+      },
+      {
+        "relative_path": "src/components/UserCard.tsx",
+        "language": "typescript",
+        "size_bytes": 403,
+        "line_count": 12,
+        "content_hash": "a78a8554180bc82c52b9447f0f0c4447365053dd9f1910fcd2ee2099973feb5a",
+        "is_test": false
+      },
+      {
+        "relative_path": "src/db/client.ts",
+        "language": "typescript",
+        "size_bytes": 332,
+        "line_count": 10,
+        "content_hash": "c005bb05c2a09bd7b22d4618578034f969eefd3651b74fab560b8f22c106dabc",
+        "is_test": false
+      },
+      {
+        "relative_path": "src/pages/index.tsx",
+        "language": "typescript",
+        "size_bytes": 383,
+        "line_count": 15,
+        "content_hash": "50dc633c50299e9f2dbcc4d5a2b656eaced6e456c677a62f0dd371f6deecf090",
+        "is_test": false
+      },
+      {
+        "relative_path": "src/services/userService.ts",
+        "language": "typescript",
+        "size_bytes": 297,
+        "line_count": 14,
+        "content_hash": "cf1bf6aa4d6955fe7c30c16ecf25ea0f51b7a0ded2d5e17e2aac3da0279f2c55",
+        "is_test": false
+      },
+      {
+        "relative_path": "tsconfig.json",
+        "language": null,
+        "size_bytes": 269,
+        "line_count": 14,
+        "content_hash": "72b90e5780fe1c03ac9b47d1932ef2991a5fcd6637a8360bdd68da040ae58047",
+        "is_test": false
+      }
+    ],
+    "modules": [
+      {
+        "id": "src/components",
+        "name": "components",
+        "root_path": "src/components",
+        "files": [
+          "src/components/UserCard.tsx"
+        ],
+        "imports": [
+          "src/db"
+        ],
+        "exports": [
+          "UserCard",
+          "UserCardProps"
+        ]
+      },
+      {
+        "id": "src/db",
+        "name": "db",
+        "root_path": "src/db",
+        "files": [
+          "src/db/client.ts"
+        ],
+        "imports": [
+          "src/services"
+        ],
+        "exports": [
+          "queryDb"
+        ]
+      },
+      {
+        "id": "src/pages",
+        "name": "pages",
+        "root_path": "src/pages",
+        "files": [
+          "src/pages/index.tsx"
+        ],
+        "imports": [
+          "src/components",
+          "src/services"
+        ],
+        "exports": [
+          "default"
+        ]
+      },
+      {
+        "id": "src/services",
+        "name": "services",
+        "root_path": "src/services",
+        "files": [
+          "src/services/userService.ts"
+        ],
+        "imports": [
+          "src/db"
+        ],
+        "exports": [
+          "UserRecord",
+          "formatUserAuditTag",
+          "getActiveUsers"
+        ]
+      }
+    ],
+    "dependencies": [
+      {
+        "name": "legacy-unpinned-pkg",
+        "version_req": "*",
+        "resolved_version": null,
+        "ecosystem": "npm",
+        "is_dev": false,
+        "is_direct": true
+      },
+      {
+        "name": "next",
+        "version_req": "^15.0.0",
+        "resolved_version": null,
+        "ecosystem": "npm",
+        "is_dev": false,
+        "is_direct": true
+      },
+      {
+        "name": "react",
+        "version_req": "^19.0.0",
+        "resolved_version": null,
+        "ecosystem": "npm",
+        "is_dev": false,
+        "is_direct": true
+      },
+      {
+        "name": "react-dom",
+        "version_req": "^19.0.0",
+        "resolved_version": null,
+        "ecosystem": "npm",
+        "is_dev": false,
+        "is_direct": true
+      },
+      {
+        "name": "typescript",
+        "version_req": "^5.6.0",
+        "resolved_version": null,
+        "ecosystem": "npm",
+        "is_dev": true,
+        "is_direct": true
+      },
+      {
+        "name": "unused-analytics-sdk",
+        "version_req": "^2.4.1",
+        "resolved_version": null,
+        "ecosystem": "npm",
+        "is_dev": false,
+        "is_direct": true
+      },
+      {
+        "name": "vitest",
+        "version_req": "^2.1.0",
+        "resolved_version": null,
+        "ecosystem": "npm",
+        "is_dev": true,
+        "is_direct": true
+      }
+    ],
+    "findings": [
+      {
+        "id": "ARCH-CYCLE-src/db_src/services",
+        "category": "architecture",
+        "severity": "high",
+        "confidence": "certain",
+        "title": "Circular dependency detected across modules: src/db <-> src/services",
+        "description": "Modules [src/db, src/services] form a strongly connected import cycle, increasing coupling and change risk.",
+        "evidence": "src/db <-> src/services",
+        "location": {
+          "file_path": "src/db/client.ts",
+          "start_line": null,
+          "end_line": null
+        },
+        "recommendation": "Extract shared contracts/types into a lower-level module to break the import cycle.",
+        "rule_id": "arch/no-circular-dependencies"
+      },
+      {
+        "id": "ARCH-UI-DB-src/components-src/db",
+        "category": "architecture",
+        "severity": "high",
+        "confidence": "certain",
+        "title": "UI module 'src/components' directly imports database layer 'src/db'",
+        "description": "Module 'src/components' accesses database module 'src/db' directly, bypassing the service boundary.",
+        "evidence": "src/components -> src/db",
+        "location": {
+          "file_path": "src/components/UserCard.tsx",
+          "start_line": null,
+          "end_line": null
+        },
+        "recommendation": "Route database queries through an application service or repository layer.",
+        "rule_id": "arch/no-direct-db-in-ui"
+      },
+      {
+        "id": "DEP-UNPINNED-legacy-unpinned-pkg",
+        "category": "dependencies",
+        "severity": "medium",
+        "confidence": "certain",
+        "title": "Unpinned or wildcard dependency version for 'legacy-unpinned-pkg'",
+        "description": "Package 'legacy-unpinned-pkg' uses non-deterministic version specifier '*' in package.json.",
+        "evidence": "\"legacy-unpinned-pkg\": \"*\"",
+        "location": {
+          "file_path": "package.json",
+          "start_line": null,
+          "end_line": null
+        },
+        "recommendation": "Pin 'legacy-unpinned-pkg' to an explicit semver range (e.g., '^1.0.0' or exact version).",
+        "rule_id": "deps/unpinned-version"
+      },
+      {
+        "id": "QUAL-SVC-TEST-src/services/userService.ts",
+        "category": "testing",
+        "severity": "medium",
+        "confidence": "high",
+        "title": "Service file 'src/services/userService.ts' has no detected test suite",
+        "description": "Critical service module file 'src/services/userService.ts' lacks a corresponding unit or integration test.",
+        "evidence": "No test file matching 'userService.test.*' or 'userService.spec.*'",
+        "location": {
+          "file_path": "src/services/userService.ts",
+          "start_line": null,
+          "end_line": null
+        },
+        "recommendation": "Add a unit or integration test covering 'src/services/userService.ts' (e.g., 'userService.test.ts').",
+        "rule_id": "quality/require-service-tests"
+      },
+      {
+        "id": "DEP-UNUSED-legacy-unpinned-pkg",
+        "category": "dependencies",
+        "severity": "low",
+        "confidence": "high",
+        "title": "Unused production dependency 'legacy-unpinned-pkg'",
+        "description": "Package 'legacy-unpinned-pkg' is declared in 'dependencies' but never imported in scanned source files.",
+        "evidence": "\"legacy-unpinned-pkg\": \"*\"",
+        "location": {
+          "file_path": "package.json",
+          "start_line": null,
+          "end_line": null
+        },
+        "recommendation": "Remove 'legacy-unpinned-pkg' from package.json if it is no longer needed.",
+        "rule_id": "deps/unused-dependency"
+      },
+      {
+        "id": "DEP-UNUSED-unused-analytics-sdk",
+        "category": "dependencies",
+        "severity": "low",
+        "confidence": "high",
+        "title": "Unused production dependency 'unused-analytics-sdk'",
+        "description": "Package 'unused-analytics-sdk' is declared in 'dependencies' but never imported in scanned source files.",
+        "evidence": "\"unused-analytics-sdk\": \"^2.4.1\"",
+        "location": {
+          "file_path": "package.json",
+          "start_line": null,
+          "end_line": null
+        },
+        "recommendation": "Remove 'unused-analytics-sdk' from package.json if it is no longer needed.",
+        "rule_id": "deps/unused-dependency"
+      }
+    ],
+    "health": {
+      "overall": 90,
+      "dimensions": [
+        {
+          "dimension": "Architecture",
+          "score": 80,
+          "weight_pct": 20,
+          "reasons": [
+            "2 architecture finding(s) detected"
+          ]
+        },
+        {
+          "dimension": "Security",
+          "score": 100,
+          "weight_pct": 20,
+          "reasons": [
+            "0 security issues detected"
+          ]
+        },
+        {
+          "dimension": "Maintainability",
+          "score": 100,
+          "weight_pct": 15,
+          "reasons": [
+            "0 maintainability issues detected"
+          ]
+        },
+        {
+          "dimension": "Testing",
+          "score": 80,
+          "weight_pct": 15,
+          "reasons": [
+            "1 testing finding(s) detected",
+            "No test files (*.test.*, *.spec.*) detected"
+          ]
+        },
+        {
+          "dimension": "Dependencies",
+          "score": 91,
+          "weight_pct": 10,
+          "reasons": [
+            "3 dependencies finding(s) detected"
+          ]
+        },
+        {
+          "dimension": "Documentation",
+          "score": 80,
+          "weight_pct": 10,
+          "reasons": [
+            "No README.md or documentation files detected"
+          ]
+        },
+        {
+          "dimension": "Performance",
+          "score": 100,
+          "weight_pct": 5,
+          "reasons": [
+            "0 performance issues detected"
+          ]
+        },
+        {
+          "dimension": "CI/CD",
+          "score": 90,
+          "weight_pct": 5,
+          "reasons": [
+            "No .github/workflows CI configuration detected"
+          ]
+        }
+      ]
+    }
+  },
+  "architecture": {
+    "circular_dependencies": [
+      [
+        "src/db",
+        "src/services"
+      ]
+    ],
+    "high_centrality_modules": [
+      "src/db",
+      "src/services",
+      "src/components",
+      "src/pages"
+    ]
+  },
+  "hotspots": [],
+  "change_impact": null,
+  "change_risk": null
+}

@@ -146,9 +146,45 @@ eforge diff --path . --format terminal
 | `eforge onboard` | `--path <DIR>`, `-o <OUT_DIR>` | Generates `architecture.md`, `modules.md`, `dependencies.md`, `onboarding.md`, and `risks.md`. |
 | `eforge docs` | `--path <DIR>`, `-o <OUT_DIR>` | Alias for `eforge onboard` to regenerate living repository documentation (`docs/forge/`). |
 | `eforge explain [target]` | `[TARGET]`, `--path <DIR>`, `--format <FMT>` | Explains files, outgoing imports, incoming dependents, exported symbols, and findings for a project or module. |
+| `eforge report` | `--path <DIR>`, `--output <FILE>`, `--save-history`, `--no-git` | Generates a deterministic `ReportBundle` JSON for dashboard consumption and history snapshots. |
+| `eforge serve` | `--port <PORT>`, `--path <DIR>`, `--static-dir <DIR>` | Serves a read-only, loopback-restricted HTTP API (`/api/v1/health`, `/api/v1/bundle`, `/api/v1/history`). |
+| `eforge schema` | `--out-dir <DIR>` | Exports canonical JSON Schemas for `ReportBundle` and IR types. |
 | `eforge mcp` | `--path <DIR>` | Starts the native Model Context Protocol (MCP) JSON-RPC 2.0 stdio server (`eforge_*` tools). |
 
 **Supported `--format` values:** `terminal` (default), `json`, `markdown`, `sarif` (SARIF v2.1.0), `github` (GitHub Actions annotations + Markdown).
+
+---
+
+## Web Intelligence Dashboard (`apps/dashboard`)
+
+ELCODE Forge provides a local-first, zero-telemetry Web Intelligence Dashboard built with SvelteKit, TypeScript, and Tailwind CSS. The dashboard operates in two complementary modes:
+
+### 1. Static Standalone Mode
+Generate a self-contained report bundle and load it offline into the dashboard SPA:
+```bash
+# Export the deterministic intelligence bundle
+eforge report --path . --output report.json
+
+# Open the dashboard SPA and load the JSON bundle
+```
+
+### 2. Live Interactive Mode
+Run the local read-only daemon for real-time inspection, live auto-updates, and historical commit trends tracking:
+```bash
+# Save historical commit snapshots as you work
+eforge report --save-history
+
+# Start the read-only daemon (strictly bound to 127.0.0.1)
+eforge serve --port 7878
+```
+Connect your dashboard to `http://127.0.0.1:7878` to view:
+- **Overview:** 8-dimension health score ring, dimensions breakdown, and repository inventory.
+- **Architecture:** Interactive module dependency canvas (Cytoscape + Dagre) with circular-dependency highlighting (`#ef4444`) and deep module inspector (`eforge explain` parity). Includes a keyboard-accessible module table as an accessible non-visual alternative.
+- **Findings:** URL-synchronized filtering by severity, confidence, rule ID prefix, and file path with hostile plain-text evidence envelopes.
+- **Security:** Redacted credential leakage detector, unsafe JS/TS pattern analysis, and mitigation steps.
+- **Dependencies:** Direct vs dev packages, unpinned version warnings, and unused package flags.
+- **Changes & Blast Radius:** Git diff change risk, direct vs transitive module propagation, and churn hotspots.
+- **Trends & Evolution:** Historical health score trajectories, finding severity sparklines, and commit snapshot records.
 
 ---
 
