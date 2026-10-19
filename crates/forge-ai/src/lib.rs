@@ -4,8 +4,10 @@
 
 pub mod mock;
 pub mod provider;
+pub mod providers;
 pub mod types;
 
 pub use mock::MockProvider;
 pub use provider::{ensure_ai_enabled, AiProvider};
+pub use providers::OpenAiCompatProvider;
 pub use types::{AiMessage, AiRequest, AiResponse, AiRole, TokenUsage};

@@ -187,6 +187,12 @@
 - **Public Types & Functions (`forge_ai`):** `AiProvider` trait (`name`, `generate`, `stream`, `embed`, `structured_output`), `AiRole { System, User, Assistant }`, `AiMessage`, `AiRequest`, `AiResponse`, `TokenUsage`, `ensure_ai_enabled(&AiConfig) -> Result<(), ForgeError>`, `MockProvider` (scripted responses, usage tracking, request recorder).
 - **Invariants:** `forge-ai` depends strictly on `forge-core`, `serde`, `serde_json`, `ureq`, and `blake3`; zero-panic policy strictly enforced; offline execution supported via `MockProvider`.
 
+## Issue #87 — `forge-ai` OpenAI-Compatible Provider (COMPLETED)
+- **Crate:** `crates/forge-ai` (`src/providers/{mod.rs, http.rs, openai_compat.rs}`)
+- **Public Types & Functions (`forge_ai`):** `OpenAiCompatProvider::new(base_url, api_key, model, timeout_secs) -> Result<Self, ForgeError>`, `AiProvider` implementation (`generate`, `stream` via SSE, `embed`, `structured_output`), `create_agent`, `read_bounded_body`, `map_ureq_error`, `MAX_RESPONSE_BYTES` (4 MiB).
+- **Invariants:** Compatible with OpenAI, OpenRouter, Ollama, LM Studio, vLLM; optional `api_key` for local models; zero leaking of raw API keys in HTTP error diagnostics; bounded 4 MiB response reads prevent memory exhaustion.
+
+
 
 
 
