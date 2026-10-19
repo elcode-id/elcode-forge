@@ -117,7 +117,7 @@
 - **Public Types & Functions (`forge_cli::commands::explain`):** `ExplainReport`, `execute_explain(repo_root: &Path, target_module_or_file: Option<&str>) -> Result<ExplainReport, ForgeError>`, `render_explain_report(report: &ExplainReport, format: OutputFormat) -> Result<String, ForgeError>`, `Commands::Explain`.
 - **Invariants:** Deterministically resolves matching files, outgoing `imports`, incoming `imported_by`, `exports`, and `related_findings` for either the entire repository (`None` / `"."`) or a specific module/file path prefix.
 
-
-
-
-
+## Issue #56 — `forge-git` Commit Log & HEAD Revision Collection (COMPLETED)
+- **Crate:** `crates/forge-git` (`src/log.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_git`):** `GitRevision`, `read_head_revision(repo_root: &Path) -> Result<Option<GitRevision>, ForgeError>`, `collect_commit_log(repo_root: &Path, max_commits: usize) -> Result<String, ForgeError>`.
+- **Invariants:** Invokes `git` with fixed argument vectors without shell evaluation; gracefully returns `Ok(None)` or empty log text if `repo_root` is not a Git repository or `git` fails.
