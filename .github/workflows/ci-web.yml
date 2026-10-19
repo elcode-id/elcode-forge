@@ -1,0 +1,80 @@
+name: CI — Web, Dashboard & Schemas
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - ".npmrc"
+      - ".github/workflows/ci-web.yml"
+  pull_request:
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - ".npmrc"
+      - ".github/workflows/ci-web.yml"
+
+env:
+  NODE_VERSION: "20"
+  PNPM_VERSION: "12.8.1"
+
+jobs:
+  web-verify:
+    name: Lint, Typecheck, Test & Schema Drift Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain (for schema drift check)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo registry and target directory
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Schema drift check
+        shell: bash
+        run: |
+          cargo run --bin eforge -- schema -o packages/forge-schema/schema/report-bundle.schema.json.tmp
+          diff -u packages/forge-schema/schema/report-bundle.schema.json packages/forge-schema/schema/report-bundle.schema.json.tmp || {
+            echo "ERROR: Schema drift detected! Run 'cargo run --bin eforge -- schema -o packages/forge-schema/schema/report-bundle.schema.json' and commit the update."
+            exit 1
+          }
+          rm -f packages/forge-schema/schema/report-bundle.schema.json.tmp
+
+      - name: Lint workspace packages
+        run: pnpm run lint
+
+      - name: Typecheck workspace packages
+        run: pnpm run check
+
+      - name: Run unit & schema tests
+        run: pnpm run test
+
+      - name: Build workspace packages
+        run: pnpm run build
