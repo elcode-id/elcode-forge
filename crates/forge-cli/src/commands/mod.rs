@@ -8,6 +8,7 @@ pub mod graph;
 pub mod init;
 pub mod mcp;
 pub mod onboard;
+pub mod report;
 pub mod review;
 pub mod scan;
 pub mod security;
