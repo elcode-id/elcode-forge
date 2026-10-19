@@ -71,6 +71,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build shared schema package (@elcode-forge/schema)
+        run: pnpm --filter @elcode-forge/schema run build
+
       - name: Schema drift check
         shell: bash
         run: |
@@ -92,3 +95,4 @@ jobs:
 
       - name: Build workspace packages
         run: pnpm run build
+

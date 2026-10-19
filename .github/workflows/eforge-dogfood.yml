@@ -86,8 +86,10 @@ jobs:
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build Dashboard SPA
-        run: pnpm --filter @elcode-forge/dashboard run build
+      - name: Build shared schema package & Dashboard SPA
+        run: |
+          pnpm --filter @elcode-forge/schema run build
+          pnpm --filter @elcode-forge/dashboard run build
 
       - name: Upload Report Bundle Artifact
         uses: actions/upload-artifact@v4
