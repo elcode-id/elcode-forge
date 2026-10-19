@@ -95,6 +95,40 @@ pub enum Commands {
         #[arg(long)]
         fail_on: Option<String>,
     },
+    /// Analyze changes with deterministic diff/PR review augmented by structured AI review items.
+    #[command(name = "ai-review")]
+    AiReview {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Base Git reference for diff comparison (e.g. `origin/main` or `HEAD~1`).
+        #[arg(long)]
+        base: Option<String>,
+        /// Head Git reference for diff comparison (defaults to working tree).
+        #[arg(long)]
+        head: Option<String>,
+        /// Run fast diff-scoped mode.
+        #[arg(long)]
+        fast: bool,
+        /// Minimum finding severity to return non-zero exit code (`critical|high|medium|low|info`).
+        #[arg(long)]
+        fail_on: Option<String>,
+        /// AI provider override (`openai`, `anthropic`, `gemini`, `mock`).
+        #[arg(long)]
+        provider: Option<String>,
+        /// Model identifier override.
+        #[arg(long)]
+        model: Option<String>,
+        /// Output context pack and token estimates without calling AI provider.
+        #[arg(long)]
+        dry_run: bool,
+        /// Bypass AI response cache.
+        #[arg(long)]
+        no_cache: bool,
+        /// Output format (`terminal`, `json`, `markdown`, `sarif`, `github`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
     /// Inspect working-tree unified diff and affected architecture modules.
     Diff {
         /// Target repository directory.

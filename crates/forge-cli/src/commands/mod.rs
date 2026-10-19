@@ -1,5 +1,6 @@
 //! Subcommand implementations for `eforge`.
 
+pub mod ai_review;
 pub mod dependencies;
 pub mod diff;
 pub mod doctor;
