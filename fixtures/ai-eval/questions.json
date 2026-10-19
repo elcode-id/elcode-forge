@@ -1,0 +1,42 @@
+[
+  {
+    "id": "q1_next_app_services_architecture",
+    "fixture": "next-app",
+    "target": "src/services",
+    "task": "explain",
+    "question": "What is the structural responsibility and dependency relationship of src/services in next-app?",
+    "expected_grounding_facts": {
+      "modules": ["src/services"],
+      "files": ["src/services/userService.ts"],
+      "exports": ["formatUserAuditTag"],
+      "findings": ["ARCH-CYCLE-src/db_src/services"],
+      "circular_cycle": "src/db <-> src/services"
+    }
+  },
+  {
+    "id": "q2_next_app_architecture_and_cycles",
+    "fixture": "next-app",
+    "target": ".",
+    "task": "explain",
+    "question": "What architectural cycles or anti-patterns exist across next-app?",
+    "expected_grounding_facts": {
+      "modules": ["src/components", "src/services", "src/db"],
+      "files": ["src/components/UserCard.tsx"],
+      "findings": ["ARCH-UI-DB-src/components-src/db", "ARCH-CYCLE-src/db_src/services"],
+      "circular_cycle": "src/db <-> src/services"
+    }
+  },
+  {
+    "id": "q3_vulnerable_app_security_and_redaction",
+    "fixture": "vulnerable-ts-app",
+    "target": ".",
+    "task": "explain",
+    "question": "What security vulnerabilities or unsafe patterns exist in vulnerable-ts-app?",
+    "expected_grounding_facts": {
+      "modules": ["src"],
+      "files": ["src/unsafe.ts"],
+      "exports": ["runDynamicCode"],
+      "findings": ["SEC-SECRET-src/unsafe.ts-4-sk-proj-", "SEC-EVAL-src/unsafe.ts-9"]
+    }
+  }
+]

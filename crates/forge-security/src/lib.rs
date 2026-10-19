@@ -13,7 +13,7 @@ pub use patterns::{
     scan_unsafe_patterns, RULE_NO_DANGEROUS_INNER_HTML, RULE_NO_EVAL, RULE_NO_IMPLIED_EVAL,
     RULE_PERMISSIVE_CORS, RULE_UNSAFE_SHELL_EXEC,
 };
-pub use secrets::{scan_secrets, RULE_HARDCODED_SECRET, RULE_PRIVATE_KEY};
+pub use secrets::{redact_secrets, scan_secrets, RULE_HARDCODED_SECRET, RULE_PRIVATE_KEY};
 
 /// Deterministic security scanner combining redacted secret detection and unsafe pattern checks.
 #[derive(Debug, Default, Clone, Copy)]

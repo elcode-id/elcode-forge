@@ -41,17 +41,32 @@ jobs:
           sarif-output: eforge-results.sarif
 ```
 
+### 3. AI-Assisted PR Review (Optional / Opt-in)
+
+```yaml
+      - name: Run ELCODE Forge AI PR Review
+        uses: ./integrations/github-action
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        with:
+          ai-review: "true"
+          base: origin/${{ github.base_ref }}
+          fail-on: high
+          step-summary: "true"
+```
+
 ## Inputs
 
 | Input | Default | Description |
 | :--- | :--- | :--- |
-| `command` | `review` | `eforge` subcommand (`doctor`, `scan`, `review`, `diff`, `security`, `dependencies`, `graph`). |
+| `command` | `review` | `eforge` subcommand (`doctor`, `scan`, `review`, `diff`, `security`, `dependencies`, `graph`, `ai-review`). |
 | `path` | `.` | Target repository directory to analyze. |
-| `base` | `HEAD~1` | Base Git revision for `review` and `diff` subcommands. |
+| `base` | `HEAD~1` | Base Git revision for `review`, `diff`, and `ai-review` subcommands. |
 | `format` | `terminal` | Output format (`terminal`, `json`, `sarif`, `markdown`). |
 | `strict` | `false` | Fail with exit code `2` on policy violations (`high`/`critical` findings). |
 | `fail-on` | `""` | Custom minimum severity threshold (`critical`, `high`, `medium`, `low`). |
 | `sarif-output` | `""` | Optional file path to emit SARIF v2.1.0 report (`scan` / `security`). |
+| `ai-review` | `false` | Enable optional AI-assisted PR review (requires provider API key passed via `env:`). |
 | `step-summary` | `true` | Append Markdown report to `$GITHUB_STEP_SUMMARY`. |
 
 ## Outputs

@@ -34,7 +34,9 @@ Modern codebases grow faster than teams can map them—especially with AI-assist
 | **Security & Secret Hygiene (`eforge security`)** | Detects hardcoded API keys, tokens, and PEM private keys (`security/hardcoded-secret`, `security/private-key`) with automatic redaction, plus unsafe JS/TS/SFC patterns (`eval`, `new Function`, `dangerouslySetInnerHTML`, `child_process.exec`, permissive CORS). |
 | **Git Diff & Blast-Radius Impact (`eforge review`, `eforge diff`)** | Parses unified Git diffs, traverses reverse module dependencies via BFS to separate **directly affected** vs. **transitively affected** modules, flags modified files lacking tests, and computes an explainable **Change Risk Level** (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`). |
 | **Automated Onboarding & Living Docs (`eforge onboard`, `eforge docs`)** | Generates a 5-file deterministic documentation bundle (`architecture.md`, `modules.md`, `dependencies.md`, `onboarding.md`, `risks.md`) with Mermaid `flowchart TD` diagrams in `docs/forge/`. |
-| **Project & Module Explainer (`eforge explain [target]`)** | Explains the structural role, files, outgoing imports, incoming dependents, exported symbols, and related findings for the whole repository or any specific module/file path. |
+| **Project & Module Explainer (`eforge explain [target]`)** | Explains the structural role, files, outgoing imports, incoming dependents, exported symbols, and related findings for the whole repository or any specific module/file path, with optional AI synthesis (`--ai`). |
+| **Grounded AI PR Review (`eforge ai-review`)** | Combines deterministic change risk, blast radius, and rule findings with grounded AI insights classified as `Confirmed`, `Probable`, or `Suggestion` under strict deterministic guards. |
+| **AI Governance & Privacy (`eforge ai status\|usage`)** | Supports local-only AI execution (Ollama, LM Studio), prompt-injection defense envelopes, in-flight secret redaction, daily USD spend ceilings, and SHA-256 caching. |
 | **Native MCP Server (`eforge mcp`)** | Exposes 6 deterministic `eforge_*` tools over JSON-RPC 2.0 stdio with `UntrustedEnvelope<T>` isolation and prompt-injection signal scanning. |
 | **Explainable 8-Dimension Health Score** | Computes weighted scores (`0..=100`) across *Architecture (20%)*, *Security (20%)*, *Maintainability (15%)*, *Testing (15%)*, *Dependencies (10%)*, *Documentation (10%)*, *Performance (5%)*, and *CI/CD (5%)* with explicit human-readable deduction reasons. |
 
@@ -58,7 +60,7 @@ cargo install --path crates/forge-cli
 Verify installation:
 ```bash
 eforge --version
-# ELCODE Forge (eforge) v0.3.0
+# ELCODE Forge (eforge) v0.4.0
 ```
 
 ---
@@ -129,9 +131,25 @@ eforge review --fast --path . --format markdown
 eforge diff --path . --format terminal
 ```
 
+### 6. AI-Assisted Explanations & Grounded PR Review
+```bash
+# Explain architecture or modules with AI-synthesized, grounded answers
+eforge explain src/services --ai
+
+# Preview prompt context pack & token estimates without making network calls
+eforge explain src/services --ai --dry-run
+
+# Run grounded AI PR review with Confirmed | Probable | Suggestion items
+eforge ai-review --fast --fail-on high
+
+# Check AI provider connectivity and inspect token spend
+eforge ai status --ping
+eforge ai usage
+```
+
 ---
 
-## CLI Command Reference (12 Subcommands)
+## CLI Command Reference (16 Subcommands)
 
 | Command | Key Flags | Description |
 | :--- | :--- | :--- |
@@ -145,7 +163,10 @@ eforge diff --path . --format terminal
 | `eforge graph` | `--path <DIR>`, `--format <FMT>` | Exports the module architecture graph (`terminal`, `json`, or Mermaid `flowchart TD` in `markdown`). |
 | `eforge onboard` | `--path <DIR>`, `-o <OUT_DIR>` | Generates `architecture.md`, `modules.md`, `dependencies.md`, `onboarding.md`, and `risks.md`. |
 | `eforge docs` | `--path <DIR>`, `-o <OUT_DIR>` | Alias for `eforge onboard` to regenerate living repository documentation (`docs/forge/`). |
-| `eforge explain [target]` | `[TARGET]`, `--path <DIR>`, `--format <FMT>` | Explains files, outgoing imports, incoming dependents, exported symbols, and findings for a project or module. |
+| `eforge explain [target]` | `[TARGET]`, `--path <DIR>`, `--ai`, `--dry-run`, `--format <FMT>` | Explains files, imports, dependents, symbols, and findings; synthesizes answers with `--ai`. |
+| `eforge ai-review` | `--base <REF>`, `--fast`, `--fail-on <SEV>`, `--dry-run`, `--no-cache` | Grounded PR review combining blast radius with `Confirmed`, `Probable`, and `Suggestion` items. |
+| `eforge ai status` | `--ping`, `--path <DIR>` | Reports AI configuration, selected provider, model, and checks live endpoint latency with `--ping`. |
+| `eforge ai usage` | `--path <DIR>`, `--format <FMT>` | Reports daily token consumption, accumulated USD cost, and daily budget ceiling. |
 | `eforge report` | `--path <DIR>`, `--output <FILE>`, `--save-history`, `--no-git` | Generates a deterministic `ReportBundle` JSON for dashboard consumption and history snapshots. |
 | `eforge serve` | `--port <PORT>`, `--path <DIR>`, `--static-dir <DIR>` | Serves a read-only, loopback-restricted HTTP API (`/api/v1/health`, `/api/v1/bundle`, `/api/v1/history`). |
 | `eforge schema` | `--out-dir <DIR>` | Exports canonical JSON Schemas for `ReportBundle` and IR types. |
@@ -238,6 +259,20 @@ Use the composite GitHub Action in [`integrations/github-action`](./integrations
 
 ---
 
+## AI Architecture, Privacy & Cost Controls
+
+ELCODE Forge adheres to a strict principle: **Generative AI is an advisory layer, never an authoritative judge.**
+
+- **Local-First & Offline Support:** Native `openai-compatible` provider support for local models via **Ollama** (`http://localhost:11434/v1`) or **LM Studio** (`http://localhost:1234/v1`). Zero code leaves your workstation.
+- **Untrusted Envelopes & Prompt Injection Defense:** All repository code, AST snippets, and git diffs are strictly wrapped in `<untrusted_repository_data>` envelopes.
+- **Secret Redaction:** High-entropy credentials, private keys, and API tokens are detected and redacted (`[REDACTED_SECRET]`) prior to prompt construction.
+- **Deterministic Grounding Guard:** The `apply_deterministic_guard` engine cross-verifies all AI review items against deterministic scan findings. `Confirmed` items require verifiable finding IDs, and hallucinated paths are dropped.
+- **Cost Controls:** Pre-call context inspection (`--dry-run`), daily USD expenditure ceilings (`budget_daily_usd`), and deterministic SHA-256 prompt caching (`.eforge/ai-cache/`).
+
+For full details, read [docs/AI_AND_PRIVACY.md](./docs/AI_AND_PRIVACY.md).
+
+---
+
 ## Configuration (`eforge.config.yaml`)
 
 ELCODE Forge reads **`eforge.config.yaml`** from the repository root (with automatic backward-compatible fallback to `forge.config.yaml`). If no config file is present, sensible defaults are used automatically.
@@ -277,6 +312,14 @@ rules:
     enabled: true
     severity: "low"
     max_lines: 400
+
+# Optional AI Assistant & Review Configuration
+# ai:
+#   enabled: false
+#   provider: "openai"              # openai | anthropic | gemini | openai-compatible | mock
+#   model: "gpt-4o"
+#   # base_url: "http://localhost:11434/v1" # Local Ollama / LM Studio
+#   budget_daily_usd: 2.00
 ```
 
 ---
@@ -305,6 +348,7 @@ flowchart TD
     CLI --> GIT["crates/forge-git"]
     CLI --> RULES["crates/forge-rules"]
     CLI --> SECURITY["crates/forge-security"]
+    CLI --> AI["crates/forge-ai"]
     CLI --> MCP["crates/forge-mcp"]
     CLI --> CORE["crates/forge-core"]
 
@@ -313,6 +357,7 @@ flowchart TD
     MCP --> RULES
     MCP --> SECURITY
     MCP --> CORE
+    AI --> CORE
     ANALYZER --> CORE
     GIT --> CORE
     RULES --> CORE
@@ -324,10 +369,11 @@ flowchart TD
 - **`crates/forge-git`** — Unified diff parser, commit hotspot analyzer, and reverse-import BFS blast-radius calculator.
 - **`crates/forge-rules`** — Deterministic rule engine (`arch/no-direct-db-in-ui`, `arch/no-circular-dependencies`, `quality/require-service-tests`, `quality/max-file-lines`) with config overrides.
 - **`crates/forge-security`** — Redacted secret scanner and unsafe JS/TS/SFC pattern detector.
+- **`crates/forge-ai`** — Provider abstraction (`openai`, `anthropic`, `gemini`, `openai-compatible`), context pack builder, secret redaction, token budgeting, and response caching.
 - **`crates/forge-mcp`** — Native Model Context Protocol (MCP) JSON-RPC 2.0 stdio server (`eforge_*` tool namespace) and `UntrustedEnvelope<T>` prompt-injection boundary.
-- **`crates/forge-cli`** — CLI entrypoint (`eforge` & `elcode-forge`), 12 subcommands, and report formatters (`terminal`, `json`, `markdown`, `sarif`, `github`).
+- **`crates/forge-cli`** — CLI entrypoint (`eforge` & `elcode-forge`), 16 subcommands, and report formatters (`terminal`, `json`, `markdown`, `sarif`, `github`).
 - **`integrations/github-action`** — Composite GitHub Action (`elcode-id/forge-action`).
-- **`fixtures/`** — Curated deterministic test repositories (`fixtures/next-app`, `fixtures/vulnerable-ts-app`).
+- **`fixtures/`** — Curated deterministic test repositories (`fixtures/next-app`, `fixtures/vulnerable-ts-app`, `fixtures/ai-eval`).
 
 ---
 

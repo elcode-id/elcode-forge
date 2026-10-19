@@ -1,5 +1,6 @@
 //! `forge-cli` — Shared CLI execution library for `eforge` and `elcode-forge`.
 
+pub mod ai;
 pub mod cli;
 pub mod commands;
 pub mod exit_code;
@@ -134,6 +135,47 @@ pub fn run_cli_from_env() -> ExitCode {
                 ExitCode::ExecutionError
             }
         },
+        Some(Commands::AiReview {
+            path,
+            base: _base,
+            head: _head,
+            fast,
+            fail_on,
+            provider,
+            model,
+            dry_run,
+            no_cache,
+            format,
+        }) => {
+            let opts = commands::ai_review::AiReviewOptions {
+                fast,
+                base: _base,
+                head: _head,
+                fail_on,
+                provider,
+                model,
+                dry_run,
+                no_cache,
+            };
+            match commands::ai_review::execute_ai_review(&path, None, &opts) {
+                Ok((report, exit_code)) => {
+                    match commands::ai_review::render_ai_review_report(&report, format) {
+                        Ok(rendered) => {
+                            println!("{rendered}");
+                            exit_code
+                        }
+                        Err(err) => {
+                            eprintln!("Error formatting ai-review report: {err}");
+                            ExitCode::ExecutionError
+                        }
+                    }
+                }
+                Err(err) => {
+                    eprintln!("Error running ai-review: {err}");
+                    ExitCode::ExecutionError
+                }
+            }
+        }
         Some(Commands::Diff { path, format }) => match commands::diff::execute_diff(&path, None) {
             Ok(report) => match commands::diff::render_diff_report(&report, format) {
                 Ok(rendered) => {
@@ -212,22 +254,36 @@ pub fn run_cli_from_env() -> ExitCode {
             target,
             path,
             format,
-        }) => match commands::explain::execute_explain(&path, target.as_deref()) {
-            Ok(report) => match commands::explain::render_explain_report(&report, format) {
-                Ok(rendered) => {
-                    println!("{rendered}");
-                    ExitCode::Success
-                }
+            ai,
+            provider,
+            model,
+            dry_run,
+            no_cache,
+        }) => {
+            let ai_opts = ai::AiExplainOptions {
+                ai,
+                provider,
+                model,
+                dry_run,
+                no_cache,
+            };
+            match commands::explain::execute_explain_with_ai(&path, target.as_deref(), &ai_opts) {
+                Ok(report) => match commands::explain::render_explain_report(&report, format) {
+                    Ok(rendered) => {
+                        println!("{rendered}");
+                        ExitCode::Success
+                    }
+                    Err(err) => {
+                        eprintln!("Error formatting explain report: {err}");
+                        ExitCode::ExecutionError
+                    }
+                },
                 Err(err) => {
-                    eprintln!("Error formatting explain report: {err}");
+                    eprintln!("Error running explain: {err}");
                     ExitCode::ExecutionError
                 }
-            },
-            Err(err) => {
-                eprintln!("Error running explain: {err}");
-                ExitCode::ExecutionError
             }
-        },
+        }
         Some(Commands::Report {
             path,
             output,
@@ -286,5 +342,47 @@ pub fn run_cli_from_env() -> ExitCode {
                 }
             }
         }
+        Some(Commands::Ai { action }) => match action {
+            cli::AiAction::Status { path, ping, format } => {
+                match commands::ai_admin::run_ai_status(&path, ping) {
+                    Ok(report) => {
+                        match commands::ai_admin::render_ai_status_report(&report, format) {
+                            Ok(rendered) => {
+                                println!("{rendered}");
+                                ExitCode::Success
+                            }
+                            Err(err) => {
+                                eprintln!("Error formatting AI status report: {err}");
+                                ExitCode::ExecutionError
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        eprintln!("Error checking AI status: {err}");
+                        ExitCode::ExecutionError
+                    }
+                }
+            }
+            cli::AiAction::Usage { path, format } => {
+                match commands::ai_admin::run_ai_usage(&path) {
+                    Ok(report) => {
+                        match commands::ai_admin::render_ai_usage_report(&report, format) {
+                            Ok(rendered) => {
+                                println!("{rendered}");
+                                ExitCode::Success
+                            }
+                            Err(err) => {
+                                eprintln!("Error formatting AI usage report: {err}");
+                                ExitCode::ExecutionError
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        eprintln!("Error retrieving AI usage: {err}");
+                        ExitCode::ExecutionError
+                    }
+                }
+            }
+        },
     }
 }

@@ -35,4 +35,12 @@ pub enum ForgeError {
         analyzer: &'static str,
         message: String,
     },
+
+    /// AI provider or execution error.
+    #[error("AI error: {message}")]
+    Ai { message: String },
+
+    /// Daily AI spending limit exceeded.
+    #[error("AI daily budget exceeded: spent ${spent_usd:.4}, limit ${limit_usd:.4}")]
+    AiBudgetExceeded { spent_usd: f64, limit_usd: f64 },
 }

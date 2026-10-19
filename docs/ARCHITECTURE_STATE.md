@@ -177,9 +177,57 @@
 - **Public Capabilities:** End-to-end smoke testing across all 7 dashboard screens (Overview, Architecture, Findings, Security, Dependencies, Changes, Trends); Dogfood GitHub Action generates deterministic report bundle, builds dashboard SPA, and uploads `forge-report.json` artifact; full user-facing dashboard documentation in README.md.
 - **Milestone Status:** Closes EPIC #55 and completes **Phase 3 (Report Bundle, Local Daemon & Web Intelligence Dashboard)**.
 
+## Issue #85 — `forge-core` AI Configuration Section, Untrusted Boundary, and ForgeError::Ai (COMPLETED)
+- **Crate:** `crates/forge-core` (`src/config.rs`, `src/untrusted.rs`, `src/error.rs`, `src/lib.rs`) and `crates/forge-mcp` (`src/boundary.rs`)
+- **Public Types & Functions (`forge_core::{config, untrusted, error}`):** `AiProviderKind { OpenAiCompatible, Anthropic, Gemini }`, `AiConfig`, `ForgeConfig.ai`, `ForgeError::Ai`, `ForgeError::AiBudgetExceeded`, `UntrustedEnvelope<T>`, `detect_prompt_injection_signals`, `wrap_untrusted_payload`, `UNTRUSTED_REPO_DATA_LEVEL`, `UNTRUSTED_SECURITY_NOTICE`.
+- **Invariants:** `ai.enabled` defaults to `false`; secret keys (`api_key`, `token`, `secret`, `password`) in `ai:` configuration are strictly rejected with `ForgeError::Config`; credentials must be passed via environment variable names (`api_key_env`); `forge-mcp::boundary` re-exports canonical implementations from `forge_core::untrusted`.
 
+## Issue #86 — `forge-ai` Scaffold, AiProvider Trait, and MockProvider (COMPLETED)
+- **Crate:** `crates/forge-ai` (`src/{lib.rs, types.rs, provider.rs, mock.rs}`) + Workspace (`Cargo.toml`, `AGENTS.md`)
+- **Public Types & Functions (`forge_ai`):** `AiProvider` trait (`name`, `generate`, `stream`, `embed`, `structured_output`), `AiRole { System, User, Assistant }`, `AiMessage`, `AiRequest`, `AiResponse`, `TokenUsage`, `ensure_ai_enabled(&AiConfig) -> Result<(), ForgeError>`, `MockProvider` (scripted responses, usage tracking, request recorder).
+- **Invariants:** `forge-ai` depends strictly on `forge-core`, `serde`, `serde_json`, `ureq`, and `blake3`; zero-panic policy strictly enforced; offline execution supported via `MockProvider`.
 
+## Issue #87 — `forge-ai` OpenAI-Compatible Provider (COMPLETED)
+- **Crate:** `crates/forge-ai` (`src/providers/{mod.rs, http.rs, openai_compat.rs}`)
+- **Public Types & Functions (`forge_ai`):** `OpenAiCompatProvider::new(base_url, api_key, model, timeout_secs) -> Result<Self, ForgeError>`, `AiProvider` implementation (`generate`, `stream` via SSE, `embed`, `structured_output`), `create_agent`, `read_bounded_body`, `map_ureq_error`, `MAX_RESPONSE_BYTES` (4 MiB).
+- **Invariants:** Compatible with OpenAI, OpenRouter, Ollama, LM Studio, vLLM; optional `api_key` for local models; zero leaking of raw API keys in HTTP error diagnostics; bounded 4 MiB response reads prevent memory exhaustion.
 
+## Issue #88 — `forge-ai` Anthropic, Gemini, and Provider Factory (COMPLETED)
+- **Crate:** `crates/forge-ai` (`src/providers/{anthropic.rs, gemini.rs}`, `src/factory.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_ai`):** `AnthropicProvider`, `GeminiProvider`, `build_provider(cfg: &AiConfig, env_lookup: &dyn Fn(&str) -> Option<String>) -> Result<Box<dyn AiProvider>, ForgeError>`, `mask_secret(raw: &str) -> String`.
+- **Invariants:** Credentials resolved exclusively via `env_lookup(api_key_env)` or standard vendor fallback env vars; `mask_secret` safely redacts keys for display; `AnthropicProvider::embed` returns explicit `ForgeError::Ai` unsupported error; closes Epic #82 and completes **Phase 4A (AI Foundation & Provider Abstraction)**.
 
+## Issue #89 — `forge-ai` Deterministic Context Retrieval Builder (COMPLETED)
+- **Crate:** `crates/forge-ai` (`src/{tokens.rs, prompt.rs, context.rs, lib.rs}`)
+- **Public Types & Functions (`forge_ai`):** `estimate_tokens(text: &str) -> u32`, `AiTask { ExplainModule, ReviewDiff, GeneralQuery }`, `system_prompt_for_task(task: AiTask) -> &'static str`, `SectionKind`, `ContextSection`, `CodeSnippet`, `ContextInput`, `ContextPack`, `build_context(input: &ContextInput, max_context_tokens: u32) -> Result<ContextPack, ForgeError>`, `sections_from_repository(repo: &Repository, focus: Option<&str>) -> Vec<ContextSection>`.
+- **Invariants:** Identical `ContextInput` + token budget always produces byte-for-byte identical `ContextPack`; candidate sections are prioritized deterministically (Security Findings > Architecture > Dependencies > Code Snippets); user payload is safely wrapped in `UntrustedEnvelope` and scanned via `detect_prompt_injection_signals`.
 
+## Issue #90 — `forge-ai` Cost Controls, Response Cache, and Usage Ledger (COMPLETED)
+- **Crate:** `crates/forge-ai` (`src/{budget.rs, cache.rs, usage.rs, lib.rs}`)
+- **Public Types & Functions (`forge_ai`):** `preflight_check(pack: &ContextPack, cfg: &AiConfig) -> Result<(), ForgeError>`, `compute_cost_usd(input_tokens: u32, output_tokens: u32, cfg: &AiConfig) -> Option<f64>`, `enforce_daily_budget(summary: &UsageSummary, cfg: &AiConfig) -> Result<(), ForgeError>`, `ResponseCache` (`new`, `key`, `get`, `put`), `UsageRecord`, `UsageSummary`, `append_usage(repo_root: &Path, rec: &UsageRecord) -> Result<(), ForgeError>`, `summarize_usage(repo_root: &Path, today: &str) -> Result<UsageSummary, ForgeError>`.
+- **Invariants:** Cache stores JSON responses under `<repo_root>/.eforge/ai-cache/<key>.json` keyed by deterministic 64-char BLAKE3 hash; strictly validates hex keys to eliminate path traversal; response cache never stores headers or auth secrets; append-only ledger at `<repo_root>/.eforge/ai-usage.jsonl` safely ignores corrupted lines without panicking; closes Epic #83 and completes **Phase 4B (Deterministic Context Retrieval & Cost Controls)**.
+
+## Issue #91 — `forge-cli` AI-Augmented Explain Command with Dry-Run and Grounding (COMPLETED)
+- **Crate:** `crates/forge-cli` (`src/ai/{mod.rs, orchestrate.rs}`, `src/commands/explain.rs`, `src/cli.rs`, `src/lib.rs`) and `crates/forge-security` (`src/secrets.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_cli` / `forge_security`):** `redact_secrets(content: &str) -> String`, `GroundedClaim`, `AiExplainAnswer`, `AiExplainOutput`, `AiExplainOptions`, `execute_explain_with_ai`, `execute_explain_ai`.
+- **Invariants:** Deterministic facts are always computed and rendered first; sensitive files (`.env*`, `*.pem`, `*.key`, `.git/**`, `.eforge/**`) are excluded before snippet collection; all code snippets are redacted via `redact_secrets` before entering context; `--dry-run` outputs exact `ContextPack` with token estimates without network or provider instantiation; AI risks verify cited sources against repository modules, files, and findings (`[verified]` vs `[unverified]`).
+
+## Issue #92 — `forge-cli` eforge ai-review with Grounding Guard (COMPLETED)
+- **Crate:** `crates/forge-cli` (`src/commands/ai_review.rs`, `src/commands/mod.rs`, `src/cli.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_cli`):** `AiClassification { Confirmed, Probable, Suggestion }`, `AiReviewItem`, `AiReviewReport`, `AiReviewOptions`, `apply_deterministic_guard`, `execute_ai_review`, `render_ai_review_report`.
+- **Invariants:** Deterministic findings and change risk in `ReviewReport` are rendered verbatim first; `apply_deterministic_guard` enforces that unlinked `Confirmed` items are downgraded to `Probable`, and items referencing hallucinated/unknown files are discarded; exit code evaluation for `--fail-on` is strictly bound to deterministic findings; AI outputs cannot suppress or alter exit codes.
+
+## Issue #93 — `forge-cli` eforge ai status and usage commands (COMPLETED)
+- **Crate:** `crates/forge-cli` (`src/commands/ai_admin.rs`, `src/commands/mod.rs`, `src/cli.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_cli`):** `AiStatusReport`, `AiUsageReport`, `run_ai_status(repo_root: &Path, ping: bool) -> Result<AiStatusReport, ForgeError>`, `run_ai_usage(repo_root: &Path) -> Result<AiUsageReport, ForgeError>`, `render_ai_status_report`, `render_ai_usage_report`.
+- **Invariants:** `eforge ai status` without `--ping` makes zero network calls; API credentials are never output in raw form and are strictly masked via `mask_secret`; `eforge ai usage` summarizes `.eforge/ai-usage.jsonl` safely and tracks remaining daily budget against `budget_daily_usd`.
+
+## Issue #94 — AI Quality Evaluation Suite, GitHub Action, Privacy Docs & v0.4.0 (COMPLETED)
+- **Crates & Files:** `fixtures/ai-eval/questions.json`, `crates/forge-cli/tests/ai_eval.rs`, `integrations/github-action/{action.yml, README.md}`, `docs/AI_AND_PRIVACY.md`, `eforge.config.yaml`, `README.md`.
+- **Public Capabilities & Invariants:**
+  - `fixtures/ai-eval/questions.json`: Golden benchmark dataset covering `next-app`, `ts-circular`, and `secret-leak` with deterministic grounding facts and anti-hallucination assertions.
+  - `crates/forge-cli/tests/ai_eval.rs`: Comprehensive test suite for retrieval recall, secret redaction before prompt building, deterministic grounding guards (downgrading ungrounded `Confirmed` items, dropping hallucinated files), and report byte determinism.
+  - `integrations/github-action`: Added opt-in `ai-review: 'false'` input (defaulting strictly to false), allowing automated AI PR reviews when API keys are passed via GitHub secrets.
+  - `docs/AI_AND_PRIVACY.md`: Comprehensive privacy architecture guide detailing zero data exfiltration with local providers (Ollama, LM Studio), prompt injection defense envelopes, in-flight secret redaction, and token budgeting.
+  - **Milestone Status:** Closes EPIC #84 and marks **Phase 4 (AI Engine & Codebase Intelligence)** fully completed.
 

@@ -21,8 +21,62 @@ pub struct RuleOverrideConfig {
     pub max_lines: Option<u32>,
 }
 
+/// Supported AI provider categories in ELCODE Forge (PRD §19).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AiProviderKind {
+    #[serde(
+        rename = "openai-compatible",
+        alias = "openai_compatible",
+        alias = "openai"
+    )]
+    OpenAiCompatible,
+    #[serde(rename = "anthropic")]
+    Anthropic,
+    #[serde(rename = "gemini")]
+    Gemini,
+}
+
+/// Configuration settings for the optional AI layer (`ai:` in `eforge.config.yaml`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AiConfig {
+    pub enabled: bool,
+    pub provider: Option<AiProviderKind>,
+    pub model: Option<String>,
+    pub base_url: Option<String>,
+    pub api_key_env: Option<String>,
+    pub max_tokens: u32,
+    pub max_context_tokens: u32,
+    pub temperature: Option<f32>,
+    pub timeout_secs: u64,
+    pub cache_enabled: bool,
+    pub budget_daily_usd: Option<f64>,
+    pub price_input_per_1k: Option<f64>,
+    pub price_output_per_1k: Option<f64>,
+}
+
+impl Default for AiConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            provider: None,
+            model: None,
+            base_url: None,
+            api_key_env: None,
+            max_tokens: 1024,
+            max_context_tokens: 8000,
+            temperature: Some(0.0),
+            timeout_secs: 60,
+            cache_enabled: true,
+            budget_daily_usd: None,
+            price_input_per_1k: None,
+            price_output_per_1k: None,
+        }
+    }
+}
+
 /// Deterministic configuration model for ELCODE Forge (`eforge`).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ForgeConfig {
     pub version: u32,
     pub project_name: Option<String>,
@@ -30,6 +84,8 @@ pub struct ForgeConfig {
     pub ignore_patterns: Vec<String>,
     pub git_enabled: bool,
     pub ai_enabled: bool,
+    #[serde(default)]
+    pub ai: AiConfig,
     pub fail_on_severity: Option<Severity>,
     #[serde(default)]
     pub rules: BTreeMap<String, RuleOverrideConfig>,
@@ -49,6 +105,7 @@ impl Default for ForgeConfig {
             ],
             git_enabled: true,
             ai_enabled: false,
+            ai: AiConfig::default(),
             fail_on_severity: None,
             rules: BTreeMap::new(),
         }
@@ -90,6 +147,7 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
     let mut current_section: Option<&str> = None;
     let mut active_list: Option<&str> = None;
     let mut active_rule_id: Option<(String, usize)> = None;
+    let mut active_ai_sub: Option<(String, usize)> = None;
     let mut custom_ignores_started = false;
 
     for (idx, raw_line) in content.lines().enumerate() {
@@ -147,6 +205,7 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
             current_section = None;
             active_list = None;
             active_rule_id = None;
+            active_ai_sub = None;
 
             match key {
                 "version" => {
@@ -174,7 +233,9 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                     config.git_enabled = parse_bool(val, line_no)?;
                 }
                 "ai_enabled" => {
-                    config.ai_enabled = parse_bool(val, line_no)?;
+                    let b = parse_bool(val, line_no)?;
+                    config.ai_enabled = b;
+                    config.ai.enabled = b;
                 }
                 "fail_on_severity" => {
                     if !val.is_empty() {
@@ -200,6 +261,48 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                 }
             }
         } else {
+            if let Some((ref sub_name, sub_indent)) = active_ai_sub {
+                if indent > sub_indent {
+                    check_no_raw_secret(key, line_no)?;
+                    match sub_name.as_str() {
+                        "budget" => match key {
+                            "daily_usd" | "daily" => {
+                                let parsed =
+                                    val.parse::<f64>().map_err(|_| ForgeError::Config {
+                                        message: format!(
+                                        "line {line_no}: invalid float for budget daily_usd '{val}'"
+                                    ),
+                                    })?;
+                                config.ai.budget_daily_usd = Some(parsed);
+                            }
+                            _ => {}
+                        },
+                        "pricing" => match key {
+                            "input_per_1k" | "input" => {
+                                let parsed = val.parse::<f64>().map_err(|_| ForgeError::Config {
+                                    message: format!(
+                                        "line {line_no}: invalid float for pricing input_per_1k '{val}'"
+                                    ),
+                                })?;
+                                config.ai.price_input_per_1k = Some(parsed);
+                            }
+                            "output_per_1k" | "output" => {
+                                let parsed = val.parse::<f64>().map_err(|_| ForgeError::Config {
+                                    message: format!(
+                                        "line {line_no}: invalid float for pricing output_per_1k '{val}'"
+                                    ),
+                                })?;
+                                config.ai.price_output_per_1k = Some(parsed);
+                            }
+                            _ => {}
+                        },
+                        _ => {}
+                    }
+                    continue;
+                }
+                active_ai_sub = None;
+            }
+
             if let Some((ref rule_id, rule_indent)) = active_rule_id {
                 if indent > rule_indent {
                     let entry = config.rules.entry(rule_id.clone()).or_default();
@@ -234,8 +337,105 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                 (Some("git"), "enabled") => {
                     config.git_enabled = parse_bool(val, line_no)?;
                 }
-                (Some("ai"), "enabled") => {
-                    config.ai_enabled = parse_bool(val, line_no)?;
+                (Some("ai"), ai_key) => {
+                    check_no_raw_secret(ai_key, line_no)?;
+                    match ai_key {
+                        "enabled" => {
+                            let b = parse_bool(val, line_no)?;
+                            config.ai.enabled = b;
+                            config.ai_enabled = b;
+                        }
+                        "provider" => {
+                            config.ai.provider = Some(parse_provider_kind(val, line_no)?);
+                        }
+                        "model" => {
+                            if !val.is_empty() {
+                                config.ai.model = Some(val.to_string());
+                            }
+                        }
+                        "base_url" => {
+                            if !val.is_empty() {
+                                config.ai.base_url = Some(validate_base_url(val, line_no)?);
+                            }
+                        }
+                        "api_key_env" => {
+                            if !val.is_empty() {
+                                config.ai.api_key_env = Some(val.to_string());
+                            }
+                        }
+                        "max_tokens" => {
+                            let parsed = val.parse::<u32>().map_err(|_| ForgeError::Config {
+                                message: format!(
+                                    "line {line_no}: invalid integer for max_tokens '{val}'"
+                                ),
+                            })?;
+                            config.ai.max_tokens = parsed;
+                        }
+                        "max_context_tokens" => {
+                            let parsed = val.parse::<u32>().map_err(|_| ForgeError::Config {
+                                message: format!(
+                                    "line {line_no}: invalid integer for max_context_tokens '{val}'"
+                                ),
+                            })?;
+                            config.ai.max_context_tokens = parsed;
+                        }
+                        "temperature" => {
+                            let parsed = val.parse::<f32>().map_err(|_| ForgeError::Config {
+                                message: format!(
+                                    "line {line_no}: invalid float for temperature '{val}'"
+                                ),
+                            })?;
+                            config.ai.temperature = Some(parsed);
+                        }
+                        "timeout_secs" | "timeout" => {
+                            let parsed = val.parse::<u64>().map_err(|_| ForgeError::Config {
+                                message: format!(
+                                    "line {line_no}: invalid integer for timeout_secs '{val}'"
+                                ),
+                            })?;
+                            config.ai.timeout_secs = parsed;
+                        }
+                        "cache" | "cache_enabled" => {
+                            config.ai.cache_enabled = parse_bool(val, line_no)?;
+                        }
+                        "budget" => {
+                            active_ai_sub = Some(("budget".to_string(), indent));
+                        }
+                        "budget.daily_usd" => {
+                            let parsed = val.parse::<f64>().map_err(|_| ForgeError::Config {
+                                message: format!(
+                                    "line {line_no}: invalid float for budget daily_usd '{val}'"
+                                ),
+                            })?;
+                            config.ai.budget_daily_usd = Some(parsed);
+                        }
+                        "pricing" => {
+                            active_ai_sub = Some(("pricing".to_string(), indent));
+                        }
+                        "pricing.input_per_1k" => {
+                            let parsed = val.parse::<f64>().map_err(|_| ForgeError::Config {
+                                message: format!(
+                                    "line {line_no}: invalid float for pricing input_per_1k '{val}'"
+                                ),
+                            })?;
+                            config.ai.price_input_per_1k = Some(parsed);
+                        }
+                        "pricing.output_per_1k" => {
+                            let parsed = val.parse::<f64>().map_err(|_| ForgeError::Config {
+                                message: format!(
+                                    "line {line_no}: invalid float for pricing output_per_1k '{val}'"
+                                ),
+                            })?;
+                            config.ai.price_output_per_1k = Some(parsed);
+                        }
+                        _ => {
+                            return Err(ForgeError::Config {
+                                message: format!(
+                                    "line {line_no}: unsupported key '{ai_key}' in 'ai' section"
+                                ),
+                            });
+                        }
+                    }
                 }
                 (Some("scoring"), _) => {}
                 (Some("rules"), "extends") => {
@@ -276,6 +476,12 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
         }
     }
 
+    if config.ai.enabled != config.ai_enabled {
+        let unified = config.ai.enabled || config.ai_enabled;
+        config.ai.enabled = unified;
+        config.ai_enabled = unified;
+    }
+
     Ok(config)
 }
 
@@ -313,6 +519,49 @@ fn parse_severity(val: &str, line_no: usize) -> Result<Severity, ForgeError> {
     }
 }
 
+fn check_no_raw_secret(key: &str, line_no: usize) -> Result<(), ForgeError> {
+    let lower = key.to_ascii_lowercase();
+    if lower == "api_key"
+        || lower == "api-key"
+        || lower == "token"
+        || lower == "secret"
+        || lower == "password"
+    {
+        return Err(ForgeError::Config {
+            message: format!(
+                "line {line_no}: do not store raw credentials in configuration; store credentials in an environment variable and reference it via 'api_key_env'"
+            ),
+        });
+    }
+    Ok(())
+}
+
+fn parse_provider_kind(val: &str, line_no: usize) -> Result<AiProviderKind, ForgeError> {
+    match val.to_ascii_lowercase().as_str() {
+        "openai-compatible" | "openai_compatible" | "openai" | "openrouter" | "ollama" => {
+            Ok(AiProviderKind::OpenAiCompatible)
+        }
+        "anthropic" | "claude" => Ok(AiProviderKind::Anthropic),
+        "gemini" | "google" => Ok(AiProviderKind::Gemini),
+        _ => Err(ForgeError::Config {
+            message: format!(
+                "line {line_no}: unsupported ai provider '{val}'; expected 'openai-compatible', 'anthropic', or 'gemini'"
+            ),
+        }),
+    }
+}
+
+fn validate_base_url(url: &str, line_no: usize) -> Result<String, ForgeError> {
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err(ForgeError::Config {
+            message: format!(
+                "line {line_no}: 'base_url' must start with 'http://' or 'https://', got '{url}'"
+            ),
+        });
+    }
+    Ok(url.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -336,6 +585,10 @@ mod tests {
         assert!(cfg.is_ok());
         if let Ok(c) = cfg {
             assert_eq!(c, ForgeConfig::default());
+            assert!(!c.ai.enabled);
+            assert_eq!(c.ai.max_tokens, 1024);
+            assert_eq!(c.ai.max_context_tokens, 8000);
+            assert!(c.ai.cache_enabled);
         }
         let _ = fs::remove_dir_all(&dir);
     }
@@ -388,6 +641,7 @@ ignore:
             assert_eq!(cfg.ignore_patterns, vec!["node_modules", "dist", ".next"]);
             assert!(cfg.git_enabled);
             assert!(!cfg.ai_enabled);
+            assert!(!cfg.ai.enabled);
             assert_eq!(cfg.fail_on_severity, Some(Severity::High));
             assert_eq!(
                 cfg.rules
@@ -424,6 +678,93 @@ git:
             assert!(!cfg.git_enabled);
         }
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn parses_full_ai_configuration_section() {
+        let yaml = r#"
+version: 1
+ai:
+  enabled: true
+  provider: openai-compatible
+  model: gpt-4o
+  base_url: https://api.openai.com/v1
+  api_key_env: OPENAI_API_KEY
+  max_tokens: 2048
+  max_context_tokens: 12000
+  temperature: 0.1
+  timeout_secs: 45
+  cache: true
+  budget:
+    daily_usd: 12.50
+  pricing:
+    input_per_1k: 0.0025
+    output_per_1k: 0.010
+"#;
+        let res = parse_config_yaml(yaml);
+        assert!(res.is_ok());
+        if let Ok(cfg) = res {
+            assert!(cfg.ai.enabled);
+            assert!(cfg.ai_enabled);
+            assert_eq!(cfg.ai.provider, Some(AiProviderKind::OpenAiCompatible));
+            assert_eq!(cfg.ai.model.as_deref(), Some("gpt-4o"));
+            assert_eq!(
+                cfg.ai.base_url.as_deref(),
+                Some("https://api.openai.com/v1")
+            );
+            assert_eq!(cfg.ai.api_key_env.as_deref(), Some("OPENAI_API_KEY"));
+            assert_eq!(cfg.ai.max_tokens, 2048);
+            assert_eq!(cfg.ai.max_context_tokens, 12000);
+            assert_eq!(cfg.ai.temperature, Some(0.1));
+            assert_eq!(cfg.ai.timeout_secs, 45);
+            assert!(cfg.ai.cache_enabled);
+            assert_eq!(cfg.ai.budget_daily_usd, Some(12.50));
+            assert_eq!(cfg.ai.price_input_per_1k, Some(0.0025));
+            assert_eq!(cfg.ai.price_output_per_1k, Some(0.010));
+        }
+    }
+
+    #[test]
+    fn rejects_raw_credentials_in_ai_section() {
+        let yaml = r#"
+version: 1
+ai:
+  enabled: true
+  api_key: sk-proj-123456789
+"#;
+        let res = parse_config_yaml(yaml);
+        assert!(res.is_err());
+        if let Err(e) = res {
+            let err_msg = e.to_string();
+            assert!(err_msg.contains("do not store raw credentials in configuration"));
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_base_url_scheme() {
+        let yaml = r#"
+version: 1
+ai:
+  enabled: true
+  base_url: ftp://example.com/v1
+"#;
+        let res = parse_config_yaml(yaml);
+        assert!(res.is_err());
+        if let Err(e) = res {
+            let err_msg = e.to_string();
+            assert!(err_msg.contains("must start with 'http://' or 'https://'"));
+        }
+    }
+
+    #[test]
+    fn synchronizes_legacy_ai_enabled_flag() {
+        let yaml = "version: 1\nai_enabled: true\n";
+        let res = parse_config_yaml(yaml);
+        assert!(res.is_ok());
+        if let Ok(cfg) = res {
+            assert!(cfg.ai_enabled);
+            assert!(cfg.ai.enabled);
+        }
     }
 
     #[test]
