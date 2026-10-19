@@ -152,6 +152,12 @@
 - **Public Components & Types (`@elcode-forge/ui`):** `ScoreRing`, `SeverityBadge`, `DataTable`, `Column`, `Card`, `EmptyState`, `KeyValue`.
 - **Invariants:** Built on Svelte 5 runes (`$props()`, `$derived()`); strictly avoids `{@html}`; zero external CDN or runtime font downloads; fully accessible with WCAG AA contrast and explicit `aria-*` tags.
 
+## Issue #63 — `dashboard` SvelteKit SPA Scaffold, Dual Data Source & Overview (COMPLETED)
+- **App:** `apps/dashboard` (`src/app.html`, `src/lib/data/{source.ts, store.svelte.ts}`, `src/routes/{+layout.svelte, +layout.ts, +page.svelte}`)
+- **Public Types & Functions:** `DataSource`, `LoadResult`, `loadFromFile(file: File) -> Promise<LoadResult>`, `loadFromApi(baseUrl: string) -> Promise<LoadResult>`, `dashboardState`.
+- **Invariants:** Static SPA compiled via `@sveltejs/adapter-static` with fallback `index.html`; validates all bundles through `parseReportBundle` before rendering; restricts live API URLs strictly to loopback (`127.0.0.1`, `localhost`, `::1`); enforces strict Content-Security-Policy; zero `{@html}`.
+
+
 
 
 
