@@ -58,6 +58,24 @@
           >
             Architecture
           </a>
+          <a
+            href="/findings"
+            class="px-2.5 py-1 rounded text-xs text-slate-300 hover:text-white hover:bg-slate-800 transition-colors font-medium"
+          >
+            Findings
+          </a>
+          <a
+            href="/security"
+            class="px-2.5 py-1 rounded text-xs text-slate-300 hover:text-white hover:bg-slate-800 transition-colors font-medium"
+          >
+            Security
+          </a>
+          <a
+            href="/dependencies"
+            class="px-2.5 py-1 rounded text-xs text-slate-300 hover:text-white hover:bg-slate-800 transition-colors font-medium"
+          >
+            Dependencies
+          </a>
         </nav>
       </div>
 

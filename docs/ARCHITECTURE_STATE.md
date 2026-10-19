@@ -162,6 +162,11 @@
 - **Public Types & Functions:** `GraphNodeData`, `GraphNode`, `GraphEdgeData`, `GraphEdge`, `GraphElements`, `toElements(bundle: ReportBundle): GraphElements`, `initCytoscape(options: CytoscapeOptions): Core`.
 - **Invariants:** Pure `toElements` marks cyclic dependency edges (`inCycle: true`) and nodes (`hasCycle: true`) from `bundle.architecture.circular_dependencies`; Dagre layout with technical dark theme; includes keyboard-accessible module table as a non-visual alternative (WCAG AA); detail panel provides parity with `eforge explain` (files, inbound/outbound imports, related findings); zero `{@html}`.
 
+## Issue #65 — `dashboard` Findings, Security, and Dependencies Screens (COMPLETED)
+- **App:** `apps/dashboard` (`src/lib/filters.ts`, `src/routes/{findings,security,dependencies}/+page.svelte`, `tests/filters.test.ts`, `src/routes/+layout.svelte`)
+- **Public Types & Functions:** `FindingFilter`, `parseFilter(params: URLSearchParams): FindingFilter`, `serializeFilter(filter: FindingFilter): URLSearchParams`, `applyFilter(findings: Finding[], filter: FindingFilter): Finding[]`.
+- **Invariants:** Stable ordering preserved in `applyFilter`; filters synchronized with URL search params; evidence is strictly plain-text in untrusted hostiles envelope (zero `{@html}`); dependencies screen flags unpinned/unused/duplicate packages from `deps/*` findings.
+
 
 
 
