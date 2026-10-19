@@ -202,6 +202,11 @@
 - **Public Types & Functions (`forge_ai`):** `estimate_tokens(text: &str) -> u32`, `AiTask { ExplainModule, ReviewDiff, GeneralQuery }`, `system_prompt_for_task(task: AiTask) -> &'static str`, `SectionKind`, `ContextSection`, `CodeSnippet`, `ContextInput`, `ContextPack`, `build_context(input: &ContextInput, max_context_tokens: u32) -> Result<ContextPack, ForgeError>`, `sections_from_repository(repo: &Repository, focus: Option<&str>) -> Vec<ContextSection>`.
 - **Invariants:** Identical `ContextInput` + token budget always produces byte-for-byte identical `ContextPack`; candidate sections are prioritized deterministically (Security Findings > Architecture > Dependencies > Code Snippets); user payload is safely wrapped in `UntrustedEnvelope` and scanned via `detect_prompt_injection_signals`.
 
+## Issue #90 — `forge-ai` Cost Controls, Response Cache, and Usage Ledger (COMPLETED)
+- **Crate:** `crates/forge-ai` (`src/{budget.rs, cache.rs, usage.rs, lib.rs}`)
+- **Public Types & Functions (`forge_ai`):** `preflight_check(pack: &ContextPack, cfg: &AiConfig) -> Result<(), ForgeError>`, `compute_cost_usd(input_tokens: u32, output_tokens: u32, cfg: &AiConfig) -> Option<f64>`, `enforce_daily_budget(summary: &UsageSummary, cfg: &AiConfig) -> Result<(), ForgeError>`, `ResponseCache` (`new`, `key`, `get`, `put`), `UsageRecord`, `UsageSummary`, `append_usage(repo_root: &Path, rec: &UsageRecord) -> Result<(), ForgeError>`, `summarize_usage(repo_root: &Path, today: &str) -> Result<UsageSummary, ForgeError>`.
+- **Invariants:** Cache stores JSON responses under `<repo_root>/.eforge/ai-cache/<key>.json` keyed by deterministic 64-char BLAKE3 hash; strictly validates hex keys to eliminate path traversal; response cache never stores headers or auth secrets; append-only ledger at `<repo_root>/.eforge/ai-usage.jsonl` safely ignores corrupted lines without panicking; closes Epic #83 and completes **Phase 4B (Deterministic Context Retrieval & Cost Controls)**.
+
 
 
 
