@@ -1,0 +1,16 @@
+{
+  "name": "elcode-forge-monorepo",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Monorepo workspace for ELCODE Forge Web, Schema, and Tools",
+  "scripts": {
+    "build": "pnpm --recursive run build",
+    "lint": "pnpm --recursive run lint",
+    "check": "pnpm --recursive run check",
+    "test": "pnpm --recursive run test"
+  },
+  "packageManager": "pnpm@12.8.1",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

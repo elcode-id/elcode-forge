@@ -1,0 +1,28 @@
+{
+  "name": "@elcode-forge/schema",
+  "version": "0.2.0",
+  "description": "Shared JSON Schemas, generated TypeScript types, and runtime validators for ELCODE Forge",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "check": "tsc --noEmit",
+    "lint": "eslint src tests",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^20.14.0",
+    "eslint": "^9.0.0",
+    "json-schema-to-typescript": "^15.0.0",
+    "tsup": "^8.1.0",
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^2.0.0"
+  }
+}
