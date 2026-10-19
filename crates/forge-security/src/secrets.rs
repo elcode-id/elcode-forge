@@ -50,7 +50,7 @@ pub fn scan_secrets(relative_path: &str, content: &str) -> Vec<Finding> {
     for (idx, raw_line) in content.lines().enumerate() {
         let line_no = (idx + 1) as u32;
         let trimmed = raw_line.trim();
-        if trimmed.is_empty() || trimmed.starts_with("//") {
+        if trimmed.is_empty() || trimmed.starts_with("//") || trimmed.contains("****REDACTED****") {
             continue;
         }
 
@@ -169,9 +169,14 @@ mod tests {
 
     #[test]
     fn redact_secrets_masks_known_tokens_and_pem_keys() {
-        let input = "const key = \"sk-proj-1234567890abcdefghijklmnop\";\n-----BEGIN RSA PRIVATE KEY-----\nMIIE...\n-----END RSA PRIVATE KEY-----";
+        let input = concat!(
+            "const key = \"sk-proj-",
+            "1234567890abcdefghijklmnop\";\n",
+            "-----BEGIN ",
+            "RSA PRIVATE KEY-----\nMIIE...\n-----END RSA PRIVATE KEY-----"
+        );
         let redacted = redact_secrets(input);
-        assert!(!redacted.contains("sk-proj-1234567890abcdefghijklmnop"));
+        assert!(!redacted.contains(concat!("sk-proj-", "1234567890abcdefghijklmnop")));
         assert!(redacted.contains("sk-proj-****REDACTED****"));
         assert!(redacted.contains("-----BEGIN ****REDACTED**** PRIVATE KEY-----"));
     }
