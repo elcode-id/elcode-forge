@@ -4,6 +4,7 @@ pub mod cli;
 pub mod commands;
 pub mod exit_code;
 pub mod formatters;
+pub mod serve;
 
 use std::fs;
 
@@ -254,6 +255,26 @@ pub fn run_cli_from_env() -> ExitCode {
                 }
                 Err(err) => {
                     eprintln!("Error exporting schema: {err}");
+                    ExitCode::ExecutionError
+                }
+            }
+        }
+        Some(Commands::Serve {
+            path,
+            port,
+            allow_origin,
+            static_dir,
+        }) => {
+            let opts = serve::ServeOptions {
+                repo_root: path,
+                port,
+                allow_origin,
+                static_dir,
+            };
+            match serve::run_serve(&opts) {
+                Ok(()) => ExitCode::Success,
+                Err(err) => {
+                    eprintln!("Error running server: {err}");
                     ExitCode::ExecutionError
                 }
             }
