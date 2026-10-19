@@ -1,4 +1,5 @@
-//! `eforge explain [target]` command — deterministic structural explanation of a project, module, or file.
+//! `eforge explain [target]` command — deterministic structural explanation of a project, module, or file,
+//! optionally augmented with structured AI interpretation and dry-run context inspection.
 
 use std::collections::BTreeSet;
 use std::fmt::Write as _;
@@ -7,11 +8,14 @@ use std::path::Path;
 use forge_core::{Finding, ForgeError, Module};
 use serde::{Deserialize, Serialize};
 
+use crate::ai::orchestrate::{
+    execute_explain_ai, AiExplainOptions, AiExplainOutput, ExplainAiResult,
+};
 use crate::cli::OutputFormat;
 use crate::commands::scan::{execute_scan, ScanOptions};
 
 /// Deterministic structural explanation of a repository, module, or file.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ExplainReport {
     pub target: String,
     pub summary: String,
@@ -20,6 +24,10 @@ pub struct ExplainReport {
     pub imported_by: Vec<String>,
     pub exports: Vec<String>,
     pub related_findings: Vec<Finding>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ai: Option<AiExplainOutput>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dry_run: Option<forge_ai::ContextPack>,
 }
 
 fn matches_target(candidate: &str, target: &str) -> bool {
@@ -36,6 +44,19 @@ fn matches_target(candidate: &str, target: &str) -> bool {
 pub fn execute_explain(
     repo_root: &Path,
     target_module_or_file: Option<&str>,
+) -> Result<ExplainReport, ForgeError> {
+    execute_explain_with_ai(
+        repo_root,
+        target_module_or_file,
+        &AiExplainOptions::default(),
+    )
+}
+
+/// Computes an [`ExplainReport`] with optional AI augmentation or `--dry-run` inspection.
+pub fn execute_explain_with_ai(
+    repo_root: &Path,
+    target_module_or_file: Option<&str>,
+    ai_opts: &AiExplainOptions,
 ) -> Result<ExplainReport, ForgeError> {
     let opts = ScanOptions {
         repo_root: repo_root.to_path_buf(),
@@ -98,7 +119,7 @@ pub fn execute_explain(
 
     let related_findings: Vec<Finding> = repo
         .findings
-        .into_iter()
+        .iter()
         .filter(|f| {
             if effective_target == "." {
                 return true;
@@ -107,6 +128,7 @@ pub fn execute_explain(
                 .as_ref()
                 .is_some_and(|loc| matches_target(&loc.file_path, &effective_target))
         })
+        .cloned()
         .collect();
 
     let imports: Vec<String> = imports_set.into_iter().collect();
@@ -134,15 +156,28 @@ pub fn execute_explain(
         )
     };
 
-    Ok(ExplainReport {
-        target: effective_target,
+    let mut report = ExplainReport {
+        target: effective_target.clone(),
         summary,
         files,
         imports,
         imported_by,
         exports,
         related_findings,
-    })
+        ai: None,
+        dry_run: None,
+    };
+
+    // If dry_run or AI execution is requested
+    if ai_opts.dry_run || ai_opts.ai {
+        let ai_res = execute_explain_ai(repo_root, &repo, &effective_target, ai_opts)?;
+        match ai_res {
+            ExplainAiResult::DryRun(pack) => report.dry_run = Some(pack),
+            ExplainAiResult::Output(out) => report.ai = Some(out),
+        }
+    }
+
+    Ok(report)
 }
 
 /// Renders an [`ExplainReport`] in Terminal, JSON, or Markdown format.
@@ -197,6 +232,76 @@ pub fn render_explain_report(
                     finding.severity, finding.rule_id, finding.title
                 );
             }
+
+            if let Some(dry) = &report.dry_run {
+                let _ = writeln!(out, "\n## AI Context Dry Run");
+                let _ = writeln!(out, "- **Estimated Tokens:** {}", dry.estimated_tokens);
+                let _ = writeln!(
+                    out,
+                    "- **Included Sections ({}):** {}",
+                    dry.included.len(),
+                    dry.included.join(", ")
+                );
+                let _ = writeln!(
+                    out,
+                    "- **Dropped Sections ({}):** {}",
+                    dry.dropped.len(),
+                    if dry.dropped.is_empty() {
+                        "none".to_string()
+                    } else {
+                        dry.dropped.join(", ")
+                    }
+                );
+                let _ = writeln!(
+                    out,
+                    "- **Prompt Injection Signals ({}):** {}",
+                    dry.injection_signals.len(),
+                    if dry.injection_signals.is_empty() {
+                        "none".to_string()
+                    } else {
+                        dry.injection_signals.join(", ")
+                    }
+                );
+            }
+
+            if let Some(ai) = &report.ai {
+                let _ = writeln!(out, "\n## AI Architectural Interpretation");
+                let _ = writeln!(
+                    out,
+                    "> Generated by `{}/{}` (Tokens: {}, Cached: {})\n",
+                    ai.provider,
+                    ai.model,
+                    ai.token_usage.total(),
+                    ai.cached
+                );
+                let _ = writeln!(out, "### Summary\n{}\n", ai.answer.summary);
+
+                let _ = writeln!(out, "### Responsibilities");
+                for r in &ai.answer.responsibilities {
+                    let _ = writeln!(out, "- {r}");
+                }
+
+                let _ = writeln!(out, "\n### Key Dependencies");
+                for d in &ai.answer.key_dependencies {
+                    let _ = writeln!(out, "- {d}");
+                }
+
+                let _ = writeln!(out, "\n### Architectural Risks & Security Warnings");
+                for risk in &ai.answer.risks {
+                    let tag = if risk.verified {
+                        "verified"
+                    } else {
+                        "unverified"
+                    };
+                    let _ = writeln!(out, "- **[{tag}]** `{}` — {}", risk.source, risk.text);
+                }
+
+                let _ = writeln!(out, "\n### Sources");
+                for s in &ai.answer.sources {
+                    let _ = writeln!(out, "- `{s}`");
+                }
+            }
+
             Ok(out)
         }
         OutputFormat::Terminal => {
@@ -240,6 +345,69 @@ pub fn render_explain_report(
                 }
             );
             let _ = writeln!(out, "Related Findings: {}", report.related_findings.len());
+
+            if let Some(dry) = &report.dry_run {
+                let _ = writeln!(out, "\n--- AI Context Dry Run ---");
+                let _ = writeln!(out, "Estimated Tokens: {}", dry.estimated_tokens);
+                let _ = writeln!(
+                    out,
+                    "Included Sections ({}): {}",
+                    dry.included.len(),
+                    dry.included.join(", ")
+                );
+                let _ = writeln!(
+                    out,
+                    "Dropped Sections ({}): {}",
+                    dry.dropped.len(),
+                    if dry.dropped.is_empty() {
+                        "none".to_string()
+                    } else {
+                        dry.dropped.join(", ")
+                    }
+                );
+                let _ = writeln!(
+                    out,
+                    "Prompt Injection Signals ({}): {}",
+                    dry.injection_signals.len(),
+                    if dry.injection_signals.is_empty() {
+                        "none".to_string()
+                    } else {
+                        dry.injection_signals.join(", ")
+                    }
+                );
+            }
+
+            if let Some(ai) = &report.ai {
+                let _ = writeln!(out, "\n--- AI Architectural Interpretation ---");
+                let _ = writeln!(
+                    out,
+                    "Model: {}/{} (Tokens: {}, Cached: {})",
+                    ai.provider,
+                    ai.model,
+                    ai.token_usage.total(),
+                    ai.cached
+                );
+                let _ = writeln!(out, "Summary: {}", ai.answer.summary);
+                let _ = writeln!(out, "\nResponsibilities:");
+                for r in &ai.answer.responsibilities {
+                    let _ = writeln!(out, "  - {r}");
+                }
+                let _ = writeln!(out, "\nKey Dependencies:");
+                for d in &ai.answer.key_dependencies {
+                    let _ = writeln!(out, "  - {d}");
+                }
+                let _ = writeln!(out, "\nArchitectural Risks:");
+                for risk in &ai.answer.risks {
+                    let tag = if risk.verified {
+                        "verified"
+                    } else {
+                        "unverified"
+                    };
+                    let _ = writeln!(out, "  - [{tag}] {}: {}", risk.source, risk.text);
+                }
+                let _ = writeln!(out, "\nSources: {}", ai.answer.sources.join(", "));
+            }
+
             Ok(out)
         }
     }
@@ -273,6 +441,69 @@ mod tests {
             assert!(md.is_ok());
             if let Ok(text) = md {
                 assert!(text.contains("# ELCODE Forge — Explain `src/services`"));
+            }
+        }
+    }
+
+    #[test]
+    fn explain_with_ai_dry_run_produces_context_pack_without_network() {
+        let root = fixture_next_app();
+        let ai_opts = AiExplainOptions {
+            ai: false,
+            provider: None,
+            model: None,
+            dry_run: true,
+            no_cache: true,
+        };
+        let report = execute_explain_with_ai(&root, Some("src/services"), &ai_opts);
+        assert!(report.is_ok());
+        if let Ok(rep) = report {
+            assert!(rep.dry_run.is_some());
+            assert!(rep.ai.is_none());
+            if let Some(ref pack) = rep.dry_run {
+                assert!(pack.estimated_tokens > 0);
+                assert!(!pack.included.is_empty());
+                assert!(pack.system_prompt.contains("ELCODE Forge"));
+            }
+
+            let term = render_explain_report(&rep, OutputFormat::Terminal);
+            assert!(term.is_ok());
+            if let Ok(rendered) = term {
+                assert!(rendered.contains("--- AI Context Dry Run ---"));
+                assert!(rendered.contains("Estimated Tokens:"));
+            }
+        }
+    }
+
+    #[test]
+    fn explain_with_ai_mock_provider_executes_successfully() {
+        let root = fixture_next_app();
+        let ai_opts = AiExplainOptions {
+            ai: true,
+            provider: Some("mock".to_string()),
+            model: Some("mock-v1".to_string()),
+            dry_run: false,
+            no_cache: true,
+        };
+        let report = execute_explain_with_ai(&root, Some("src/services"), &ai_opts);
+        assert!(report.is_ok());
+        if let Ok(rep) = report {
+            assert!(rep.dry_run.is_none());
+            assert!(rep.ai.is_some());
+            if let Some(ref ai) = rep.ai {
+                assert_eq!(ai.provider, "mock");
+                assert_eq!(ai.model, "mock-v1");
+                assert!(!ai.cached);
+                assert!(!ai.answer.summary.is_empty());
+                assert_eq!(ai.answer.risks.len(), 1);
+                assert!(ai.answer.risks[0].verified);
+            }
+
+            let term = render_explain_report(&rep, OutputFormat::Terminal);
+            assert!(term.is_ok());
+            if let Ok(rendered) = term {
+                assert!(rendered.contains("--- AI Architectural Interpretation ---"));
+                assert!(rendered.contains("Model: mock/mock-v1"));
             }
         }
     }

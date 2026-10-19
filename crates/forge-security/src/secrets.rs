@@ -118,3 +118,61 @@ pub fn scan_secrets(relative_path: &str, content: &str) -> Vec<Finding> {
 
     findings
 }
+
+/// Redacts detected secret patterns and private keys in the given text, replacing them with
+/// `****REDACTED****` markers to ensure safe inclusion in AI prompts and logs.
+#[must_use]
+pub fn redact_secrets(content: &str) -> String {
+    let mut output = String::with_capacity(content.len());
+    let pem_begin = "-----BEGIN ";
+    let pem_privkey_end = "PRIVATE KEY-----";
+
+    for (i, line) in content.lines().enumerate() {
+        if i > 0 {
+            output.push('\n');
+        }
+
+        if line.contains(pem_begin) && line.contains(pem_privkey_end) {
+            output.push_str("-----BEGIN ****REDACTED**** PRIVATE KEY-----");
+            continue;
+        }
+
+        let mut line_buf = line.to_string();
+        for pat in SECRET_PREFIX_PATTERNS {
+            let mut search_idx = 0;
+            while let Some(rel_pos) = line_buf[search_idx..].find(pat.prefix) {
+                let pos = search_idx + rel_pos;
+                let candidate = &line_buf[pos..];
+                let token: String = candidate
+                    .chars()
+                    .take_while(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-')
+                    .collect();
+
+                if token.len() >= pat.min_token_len {
+                    let redacted = format!("{}****REDACTED****", pat.prefix);
+                    line_buf.replace_range(pos..pos + token.len(), &redacted);
+                    search_idx = pos + redacted.len();
+                } else {
+                    search_idx = pos + pat.prefix.len();
+                }
+            }
+        }
+        output.push_str(&line_buf);
+    }
+
+    output
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn redact_secrets_masks_known_tokens_and_pem_keys() {
+        let input = "const key = \"sk-proj-1234567890abcdefghijklmnop\";\n-----BEGIN RSA PRIVATE KEY-----\nMIIE...\n-----END RSA PRIVATE KEY-----";
+        let redacted = redact_secrets(input);
+        assert!(!redacted.contains("sk-proj-1234567890abcdefghijklmnop"));
+        assert!(redacted.contains("sk-proj-****REDACTED****"));
+        assert!(redacted.contains("-----BEGIN ****REDACTED**** PRIVATE KEY-----"));
+    }
+}

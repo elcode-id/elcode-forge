@@ -23,6 +23,7 @@ forge-analyzer.workspace = true
 forge-git.workspace = true
 forge-rules.workspace = true
 forge-security.workspace = true
+forge-ai.workspace = true
 forge-mcp.workspace = true
 schemars = { workspace = true }
 serde.workspace = true
