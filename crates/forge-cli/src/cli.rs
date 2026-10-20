@@ -254,6 +254,17 @@ pub enum Commands {
         #[arg(long)]
         static_dir: Option<PathBuf>,
     },
+    /// Manage architectural, quality, and security rules (`list`, `check`, `init`).
+    Rules {
+        #[command(subcommand)]
+        action: Option<RulesAction>,
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
     /// Manage AI configuration, check provider status, and inspect usage ledgers.
     Ai {
         #[command(subcommand)]
@@ -282,6 +293,52 @@ pub enum AiAction {
         #[arg(long, short = 'p', default_value = ".")]
         path: PathBuf,
         /// Output format (`terminal`, `json`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+}
+
+/// Subcommands available under `eforge rules`.
+#[derive(Debug, Subcommand)]
+pub enum RulesAction {
+    /// List all registered rules, their pack source, severity, and status.
+    List {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Filter by rule category (`architecture`, `quality`, `security`, `dependencies`).
+        #[arg(long, short = 'c')]
+        category: Option<String>,
+        /// Show only enabled rules.
+        #[arg(long)]
+        enabled_only: bool,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Validate syntax of rule files without scanning.
+    Check {
+        /// Optional path to a specific rule file or directory (defaults to configured paths and `.eforge/rules`).
+        path: Option<PathBuf>,
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        repo: PathBuf,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Generate a starter rule template in `.eforge/rules/custom-rules.yaml`.
+    Init {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output file path (defaults to `<path>/.eforge/rules/custom-rules.yaml`).
+        #[arg(long, short = 'o')]
+        output: Option<PathBuf>,
+        /// Force overwrite if destination file already exists.
+        #[arg(long)]
+        force: bool,
+        /// Output format (`terminal`, `json`, `markdown`).
         #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
         format: OutputFormat,
     },

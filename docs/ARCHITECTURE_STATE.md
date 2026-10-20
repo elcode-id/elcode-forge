@@ -289,3 +289,18 @@
 - **Invariants:**
   - Inheritance precedence strictly enforced: `Built-in Defaults < Extended Packs < Custom Local Rules < Per-rule Overrides`.
   - Projects without explicit extends implicitly extend `recommended` for backward compatibility.
+
+## Issue #114 — CLI Rules Command (List, Check, Init) & Scanner Integration (COMPLETED)
+- **Crate:** `crates/forge-cli` (`src/commands/rules.rs`, `src/cli.rs`, `src/commands/scan.rs`, `src/commands/doctor.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_cli::commands::rules`):**
+  - CLI Subcommands:
+    - `eforge rules [list]`: renders rich rule catalog with ID, category, severity, source (`builtin`, `pack:*`, `custom:*`), and status; supports `--category` and `--enabled-only` filters.
+    - `eforge rules check [path]`: verifies rule syntax without scanning; validates against schema with zero panics.
+    - `eforge rules init`: creates `.eforge/rules/custom-rules.yaml` with starter examples for all 6 matchers.
+  - Reports: `RulesListReport`, `RulesCheckReport`, `RulesInitReport`, and `RuleItemDescriptor`.
+  - Formatters: terminal table, JSON (`--format json`), and Markdown (`--format markdown`).
+  - `eforge scan`: updated to instantiate `RuleEngine::from_config(repo_root, config)` to evaluate declarative rules alongside built-in rules.
+  - `eforge doctor`: added Check 6 for architectural & declarative rules hygiene.
+- **Invariants:**
+  - `eforge rules check` returns `ExitCode::ConfigurationError` on invalid syntax.
+  - Starter template includes valid examples for all 6 matchers (`forbidden_imports`, `required_companion`, `file_naming`, `file_size`, `regex_pattern`, `dependency_restriction`).
