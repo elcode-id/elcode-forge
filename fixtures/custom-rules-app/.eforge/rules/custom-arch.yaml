@@ -1,0 +1,60 @@
+version: 1
+rules:
+  - id: "arch/no-db-in-ui"
+    name: "No Direct DB in UI Components"
+    category: "architecture"
+    severity: "critical"
+    confidence: "certain"
+    description: "UI presentation layer must not import database modules directly."
+    remediation: "Route database access through service abstractions."
+    match:
+      type: "forbidden_imports"
+      files: ["src/ui/**"]
+      forbidden: ["src/db", "src/db/**"]
+
+  - id: "quality/require-service-tests"
+    name: "Require Service Companion Tests"
+    category: "quality"
+    severity: "high"
+    confidence: "certain"
+    description: "Every service in src/services/ must have a corresponding test companion."
+    remediation: "Add companion test file in tests/{name}.test.ts."
+    match:
+      type: "required_companion"
+      files: ["src/services/**"]
+      companion: "tests/{name}.test.ts"
+
+  - id: "quality/controller-naming-convention"
+    name: "Controller Suffix Pattern"
+    category: "quality"
+    severity: "medium"
+    confidence: "certain"
+    description: "All controller source files must end with Controller.ts."
+    remediation: "Rename file to follow *Controller.ts pattern."
+    match:
+      type: "file_naming"
+      files: ["src/controllers/**"]
+      convention: "*Controller.ts"
+
+  - id: "security/no-eval-dynamic-code"
+    name: "Disallow Dynamic Code Execution"
+    category: "security"
+    severity: "critical"
+    confidence: "certain"
+    description: "Prevent dynamic eval() calls to avoid remote code execution vulnerabilities."
+    remediation: "Use structured parsers or static dispatch tables."
+    match:
+      type: "regex_pattern"
+      files: ["src/**"]
+      pattern: 'eval\('
+
+  - id: "deps/disallow-unpinned-and-deprecated"
+    name: "Prohibit Deprecated Packages"
+    category: "dependencies"
+    severity: "high"
+    confidence: "certain"
+    description: "Prohibit deprecated or unsafe dependencies in repository manifest."
+    remediation: "Remove deprecated packages and pin exact semver versions."
+    match:
+      type: "dependency_restriction"
+      disallowed_packages: ["left-pad", "wildcard-version"]
