@@ -52,6 +52,7 @@ mod tests {
         assert!(schema_json.contains("\"HotspotEntry\""));
         assert!(schema_json.contains("\"ChangeImpactReport\""));
         assert!(schema_json.contains("\"RiskReport\""));
+        assert!(schema_json.contains("\"RuleDescriptor\""));
 
         // Validate that schema is valid JSON
         let val: serde_json::Value =
@@ -107,6 +108,7 @@ mod tests {
         assert_eq!(bundle_val["schema_version"], 1);
         assert!(bundle_val["repository"]["name"].is_string());
         assert!(bundle_val["architecture"]["circular_dependencies"].is_array());
+        assert!(bundle_val["rules"].is_array());
         Ok(())
     }
 }

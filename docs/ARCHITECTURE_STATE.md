@@ -316,3 +316,15 @@
 - **Invariants:**
   - Fast execution: `eforge_get_rules` does not run full AST parsing, resolving rule configurations directly via `load_config` and `resolve_rule_hierarchy`.
   - Strict containment: rule descriptors and filtering arguments are sanitized and protected within `UntrustedEnvelope` with `trust_level: "untrusted_repository_data"`.
+
+
+## Issue #117 — ReportBundle Rules Schema Evolution & Rules Catalog Screen (COMPLETED)
+- **Crate & Packages:** `crates/forge-cli` (`src/commands/report.rs`, `src/commands/schema.rs`), `packages/forge-schema`, `apps/dashboard`
+- **Public Types & Functions:**
+  - Rust: `RuleDescriptor` struct deriving `JsonSchema` added to `ReportBundle::rules` in `crates/forge-cli/src/commands/report.rs`.
+  - TypeScript (`@elcode-forge/schema`): `RuleDescriptor` exported from `@elcode-forge/schema` and embedded into `ReportBundle`.
+  - Dashboard: `/rules` route (`apps/dashboard/src/routes/rules/+page.svelte`) with category tabs, source pack selector, search filter, enabled toggle, and project violation count counters.
+  - Deep linking: Findings rule IDs link to `/rules?id=...`, and rule violation cards link to `/findings?rule_prefix=...`.
+- **Invariants:**
+  - `build_report_bundle` resolves active rule hierarchy via `RuleEngine::from_config` and sorts rules deterministically by `(Severity::desc, id::asc)`.
+  - Zero schema drift between `ReportBundle` Rust IR and `report-bundle.schema.json`.

@@ -3,13 +3,15 @@ use std::path::Path;
 
 use forge_analyzer::{graph::build_ts_architecture_graph, scanner::scan_repository};
 use forge_core::{
+    config::load_config,
     scoring::{calculate_change_risk, RiskReport},
-    ForgeError, Repository,
+    ForgeError, Repository, Severity,
 };
 use forge_git::{
     collect_commit_log, compute_hotspots_from_log, read_head_revision, ChangeImpactReport,
     GitRevision, HotspotEntry,
 };
+use forge_rules::RuleEngine;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -26,6 +28,19 @@ pub struct ArchitectureSummary {
     pub high_centrality_modules: Vec<String>,
 }
 
+/// Rule metadata embedded in [`ReportBundle`] for rules catalog and violation linkage.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct RuleDescriptor {
+    pub id: String,
+    pub name: String,
+    pub category: String,
+    pub severity: Severity,
+    pub source: String,
+    pub enabled: bool,
+    pub description: String,
+    pub remediation: Option<String>,
+}
+
 /// Versioned, deterministic intelligence bundle consumable by the web dashboard.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ReportBundle {
@@ -37,6 +52,7 @@ pub struct ReportBundle {
     pub hotspots: Vec<HotspotEntry>,
     pub change_impact: Option<ChangeImpactReport>,
     pub change_risk: Option<RiskReport>,
+    pub rules: Vec<RuleDescriptor>,
 }
 
 /// Options configuring [`build_report_bundle`].
@@ -98,6 +114,77 @@ pub fn build_report_bundle(
         (None, Vec::new(), None, None)
     };
 
+    let config = load_config(repo_root)?;
+    let engine = RuleEngine::from_config(repo_root, &config)?;
+
+    let mut rules = Vec::new();
+
+    // 1. Built-in rules
+    for r in engine.rules() {
+        let (name, category, desc, rem) = match r.id.as_str() {
+            "arch/no-direct-db-in-ui" => (
+                "No Direct DB in UI",
+                "architecture",
+                "UI components must not import database modules directly.",
+                Some(
+                    "Route database queries through service layer or data access repositories."
+                        .to_string(),
+                ),
+            ),
+            "arch/no-circular-dependencies" => (
+                "No Circular Dependencies",
+                "architecture",
+                "Module import graph must be an acyclic directed graph (DAG).",
+                Some("Extract shared interfaces or decouple circular dependencies.".to_string()),
+            ),
+            "quality/require-service-tests" => (
+                "Require Service Tests",
+                "quality",
+                "Application services should have companion test files.",
+                Some("Create companion test file in tests/ directory.".to_string()),
+            ),
+            "quality/max-file-lines" => (
+                "Max File Lines",
+                "quality",
+                "Source files should not exceed configured line limits.",
+                Some("Refactor and decompose file into smaller modular units.".to_string()),
+            ),
+            _ => ("Built-in Rule", "quality", "Engine rule", None),
+        };
+
+        rules.push(RuleDescriptor {
+            id: r.id.clone(),
+            name: name.to_string(),
+            category: category.to_string(),
+            severity: r.severity,
+            source: "builtin".to_string(),
+            enabled: r.enabled,
+            description: desc.to_string(),
+            remediation: rem,
+        });
+    }
+
+    // 2. Declarative rules
+    for d in engine.declarative_rules() {
+        rules.push(RuleDescriptor {
+            id: d.id.clone(),
+            name: d.name.clone(),
+            category: d.category.as_str().to_string(),
+            severity: d.severity,
+            source: d.source.to_string(),
+            enabled: d.enabled,
+            description: d.description.clone(),
+            remediation: if d.remediation.is_empty() {
+                None
+            } else {
+                Some(d.remediation.clone())
+            },
+        });
+    }
+
+    // Deterministic sort: Severity descending, then ID ascending
+    rules.sort_by(|a, b| b.severity.cmp(&a.severity).then_with(|| a.id.cmp(&b.id)));
+
     Ok(ReportBundle {
         schema_version: REPORT_SCHEMA_VERSION,
         tool_version: env!("CARGO_PKG_VERSION").to_string(),
@@ -107,6 +194,7 @@ pub fn build_report_bundle(
         hotspots,
         change_impact,
         change_risk,
+        rules,
     })
 }
 
@@ -191,6 +279,19 @@ mod tests {
                         .any(|cycle| cycle.contains(&"src/services".to_string())
                             && cycle.contains(&"src/db".to_string())),
                     "ReportBundle must contain circular dependencies"
+                );
+
+                // Verify rules are populated and sorted
+                assert!(
+                    !bundle1.rules.is_empty(),
+                    "Rules must be populated in ReportBundle"
+                );
+                assert!(
+                    bundle1
+                        .rules
+                        .iter()
+                        .any(|r| r.id == "arch/no-direct-db-in-ui"),
+                    "Built-in arch rule must exist in bundle rules"
                 );
             }
         }

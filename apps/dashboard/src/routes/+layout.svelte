@@ -65,6 +65,12 @@
             Findings
           </a>
           <a
+            href="/rules"
+            class="px-2.5 py-1 rounded text-xs text-slate-300 hover:text-white hover:bg-slate-800 transition-colors font-medium"
+          >
+            Rules
+          </a>
+          <a
             href="/security"
             class="px-2.5 py-1 rounded text-xs text-slate-300 hover:text-white hover:bg-slate-800 transition-colors font-medium"
           >

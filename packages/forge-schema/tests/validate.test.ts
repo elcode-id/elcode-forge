@@ -105,6 +105,18 @@ describe("parseReportBundle", () => {
       score: 15,
       reasons: ["Minimal changes"],
     },
+    rules: [
+      {
+        id: "arch/sample",
+        name: "Sample Rule",
+        category: "architecture",
+        severity: "high",
+        source: "builtin",
+        enabled: true,
+        description: "Sample rule description",
+        remediation: "Fix it",
+      },
+    ],
   };
 
   it("validates a compliant ReportBundle successfully", () => {
@@ -113,6 +125,8 @@ describe("parseReportBundle", () => {
     if (result.ok) {
       expect(result.bundle.schema_version).toBe(SUPPORTED_SCHEMA_VERSION);
       expect(result.bundle.repository.name).toBe("sample-repo");
+      expect(result.bundle.rules.length).toBe(1);
+      expect(result.bundle.rules[0].id).toBe("arch/sample");
     }
   });
 
