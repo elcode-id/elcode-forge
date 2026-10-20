@@ -251,16 +251,36 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                     }
                 }
                 "languages" => {
-                    active_list = Some("languages");
+                    if let Some(items) = parse_inline_array(val) {
+                        config.languages.extend(items);
+                    } else {
+                        active_list = Some("languages");
+                    }
                 }
                 "ignore" | "ignore_patterns" => {
-                    active_list = Some("ignore");
+                    if let Some(items) = parse_inline_array(val) {
+                        if !custom_ignores_started {
+                            config.ignore_patterns.clear();
+                            custom_ignores_started = true;
+                        }
+                        config.ignore_patterns.extend(items);
+                    } else {
+                        active_list = Some("ignore");
+                    }
                 }
                 "rule_packs" => {
-                    active_list = Some("rules_extends");
+                    if let Some(items) = parse_inline_array(val) {
+                        config.rule_packs.extend(items);
+                    } else {
+                        active_list = Some("rules_extends");
+                    }
                 }
                 "custom_rules" | "custom_rule_paths" => {
-                    active_list = Some("rules_custom_packs");
+                    if let Some(items) = parse_inline_array(val) {
+                        config.custom_rule_paths.extend(items);
+                    } else {
+                        active_list = Some("rules_custom_packs");
+                    }
                 }
                 "project" => current_section = Some("project"),
                 "analysis" => current_section = Some("analysis"),
@@ -453,10 +473,18 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                 }
                 (Some("scoring"), _) => {}
                 (Some("rules"), "extends") => {
-                    active_list = Some("rules_extends");
+                    if let Some(items) = parse_inline_array(val) {
+                        config.rule_packs.extend(items);
+                    } else {
+                        active_list = Some("rules_extends");
+                    }
                 }
                 (Some("rules"), "custom_packs" | "custom_rules" | "custom_rule_paths") => {
-                    active_list = Some("rules_custom_packs");
+                    if let Some(items) = parse_inline_array(val) {
+                        config.custom_rule_paths.extend(items);
+                    } else {
+                        active_list = Some("rules_custom_packs");
+                    }
                 }
                 (Some("rules"), "fail_on_severity") => {
                     if !val.is_empty() {
@@ -500,6 +528,21 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
     }
 
     Ok(config)
+}
+
+fn parse_inline_array(raw: &str) -> Option<Vec<String>> {
+    let trimmed = raw.trim();
+    if trimmed.starts_with('[') && trimmed.ends_with(']') {
+        let inner = &trimmed[1..trimmed.len() - 1];
+        let items = inner
+            .split(',')
+            .map(|s| unquote(s.trim()).to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+        Some(items)
+    } else {
+        None
+    }
 }
 
 fn unquote(input: &str) -> &str {
@@ -810,6 +853,27 @@ rules:
             if let Some(rule_override) = cfg.rules.get("quality/max-file-lines") {
                 assert_eq!(rule_override.max_lines, Some(450));
             }
+        }
+    }
+
+    #[test]
+    fn parses_inline_arrays_for_extends_and_rules() {
+        let yaml = r#"
+version: 1
+languages: ["typescript", "rust"]
+rules:
+  extends: ["recommended", "clean-architecture"]
+  custom_packs: ["rules/team.yaml", "rules/strict.json"]
+"#;
+        let res = parse_config_yaml(yaml);
+        assert!(res.is_ok());
+        if let Ok(cfg) = res {
+            assert_eq!(cfg.languages, vec!["typescript", "rust"]);
+            assert_eq!(cfg.rule_packs, vec!["recommended", "clean-architecture"]);
+            assert_eq!(
+                cfg.custom_rule_paths,
+                vec!["rules/team.yaml", "rules/strict.json"]
+            );
         }
     }
 

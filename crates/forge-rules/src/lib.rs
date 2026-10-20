@@ -4,6 +4,7 @@ pub mod builtin;
 pub mod declarative;
 pub mod engine;
 pub mod matchers;
+pub mod packs;
 
 pub use builtin::{
     check_max_file_lines, check_no_circular_dependencies, check_no_direct_db_in_ui,
@@ -17,3 +18,4 @@ pub use declarative::{
 pub use engine::{RuleConfig, RuleEngine};
 pub use forge_core::Analyzer;
 pub use matchers::evaluate_declarative_rule;
+pub use packs::{get_builtin_pack, list_builtin_packs, resolve_rule_hierarchy, RulePack};

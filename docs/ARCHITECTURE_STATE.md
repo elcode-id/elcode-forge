@@ -273,3 +273,19 @@
   - Deterministic findings sorting by `(Severity::desc, id::asc)` and deduplication.
   - Zero-panic execution across all matchers with canonical path-guard protection for file-reading matchers.
 
+## Issue #113 — Rule Packs Engine & Config Extends Hierarchy (COMPLETED)
+- **Crates:** `crates/forge-rules` (`src/packs.rs`, `src/engine.rs`, `src/lib.rs`) and `crates/forge-core` (`src/config.rs`)
+- **Public Types & Functions (`forge_rules::packs` & `forge_rules::engine`):**
+  - `RulePack`: pre-packaged architectural, quality, or security rule bundle.
+  - Four built-in packs:
+    - `recommended`: standard engineering baseline (`no-direct-db-in-ui`, `no-circular-dependencies`, `require-service-tests`, `max-file-lines: 300`).
+    - `strict`: elevated discipline (critical architecture boundaries, 250-line file limit, strict test companions, unpinned version prevention).
+    - `security`: code hardening (prohibits `eval()`, `child_process.exec()`, debugger statements, `dangerouslySetInnerHTML`, and known vulnerable packages).
+    - `clean-architecture`: hexagonal/onion layer boundaries (`ui-no-infra`, `domain-pure`, `infra-no-ui`, `ui-no-db`).
+  - `get_builtin_pack(name: &str) -> Option<RulePack>` and `list_builtin_packs() -> Vec<RulePack>`.
+  - `resolve_rule_hierarchy(repo_root: &Path, config: &ForgeConfig) -> Result<(Vec<RuleConfig>, Vec<DeclarativeRule>), ForgeError>`.
+  - `RuleEngine::from_config(repo_root: &Path, config: &ForgeConfig) -> Result<RuleEngine, ForgeError>`.
+  - `ForgeConfig`: added inline array parsing support (`extends: ["recommended", "clean-architecture"]`).
+- **Invariants:**
+  - Inheritance precedence strictly enforced: `Built-in Defaults < Extended Packs < Custom Local Rules < Per-rule Overrides`.
+  - Projects without explicit extends implicitly extend `recommended` for backward compatibility.

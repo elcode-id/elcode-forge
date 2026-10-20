@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
+use std::path::Path;
 
-use forge_core::{Analyzer, Finding, ForgeError, Repository, RuleOverrideConfig, Severity};
+use forge_core::{
+    Analyzer, Finding, ForgeConfig, ForgeError, Repository, RuleOverrideConfig, Severity,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::builtin::{
@@ -87,6 +90,16 @@ impl RuleEngine {
             }
         }
         engine
+    }
+
+    /// Builds a [`RuleEngine`] by resolving the full rule configuration hierarchy from `repo_root` and `config`:
+    /// `Built-in Defaults < Extended Packs < Custom Local Rules < Per-rule Overrides`.
+    pub fn from_config(repo_root: &Path, config: &ForgeConfig) -> Result<Self, ForgeError> {
+        let (rules, declarative_rules) = crate::packs::resolve_rule_hierarchy(repo_root, config)?;
+        Ok(Self {
+            rules,
+            declarative_rules,
+        })
     }
 
     /// Appends declarative custom rules into this engine instance.
@@ -328,5 +341,41 @@ mod tests {
             assert_eq!(findings[1].severity, Severity::Medium);
             assert_eq!(findings[1].rule_id, "naming/controller-suffix");
         }
+    }
+
+    #[test]
+    fn engine_from_config_resolves_extended_packs_and_overrides() {
+        let temp_dir =
+            std::env::temp_dir().join(format!("forge_engine_cfg_test_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&temp_dir);
+
+        let mut config = ForgeConfig {
+            rule_packs: vec!["clean-architecture".to_string()],
+            ..Default::default()
+        };
+        config.rules.insert(
+            "arch/ui-no-infra".to_string(),
+            forge_core::RuleOverrideConfig {
+                enabled: Some(false),
+                severity: None,
+                max_lines: None,
+            },
+        );
+
+        let engine_res = RuleEngine::from_config(&temp_dir, &config);
+        assert!(engine_res.is_ok());
+
+        if let Ok(engine) = engine_res {
+            let ui_infra = engine
+                .declarative_rules()
+                .iter()
+                .find(|d| d.id == "arch/ui-no-infra");
+            assert!(ui_infra.is_some());
+            if let Some(d) = ui_infra {
+                assert!(!d.enabled);
+            }
+        }
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
     }
 }
