@@ -196,7 +196,7 @@ mod tests {
         assert!(list_resp.is_some());
         if let Some(raw) = list_resp {
             let v: Value = serde_json::from_str(&raw).unwrap_or(Value::Null);
-            assert_eq!(v["result"]["tools"].as_array().map_or(0, Vec::len), 6);
+            assert_eq!(v["result"]["tools"].as_array().map_or(0, Vec::len), 7);
         }
     }
 
@@ -213,6 +213,22 @@ mod tests {
             assert_eq!(v["result"]["isError"], false);
             let text = v["result"]["content"][0]["text"].as_str().unwrap_or("");
             assert!(text.contains("untrusted_repository_data"));
+        }
+    }
+    #[test]
+    fn tools_call_eforge_get_rules_returns_untrusted_envelope_and_rules() {
+        let root = fixture_next_app();
+        let call_resp = handle_jsonrpc_line(
+            &root,
+            r#"{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"eforge_get_rules","arguments":{"category":"architecture"}}}"#,
+        );
+        assert!(call_resp.is_some());
+        if let Some(raw) = call_resp {
+            let v: Value = serde_json::from_str(&raw).unwrap_or(Value::Null);
+            assert_eq!(v["result"]["isError"], false);
+            let text = v["result"]["content"][0]["text"].as_str().unwrap_or("");
+            assert!(text.contains("untrusted_repository_data"));
+            assert!(text.contains("arch/no-direct-db-in-ui"));
         }
     }
 }
