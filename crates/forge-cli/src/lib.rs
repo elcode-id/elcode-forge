@@ -8,6 +8,7 @@ pub mod formatters;
 pub mod serve;
 
 use std::fs;
+use std::path::Path;
 
 use clap::Parser;
 pub use cli::{Cli, Commands, OutputFormat};
@@ -37,6 +38,128 @@ pub fn run_cli_from_env() -> ExitCode {
                 ExitCode::ExecutionError
             }
         },
+        Some(Commands::Rules {
+            action,
+            path,
+            format,
+        }) => {
+            match action.unwrap_or(cli::RulesAction::List {
+                path: path.clone(),
+                category: None,
+                enabled_only: false,
+                format,
+            }) {
+                cli::RulesAction::List {
+                    path: list_path,
+                    category,
+                    enabled_only,
+                    format: list_format,
+                } => {
+                    let target_dir = if list_path != Path::new(".") {
+                        list_path
+                    } else {
+                        path
+                    };
+                    let active_format = if list_format != cli::OutputFormat::Terminal {
+                        list_format
+                    } else {
+                        format
+                    };
+                    match commands::rules::run_rules_list(
+                        &target_dir,
+                        category.as_deref(),
+                        enabled_only,
+                    ) {
+                        Ok(report) => {
+                            match commands::rules::render_rules_list(&report, active_format) {
+                                Ok(rendered) => {
+                                    println!("{rendered}");
+                                    ExitCode::Success
+                                }
+                                Err(err) => {
+                                    eprintln!("Error formatting rules list: {err}");
+                                    ExitCode::ExecutionError
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            eprintln!("Error listing rules: {err}");
+                            ExitCode::ExecutionError
+                        }
+                    }
+                }
+                cli::RulesAction::Check {
+                    path: target_file,
+                    repo,
+                    format: check_format,
+                } => {
+                    let active_repo = if repo != Path::new(".") { repo } else { path };
+                    let active_format = if check_format != cli::OutputFormat::Terminal {
+                        check_format
+                    } else {
+                        format
+                    };
+                    match commands::rules::run_rules_check(&active_repo, target_file.as_deref()) {
+                        Ok(report) => {
+                            let exit_code = if report.invalid_files > 0 {
+                                ExitCode::ConfigurationError
+                            } else {
+                                ExitCode::Success
+                            };
+                            match commands::rules::render_rules_check(&report, active_format) {
+                                Ok(rendered) => {
+                                    println!("{rendered}");
+                                    exit_code
+                                }
+                                Err(err) => {
+                                    eprintln!("Error formatting rules check report: {err}");
+                                    ExitCode::ExecutionError
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            eprintln!("Error checking rule files: {err}");
+                            ExitCode::ExecutionError
+                        }
+                    }
+                }
+                cli::RulesAction::Init {
+                    path: init_path,
+                    output,
+                    force,
+                    format: init_format,
+                } => {
+                    let active_path = if init_path != Path::new(".") {
+                        init_path
+                    } else {
+                        path
+                    };
+                    let active_format = if init_format != cli::OutputFormat::Terminal {
+                        init_format
+                    } else {
+                        format
+                    };
+                    match commands::rules::run_rules_init(&active_path, output.as_deref(), force) {
+                        Ok(report) => {
+                            match commands::rules::render_rules_init(&report, active_format) {
+                                Ok(rendered) => {
+                                    println!("{rendered}");
+                                    ExitCode::Success
+                                }
+                                Err(err) => {
+                                    eprintln!("Error formatting rules init report: {err}");
+                                    ExitCode::ExecutionError
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            eprintln!("Error initializing rules template: {err}");
+                            ExitCode::ExecutionError
+                        }
+                    }
+                }
+            }
+        }
         Some(Commands::Doctor { path, format }) => match commands::doctor::run_doctor(&path) {
             Ok(report) => match commands::doctor::render_doctor_report(&report, format) {
                 Ok(rendered) => {

@@ -130,6 +130,31 @@ pub fn run_doctor(repo_root: &Path) -> Result<DoctorReport, ForgeError> {
         },
     });
 
+    // Check 6: Architectural & Quality Rules Hygiene
+    let rule_engine = forge_rules::RuleEngine::from_config(repo_root, &config)?;
+    let active_rules_count = rule_engine.rules().iter().filter(|r| r.enabled).count()
+        + rule_engine
+            .declarative_rules()
+            .iter()
+            .filter(|r| r.enabled)
+            .count();
+    let packs_display = if config.rule_packs.is_empty() {
+        "recommended".to_string()
+    } else {
+        config.rule_packs.join(", ")
+    };
+    checks.push(DoctorCheck {
+        label: "Architectural & quality rules".to_string(),
+        passed: true,
+        warning: false,
+        detail: format!(
+            "Loaded {} active rule(s) (packs: [{}], custom: {})",
+            active_rules_count,
+            packs_display,
+            rule_engine.declarative_rules().len()
+        ),
+    });
+
     let warnings_count = checks
         .iter()
         .filter(|check| check.warning || !check.passed)
@@ -224,7 +249,7 @@ mod tests {
         if let Ok(report) = report_res {
             assert!(report.repository_detected);
             assert!(report.duration_ms < 5_000);
-            assert_eq!(report.checks.len(), 5);
+            assert_eq!(report.checks.len(), 6);
 
             let json_res = render_doctor_report(&report, OutputFormat::Json);
             assert!(json_res.is_ok());
