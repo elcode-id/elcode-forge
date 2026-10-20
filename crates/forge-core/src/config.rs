@@ -89,6 +89,10 @@ pub struct ForgeConfig {
     pub fail_on_severity: Option<Severity>,
     #[serde(default)]
     pub rules: BTreeMap<String, RuleOverrideConfig>,
+    #[serde(default)]
+    pub rule_packs: Vec<String>,
+    #[serde(default)]
+    pub custom_rule_paths: Vec<String>,
 }
 
 impl Default for ForgeConfig {
@@ -108,6 +112,8 @@ impl Default for ForgeConfig {
             ai: AiConfig::default(),
             fail_on_severity: None,
             rules: BTreeMap::new(),
+            rule_packs: Vec::new(),
+            custom_rule_paths: Vec::new(),
         }
     }
 }
@@ -182,6 +188,8 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                     }
                     config.ignore_patterns.push(value.to_string());
                 }
+                Some("rules_extends") => config.rule_packs.push(value.to_string()),
+                Some("rules_custom_packs") => config.custom_rule_paths.push(value.to_string()),
                 Some(_) => {}
                 None => {
                     return Err(ForgeError::Config {
@@ -247,6 +255,12 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                 }
                 "ignore" | "ignore_patterns" => {
                     active_list = Some("ignore");
+                }
+                "rule_packs" => {
+                    active_list = Some("rules_extends");
+                }
+                "custom_rules" | "custom_rule_paths" => {
+                    active_list = Some("rules_custom_packs");
                 }
                 "project" => current_section = Some("project"),
                 "analysis" => current_section = Some("analysis"),
@@ -440,6 +454,9 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                 (Some("scoring"), _) => {}
                 (Some("rules"), "extends") => {
                     active_list = Some("rules_extends");
+                }
+                (Some("rules"), "custom_packs" | "custom_rules" | "custom_rule_paths") => {
+                    active_list = Some("rules_custom_packs");
                 }
                 (Some("rules"), "fail_on_severity") => {
                     if !val.is_empty() {
@@ -764,6 +781,35 @@ ai:
         if let Ok(cfg) = res {
             assert!(cfg.ai_enabled);
             assert!(cfg.ai.enabled);
+        }
+    }
+
+    #[test]
+    fn parses_rules_extends_and_custom_packs() {
+        let yaml = r#"
+version: 1
+rules:
+  extends:
+    - recommended
+    - strict
+  custom_packs:
+    - .eforge/rules
+    - rules/team-rules.yaml
+  quality/max-file-lines:
+    max_lines: 450
+"#;
+        let res = parse_config_yaml(yaml);
+        assert!(res.is_ok());
+        if let Ok(cfg) = res {
+            assert_eq!(cfg.rule_packs, vec!["recommended", "strict"]);
+            assert_eq!(
+                cfg.custom_rule_paths,
+                vec![".eforge/rules", "rules/team-rules.yaml"]
+            );
+            assert!(cfg.rules.contains_key("quality/max-file-lines"));
+            if let Some(rule_override) = cfg.rules.get("quality/max-file-lines") {
+                assert_eq!(rule_override.max_lines, Some(450));
+            }
         }
     }
 

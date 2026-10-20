@@ -238,3 +238,21 @@
   - Node/pnpm workflows (`ci-web.yml`, `eforge-dogfood.yml`) use deterministic `npm install -g pnpm@12.8.1` + `actions/cache@v4` on `pnpm store path --silent` to avoid `pnpm/action-setup@v4` self-installer incompatibilities.
   - `security-durability.yml` enforces `cargo audit` (RustSec Advisory DB) and `eforge security --format sarif`; `release-binaries.yml` builds cross-platform `--locked` binaries with `SHA256SUMS.txt`.
   - **Mandatory Green-CI Pre-Merge Gate:** Every PR must pass `gh pr checks <PR_NUMBER> --watch` 100% green before running `gh pr merge --squash`.
+
+## Issue #110 — Declarative Custom Rule Schema, IR Models, and Rule Loader (COMPLETED)
+- **Crates:** `crates/forge-rules` (`src/declarative.rs`, `src/lib.rs`) and `crates/forge-core` (`src/config.rs`)
+- **Public Types & Functions (`forge_rules` / `forge_core`):**
+  - `RuleCategory { Architecture, Quality, Security, Dependencies }` with `as_str`, `Display`, `FromStr`.
+  - `RuleSource { Builtin(String), Pack(String), Custom(String) }`.
+  - `MatcherKind { ForbiddenImports, RequiredCompanion, FileNaming, FileSize, RegexPattern, DependencyRestriction, Unknown }`.
+  - `RuleMatcher`, `DeclarativeRule`, `RuleFile`.
+  - `validate_rule_id(id: &str) -> Result<(), ForgeError>`.
+  - `validate_rule(rule: &DeclarativeRule) -> Result<(), ForgeError>`.
+  - `parse_rule_file(content: &str, source: RuleSource) -> Result<Vec<DeclarativeRule>, ForgeError>`.
+  - `load_declarative_rules(repo_root: &Path, custom_paths: &[String]) -> Result<Vec<DeclarativeRule>, ForgeError>`.
+  - `ForgeConfig`: added `rule_packs: Vec<String>` and `custom_rule_paths: Vec<String>` with full `eforge.config.yaml` parsing.
+- **Invariants:**
+  - Rule IDs must strictly follow `<category>/<slug>` (`arch`, `quality`, `security`, `deps`).
+  - Safe path resolution via `path_guard::resolve_safe_path` enforces that all rule files and packs stay strictly within the analyzed repository root, preventing path traversal attacks (`../`).
+  - Zero-panic parsing of both YAML and JSON rule specifications with line-aware diagnostics.
+
