@@ -1,0 +1,6 @@
+version: 1
+rules:
+  extends:
+    - recommended
+  custom_packs:
+    - .eforge/rules/custom-arch.yaml

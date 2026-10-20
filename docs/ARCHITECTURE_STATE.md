@@ -328,3 +328,15 @@
 - **Invariants:**
   - `build_report_bundle` resolves active rule hierarchy via `RuleEngine::from_config` and sorts rules deterministically by `(Severity::desc, id::asc)`.
   - Zero schema drift between `ReportBundle` Rust IR and `report-bundle.schema.json`.
+
+
+## Issue #118 — Custom Rules Fixture, E2E Evaluation Suite, Rules Guide & v0.5.0 Release (COMPLETED)
+- **Crates, Packages & Fixtures:** `fixtures/custom-rules-app`, `crates/forge-cli` (`tests/custom_rules_e2e.rs`), `docs/RULES_GUIDE.md`, `README.md`, `Cargo.toml`, `package.json`
+- **Capabilities & Deliverables:**
+  - `fixtures/custom-rules-app`: Curated fixture demonstrating all 6 custom matchers (`forbidden_imports`, `required_companion`, `file_naming`, `file_size`, `regex_pattern`, `dependency_restriction`) and compliant files with zero false positives.
+  - `tests/custom_rules_e2e.rs`: Integration suite verifying `eforge rules list`, `eforge rules check`, `eforge scan`, and `eforge report` against `fixtures/custom-rules-app`.
+  - `docs/RULES_GUIDE.md`: Living guide detailing custom rule syntax, matcher schemas, pack extension precedence, and MCP tool usage.
+  - Version Release: Bumped workspace to `v0.5.0` across Rust crates (`Cargo.toml`) and TypeScript packages (`packages/forge-schema`, `packages/forge-ui`, `apps/dashboard`).
+- **Invariants:**
+  - Zero-panic test discipline: integration test suite complies strictly with zero `.unwrap()` and `.expect()` policy.
+  - Zero schema drift and 100% green CI verification across all dogfooding and release workflows.
