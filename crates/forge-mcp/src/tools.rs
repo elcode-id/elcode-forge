@@ -8,7 +8,7 @@ use forge_analyzer::{
 use forge_core::{
     config::load_config,
     scoring::{calculate_change_risk, calculate_health_score},
-    Finding, ForgeError, Repository,
+    Finding, ForgeError, Repository, Severity,
 };
 use forge_git::{collect_working_tree_diff, compute_change_impact, parse_unified_diff};
 use forge_rules::RuleEngine;
@@ -24,6 +24,19 @@ pub struct McpToolDescriptor {
     pub name: String,
     pub description: String,
     pub input_schema: Value,
+}
+
+/// Detailed rule descriptor exposed via `eforge_get_rules`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct McpRuleDescriptor {
+    pub id: String,
+    pub name: String,
+    pub category: String,
+    pub severity: Severity,
+    pub description: String,
+    pub remediation: String,
+    pub source: String,
+    pub enabled: bool,
 }
 
 /// Returns the deterministic catalog of `eforge_*` MCP tools.
@@ -80,6 +93,24 @@ pub fn list_mcp_tools() -> Vec<McpToolDescriptor> {
                 "additionalProperties": false
             }),
         },
+        McpToolDescriptor {
+            name: "eforge_get_rules".to_string(),
+            description: "Returns active architectural, quality, security, and dependency rule definitions with pack inheritance and status.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "category": {
+                        "type": "string",
+                        "description": "Optional category filter: architecture, quality, security, dependencies"
+                    },
+                    "enabled_only": {
+                        "type": "boolean",
+                        "description": "Optional flag: if true, returns only currently enabled rules"
+                    }
+                },
+                "additionalProperties": false
+            }),
+        },
     ]
 }
 
@@ -114,7 +145,7 @@ fn build_analyzed_repo(repo_root: &Path) -> Result<AnalyzedContext, ForgeError> 
         health: None,
     };
 
-    let engine = RuleEngine::with_config_overrides(&config.rules);
+    let engine = RuleEngine::from_config(repo_root, &config)?;
     let mut findings = engine.evaluate(&repo)?;
     findings.extend(dep_report.findings);
     findings.extend(SecurityScanner::scan_repository_files(
@@ -153,55 +184,171 @@ pub fn call_mcp_tool(
     tool_name: &str,
     arguments: &Value,
 ) -> Result<Value, ForgeError> {
-    let ctx = build_analyzed_repo(repo_root)?;
-    let repo = ctx.repo;
-    let cycles = ctx.cycles;
-    let test_files = ctx.test_files;
-
     match tool_name {
-        "eforge_project_info" => to_envelope_json(
-            json!({
-                "name": repo.name,
-                "languages": repo.detected_languages,
-                "frameworks": repo.detected_frameworks,
-                "package_managers": repo.package_managers,
-                "file_count": repo.files.len(),
-                "module_count": repo.modules.len(),
-                "dependency_count": repo.dependencies.len(),
-                "finding_count": repo.findings.len(),
-                "health": repo.health,
-            }),
-            &[],
-        ),
-        "eforge_get_architecture" => to_envelope_json(
-            json!({
-                "modules": repo.modules,
-                "circular_dependencies": cycles,
-            }),
-            &[],
-        ),
+        "eforge_get_rules" => {
+            let config = load_config(repo_root)?;
+            let engine = RuleEngine::from_config(repo_root, &config)?;
+
+            let extended_packs = if config.rule_packs.is_empty() {
+                vec!["recommended".to_string()]
+            } else {
+                config.rule_packs.clone()
+            };
+
+            let mut rules = Vec::new();
+
+            for r in engine.rules() {
+                let (name, category, desc, remed) = match r.id.as_str() {
+                    "arch/no-direct-db-in-ui" => (
+                        "No Direct DB in UI",
+                        "architecture",
+                        "UI components must not import database modules directly.",
+                        "Route data access through services in src/services/.",
+                    ),
+                    "arch/no-circular-dependencies" => (
+                        "No Circular Dependencies",
+                        "architecture",
+                        "Module import graph must be an acyclic directed graph (DAG).",
+                        "Refactor cyclic imports into shared contracts or interface abstractions.",
+                    ),
+                    "quality/require-service-tests" => (
+                        "Require Service Tests",
+                        "quality",
+                        "Application services should have companion test files.",
+                        "Add companion test file for uncovered services.",
+                    ),
+                    "quality/max-file-lines" => (
+                        "Max File Lines",
+                        "quality",
+                        "Source files should not exceed configured line limits.",
+                        "Split file into smaller single-responsibility modules.",
+                    ),
+                    _ => (
+                        "Built-in Rule",
+                        "quality",
+                        "Engine rule",
+                        "Follow best practices.",
+                    ),
+                };
+
+                rules.push(McpRuleDescriptor {
+                    id: r.id.clone(),
+                    name: name.to_string(),
+                    category: category.to_string(),
+                    severity: r.severity,
+                    description: desc.to_string(),
+                    remediation: remed.to_string(),
+                    source: "builtin".to_string(),
+                    enabled: r.enabled,
+                });
+            }
+
+            for d in engine.declarative_rules() {
+                rules.push(McpRuleDescriptor {
+                    id: d.id.clone(),
+                    name: d.name.clone(),
+                    category: d.category.as_str().to_string(),
+                    severity: d.severity,
+                    description: d.description.clone(),
+                    remediation: d.remediation.clone(),
+                    source: d.source.to_string(),
+                    enabled: d.enabled,
+                });
+            }
+
+            let category_arg = arguments.get("category").and_then(Value::as_str);
+            if let Some(cat) = category_arg {
+                let cat_lower = cat.to_ascii_lowercase();
+                rules.retain(|r| {
+                    r.category.to_ascii_lowercase().contains(&cat_lower)
+                        || match cat_lower.as_str() {
+                            "arch" => r.category == "architecture",
+                            "sec" => r.category == "security",
+                            "deps" => r.category == "dependencies",
+                            _ => false,
+                        }
+                });
+            }
+
+            let enabled_only = arguments
+                .get("enabled_only")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            if enabled_only {
+                rules.retain(|r| r.enabled);
+            }
+
+            rules.sort_by(|a, b| b.severity.cmp(&a.severity).then_with(|| a.id.cmp(&b.id)));
+
+            let total_rules = rules.len();
+            let enabled_rules = rules.iter().filter(|r| r.enabled).count();
+
+            let raw_texts: Vec<&str> = category_arg.into_iter().collect();
+
+            to_envelope_json(
+                json!({
+                    "total_rules": total_rules,
+                    "enabled_rules": enabled_rules,
+                    "extended_packs": extended_packs,
+                    "rules": rules,
+                }),
+                &raw_texts,
+            )
+        }
+        "eforge_project_info" => {
+            let ctx = build_analyzed_repo(repo_root)?;
+            let repo = ctx.repo;
+            to_envelope_json(
+                json!({
+                    "name": repo.name,
+                    "languages": repo.detected_languages,
+                    "frameworks": repo.detected_frameworks,
+                    "package_managers": repo.package_managers,
+                    "file_count": repo.files.len(),
+                    "module_count": repo.modules.len(),
+                    "dependency_count": repo.dependencies.len(),
+                    "finding_count": repo.findings.len(),
+                    "health": repo.health,
+                }),
+                &[],
+            )
+        }
+        "eforge_get_architecture" => {
+            let ctx = build_analyzed_repo(repo_root)?;
+            to_envelope_json(
+                json!({
+                    "modules": ctx.repo.modules,
+                    "circular_dependencies": ctx.cycles,
+                }),
+                &[],
+            )
+        }
         "eforge_get_dependencies" => {
-            let dep_findings: Vec<&Finding> = repo
+            let ctx = build_analyzed_repo(repo_root)?;
+            let dep_findings: Vec<&Finding> = ctx
+                .repo
                 .findings
                 .iter()
                 .filter(|f| f.rule_id.starts_with("deps/"))
                 .collect();
             to_envelope_json(
                 json!({
-                    "dependencies": repo.dependencies,
+                    "dependencies": ctx.repo.dependencies,
                     "findings": dep_findings,
                 }),
                 &[],
             )
         }
         "eforge_get_findings" => {
+            let ctx = build_analyzed_repo(repo_root)?;
             let sev_filter = arguments
                 .get("severity")
                 .and_then(Value::as_str)
                 .map(str::to_ascii_lowercase);
             let prefix_filter = arguments.get("rule_prefix").and_then(Value::as_str);
 
-            let filtered: Vec<&Finding> = repo
+            let filtered: Vec<&Finding> = ctx
+                .repo
                 .findings
                 .iter()
                 .filter(|f| {
@@ -222,12 +369,14 @@ pub fn call_mcp_tool(
             )
         }
         "eforge_get_change_impact" => {
+            let ctx = build_analyzed_repo(repo_root)?;
+            let repo = ctx.repo;
             let diff_text = match arguments.get("diff_text").and_then(Value::as_str) {
                 Some(text) => text.to_string(),
                 None => collect_working_tree_diff(repo_root).unwrap_or_default(),
             };
             let changes = parse_unified_diff(&diff_text)?;
-            let impact = compute_change_impact(&changes, &repo.modules, &test_files);
+            let impact = compute_change_impact(&changes, &repo.modules, &ctx.test_files);
             let changed_paths: BTreeSet<&str> = changes.iter().map(|c| c.path.as_str()).collect();
             let diff_findings: Vec<Finding> = repo
                 .findings
@@ -256,6 +405,8 @@ pub fn call_mcp_tool(
             )
         }
         "eforge_explain_module" => {
+            let ctx = build_analyzed_repo(repo_root)?;
+            let repo = ctx.repo;
             let target = arguments
                 .get("target")
                 .and_then(Value::as_str)
@@ -333,10 +484,11 @@ mod tests {
     }
 
     #[test]
-    fn list_mcp_tools_exposes_six_eforge_tools() {
+    fn list_mcp_tools_exposes_seven_eforge_tools() {
         let tools = list_mcp_tools();
-        assert_eq!(tools.len(), 6);
+        assert_eq!(tools.len(), 7);
         assert!(tools.iter().all(|t| t.name.starts_with("eforge_")));
+        assert!(tools.iter().any(|t| t.name == "eforge_get_rules"));
     }
 
     #[test]
@@ -357,6 +509,34 @@ mod tests {
         assert!(explain.is_ok());
         if let Ok(val) = explain {
             assert_eq!(val["payload"]["target"], "src/services");
+        }
+    }
+
+    #[test]
+    fn call_mcp_get_rules_returns_envelope_and_filters_rules() {
+        let root = fixture_next_app();
+        let rules_res = call_mcp_tool(&root, "eforge_get_rules", &json!({}));
+        assert!(rules_res.is_ok());
+        if let Ok(val) = rules_res {
+            assert_eq!(val["trust_level"], "untrusted_repository_data");
+            let total = val["payload"]["total_rules"].as_u64().unwrap_or(0);
+            assert!(total >= 4);
+            let rules = val["payload"]["rules"].as_array();
+            assert!(rules.is_some());
+        }
+
+        let filtered_res = call_mcp_tool(
+            &root,
+            "eforge_get_rules",
+            &json!({"category": "architecture", "enabled_only": true}),
+        );
+        assert!(filtered_res.is_ok());
+        if let Ok(val) = filtered_res {
+            let rules = val["payload"]["rules"].as_array();
+            assert!(rules.is_some());
+            if let Some(arr) = rules {
+                assert!(arr.iter().all(|r| r["category"] == "architecture"));
+            }
         }
     }
 }

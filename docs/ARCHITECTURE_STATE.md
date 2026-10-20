@@ -304,3 +304,15 @@
 - **Invariants:**
   - `eforge rules check` returns `ExitCode::ConfigurationError` on invalid syntax.
   - Starter template includes valid examples for all 6 matchers (`forbidden_imports`, `required_companion`, `file_naming`, `file_size`, `regex_pattern`, `dependency_restriction`).
+
+
+## Issue #115 — `forge-mcp` `eforge_get_rules` MCP Tool with Untrusted Envelope (COMPLETED)
+- **Crate:** `crates/forge-mcp` (`src/tools.rs`, `src/server.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_mcp::tools` & `forge_mcp::server`):**
+  - Tool Name: `eforge_get_rules` added to `list_mcp_tools()` (catalog expanded from 6 to 7 tools).
+  - Descriptor Struct: `McpRuleDescriptor` with `id`, `name`, `category`, `severity`, `description`, `remediation`, `source`, and `enabled`.
+  - Input Schema: `{ "category"?: string, "enabled_only"?: boolean }`.
+  - Tool Handler: `call_mcp_tool(..., "eforge_get_rules", arguments)` resolves active rule hierarchy via `resolve_rule_hierarchy`, filters by category/enabled status, sorts deterministically by `(Severity::desc, id::asc)`, and wraps payload in `UntrustedEnvelope` with prompt-injection defense signal detection.
+- **Invariants:**
+  - Fast execution: `eforge_get_rules` does not run full AST parsing, resolving rule configurations directly via `load_config` and `resolve_rule_hierarchy`.
+  - Strict containment: rule descriptors and filtering arguments are sanitized and protected within `UntrustedEnvelope` with `trust_level: "untrusted_repository_data"`.
