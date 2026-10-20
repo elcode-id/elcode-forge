@@ -256,3 +256,20 @@
   - Safe path resolution via `path_guard::resolve_safe_path` enforces that all rule files and packs stay strictly within the analyzed repository root, preventing path traversal attacks (`../`).
   - Zero-panic parsing of both YAML and JSON rule specifications with line-aware diagnostics.
 
+## Issue #111 — Six Deterministic Rule Matchers & Engine Integration (COMPLETED)
+- **Crate:** `crates/forge-rules` (`src/matchers/`, `src/engine.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_rules::matchers` & `forge_rules::engine`):**
+  - Six deterministic matchers:
+    - `forbidden_imports`: enforces module import boundaries against forbidden target patterns.
+    - `required_companion`: verifies source files have corresponding test companion files.
+    - `file_naming`: validates file naming conventions (`kebab-case`, `snake_case`, `camelCase`, `PascalCase`, wildcard patterns).
+    - `file_size`: enforces maximum line count (`max_lines`) and byte limits (`max_bytes`).
+    - `regex_pattern`: scans source text for forbidden tokens or antipatterns with safe path guard and per-file caps.
+    - `dependency_restriction`: detects prohibited packages and unpinned wildcard versions (`*`, `latest`).
+  - `evaluate_declarative_rule(rule: &DeclarativeRule, repo: &Repository) -> Result<Vec<Finding>, ForgeError>`.
+  - `RuleEngine`: added `declarative_rules: Vec<DeclarativeRule>`, `with_declarative_rules`, `add_declarative_rule`, and `declarative_rules()`.
+- **Invariants:**
+  - Evaluates both built-in and declarative rules within `RuleEngine::evaluate`.
+  - Deterministic findings sorting by `(Severity::desc, id::asc)` and deduplication.
+  - Zero-panic execution across all matchers with canonical path-guard protection for file-reading matchers.
+
