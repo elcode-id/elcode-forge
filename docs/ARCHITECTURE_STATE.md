@@ -386,3 +386,14 @@
   - Zero external color dependencies; purely native ANSI escape codes.
   - Strict compliance with `NO_COLOR`, `CLICOLOR_FORCE`, and `CLICOLOR` environment standards.
   - Deterministic plain ASCII fallback (`[=========.] 92/100 (Good)`) for non-TTY/piped environments.
+
+## Issue #134 — Rich Terminal Formatters for Scan, Review & Findings (COMPLETED)
+- **Crates:** `crates/forge-cli` (`src/formatters/terminal.rs`, `src/commands/doctor.rs`, `src/commands/review.rs`)
+- **Public Types & Functions:**
+  - `render_finding_card(finding: &Finding, theme: &Theme) -> String`: renders structured finding cards with colored severity badge, bold title/rule ID, clickable `location`, and border-styled snippet evidence blocks.
+  - `render_terminal(repo: &Repository) -> String` and `render_terminal_with_theme(repo: &Repository, theme: &Theme) -> String`: renders multi-phase milestone progress checklist (`Languages`, `Dependencies`, `Architecture`, `Rules`), visual score bar meter, and tabular dimension breakdown with Unicode box-drawing or ASCII fallback.
+  - `render_doctor_terminal_with_theme(report: &DoctorReport, theme: &Theme) -> String`: modern doctor output with styled status indicators (`[OK]`, `[WARN]`, `[FAIL]`) and elapsed latency metrics.
+  - `render_review_report(report: &ReviewReport, format: OutputFormat)`: upgraded review output with colored risk tiers and structured cards.
+- **Invariants:**
+  - Automatic detection of TTY vs CI/pipe environments ensures clean, zero-escape ASCII formatting when redirected or when `NO_COLOR` is present.
+  - Byte-for-byte deterministic output for identical input repositories.

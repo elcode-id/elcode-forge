@@ -167,11 +167,22 @@ pub fn render_review_report(
             Ok(md)
         }
         OutputFormat::Terminal => {
+            let theme = crate::theme::Theme::default();
             let mut out = String::new();
             out.push_str("============================================================\n");
+            let level_str = format!("{:?}", report.risk.level);
+            let styled_level = match report.risk.level {
+                forge_core::scoring::RiskLevel::Critical => theme.red(&level_str),
+                forge_core::scoring::RiskLevel::High => theme.red(&level_str),
+                forge_core::scoring::RiskLevel::Medium => theme.yellow(&level_str),
+                forge_core::scoring::RiskLevel::Low => theme.green(&level_str),
+            };
             out.push_str(&format!(
-                " ELCODE Forge Review — Risk: {:?} ({}/100)\n",
-                report.risk.level, report.risk.score
+                " {}\n",
+                theme.bold(&format!(
+                    "ELCODE Forge Review — Risk: {} ({}/100)",
+                    styled_level, report.risk.score
+                ))
             ));
             out.push_str("============================================================\n");
             out.push_str(&format!(
@@ -198,16 +209,25 @@ pub fn render_review_report(
                 "Missing Tests on Changed Code: {}\n\n",
                 report.impact.changed_files_without_tests.len()
             ));
-            out.push_str("Risk Reasons:\n");
-            for reason in &report.risk.reasons {
-                out.push_str(&format!("  - {reason}\n"));
+
+            if !report.risk.reasons.is_empty() {
+                out.push_str("Risk Reasons:\n");
+                for reason in &report.risk.reasons {
+                    out.push_str(&format!("  - {reason}\n"));
+                }
+                out.push('\n');
             }
-            out.push_str(&format!("\nFindings ({}):\n", report.findings.len()));
-            for finding in &report.findings {
-                out.push_str(&format!(
-                    "  [{:?}] {} ({})\n",
-                    finding.severity, finding.title, finding.rule_id
-                ));
+
+            out.push_str(&format!("Findings ({}):\n", report.findings.len()));
+            if report.findings.is_empty() {
+                out.push_str("  No findings detected.\n");
+            } else {
+                for finding in &report.findings {
+                    out.push_str(&crate::formatters::terminal::render_finding_card(
+                        finding, &theme,
+                    ));
+                    out.push('\n');
+                }
             }
             Ok(out)
         }
@@ -260,6 +280,14 @@ mod tests {
             if let Ok(md) = md_res {
                 assert!(md.contains("# ELCODE Forge Review Report"));
                 assert!(md.contains("src/db"));
+            }
+
+            let term_res = render_review_report(&report, OutputFormat::Terminal);
+            assert!(term_res.is_ok());
+            if let Ok(term_text) = term_res {
+                assert!(term_text.contains("ELCODE Forge Review"));
+                assert!(term_text.contains("Changed Files:"));
+                assert!(term_text.contains("Directly Affected Modules:"));
             }
         }
     }
