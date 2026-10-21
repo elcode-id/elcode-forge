@@ -128,6 +128,9 @@ pub fn detect_ecosystem(repo_root: &Path, files: &[FileNode]) -> EcosystemSignal
     if repo_root.join("requirements.txt").is_file() {
         package_managers.insert("pip".to_string());
     }
+    if repo_root.join("go.mod").is_file() {
+        package_managers.insert("go".to_string());
+    }
 
     // Inspect package.json dependencies for JS/TS frameworks and test runners
     if pkg_json_path.is_file() {
@@ -201,40 +204,85 @@ pub fn detect_ecosystem(repo_root: &Path, files: &[FileNode]) -> EcosystemSignal
         }
     }
 
-    // Inspect Python source imports if framework not yet found
-    if !frameworks.contains("fastapi")
+    // Inspect Go manifest for frameworks (Gin, Echo, Fiber, Chi)
+    if repo_root.join("go.mod").is_file() {
+        if let Ok(manifest) = crate::go_manifest::parse_go_manifest(repo_root) {
+            for dep in &manifest.dependencies {
+                if dep.name.contains("gin-gonic/gin") {
+                    frameworks.insert("gin".to_string());
+                } else if dep.name.contains("labstack/echo") {
+                    frameworks.insert("echo".to_string());
+                } else if dep.name.contains("gofiber/fiber") {
+                    frameworks.insert("fiber".to_string());
+                } else if dep.name.contains("go-chi/chi") {
+                    frameworks.insert("chi".to_string());
+                }
+            }
+        }
+    }
+
+    // Inspect source imports if frameworks not yet found
+    let need_python_fw = !frameworks.contains("fastapi")
         || !frameworks.contains("flask")
-        || !frameworks.contains("django")
-    {
+        || !frameworks.contains("django");
+    let need_go_fw = !frameworks.contains("gin")
+        && !frameworks.contains("echo")
+        && !frameworks.contains("fiber")
+        && !frameworks.contains("chi");
+
+    if need_python_fw || need_go_fw {
         for file in files {
-            if file.language.as_deref() == Some("python") || file.relative_path.ends_with(".py") {
-                let full_path = repo_root.join(&file.relative_path);
-                if let Ok(content) = fs::read_to_string(&full_path) {
-                    if content.contains("fastapi")
-                        && (content.contains("import fastapi")
-                            || content.contains("from fastapi import"))
-                    {
-                        frameworks.insert("fastapi".to_string());
-                    }
-                    if content.contains("flask")
-                        && (content.contains("import flask")
-                            || content.contains("from flask import"))
-                    {
-                        frameworks.insert("flask".to_string());
-                    }
-                    if content.contains("django")
-                        && (content.contains("import django")
-                            || content.contains("from django import"))
-                    {
-                        frameworks.insert("django".to_string());
-                    }
-                    if content.contains("pytest")
-                        && (content.contains("import pytest")
-                            || content.contains("from pytest import"))
-                    {
-                        frameworks.insert("pytest".to_string());
-                        has_tests = true;
-                    }
+            let is_py =
+                file.language.as_deref() == Some("python") || file.relative_path.ends_with(".py");
+            let is_go =
+                file.language.as_deref() == Some("go") || file.relative_path.ends_with(".go");
+
+            if !is_py && !is_go {
+                continue;
+            }
+
+            let full_path = repo_root.join(&file.relative_path);
+            let Ok(content) = fs::read_to_string(&full_path) else {
+                continue;
+            };
+
+            if is_py && need_python_fw {
+                if content.contains("fastapi")
+                    && (content.contains("import fastapi")
+                        || content.contains("from fastapi import"))
+                {
+                    frameworks.insert("fastapi".to_string());
+                }
+                if content.contains("flask")
+                    && (content.contains("import flask") || content.contains("from flask import"))
+                {
+                    frameworks.insert("flask".to_string());
+                }
+                if content.contains("django")
+                    && (content.contains("import django") || content.contains("from django import"))
+                {
+                    frameworks.insert("django".to_string());
+                }
+                if content.contains("pytest")
+                    && (content.contains("import pytest") || content.contains("from pytest import"))
+                {
+                    frameworks.insert("pytest".to_string());
+                    has_tests = true;
+                }
+            }
+
+            if is_go && need_go_fw {
+                if content.contains("gin-gonic/gin") {
+                    frameworks.insert("gin".to_string());
+                }
+                if content.contains("labstack/echo") {
+                    frameworks.insert("echo".to_string());
+                }
+                if content.contains("gofiber/fiber") {
+                    frameworks.insert("fiber".to_string());
+                }
+                if content.contains("go-chi/chi") {
+                    frameworks.insert("chi".to_string());
                 }
             }
         }
@@ -268,13 +316,16 @@ mod tests {
         );
         assert_eq!(detect_language("app/main.py").as_deref(), Some("python"));
         assert_eq!(detect_language("src/lib.rs").as_deref(), Some("rust"));
+        assert_eq!(detect_language("cmd/server/main.go").as_deref(), Some("go"));
         assert_eq!(detect_language("README.md"), None);
 
         assert!(is_test_file("src/services/userService.test.ts"));
         assert!(is_test_file("src/__tests__/auth.ts"));
         assert!(is_test_file("tests/test_api.py"));
         assert!(is_test_file("app/routers/test_items.py"));
+        assert!(is_test_file("internal/services/user_test.go"));
         assert!(!is_test_file("src/services/userService.ts"));
+        assert!(!is_test_file("internal/services/user.go"));
     }
 
     #[test]

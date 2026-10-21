@@ -215,6 +215,90 @@ pub fn build_python_architecture_graph(
     })
 }
 
+/// Builds the [`ArchitectureGraph`] for all Go files in `files`,
+/// inferring logical package boundaries, external module imports, high-centrality modules, and
+/// circular package dependencies using Tarjan's Strongly Connected Components (SCC) algorithm.
+pub fn build_go_architecture_graph(
+    repo_root: &Path,
+    files: &[FileNode],
+    module_path: Option<&str>,
+) -> Result<ArchitectureGraph, ForgeError> {
+    let go_files: Vec<&FileNode> = files
+        .iter()
+        .filter(|f| matches!(f.language.as_deref(), Some("go")) || f.relative_path.ends_with(".go"))
+        .collect();
+
+    let known_files: BTreeSet<String> = go_files.iter().map(|f| f.relative_path.clone()).collect();
+
+    let mut module_map: BTreeMap<String, ModuleAccumulator> = BTreeMap::new();
+    let mut external_imports = BTreeSet::new();
+
+    for file in &go_files {
+        let (mod_id, mod_name) = infer_go_module_boundary(&file.relative_path);
+        let acc = module_map
+            .entry(mod_id.clone())
+            .or_insert_with(|| ModuleAccumulator {
+                name: mod_name,
+                root_path: mod_id.clone(),
+                ..Default::default()
+            });
+        acc.files.insert(file.relative_path.clone());
+    }
+
+    for file in &go_files {
+        let (source_mod_id, _) = infer_go_module_boundary(&file.relative_path);
+        let full_path = repo_root.join(&file.relative_path);
+        let content = fs::read_to_string(&full_path).map_err(|source| ForgeError::Io {
+            path: full_path,
+            source,
+        })?;
+
+        let raw_imports = crate::go_imports::extract_go_imports(&content);
+
+        for spec in raw_imports {
+            if let Some(target_file) = crate::go_imports::resolve_go_import(
+                &file.relative_path,
+                &spec,
+                module_path,
+                &known_files,
+            ) {
+                let (target_mod_id, _) = infer_go_module_boundary(&target_file);
+                if target_mod_id != source_mod_id {
+                    if let Some(acc) = module_map.get_mut(&source_mod_id) {
+                        acc.imports.insert(target_mod_id);
+                    }
+                }
+            } else if let Some(pkg) =
+                crate::go_imports::extract_go_external_module(&spec, module_path)
+            {
+                external_imports.insert(pkg);
+            }
+        }
+    }
+
+    let modules: Vec<Module> = module_map
+        .into_iter()
+        .map(|(id, acc)| Module {
+            id,
+            name: acc.name,
+            root_path: acc.root_path,
+            files: acc.files.into_iter().collect(),
+            imports: acc.imports.into_iter().collect(),
+            exports: acc.exports.into_iter().collect(),
+        })
+        .collect();
+
+    let circular_dependencies = detect_circular_dependencies(&modules);
+    let high_centrality_modules = compute_high_centrality(&modules);
+
+    Ok(ArchitectureGraph {
+        modules,
+        circular_dependencies,
+        high_centrality_modules,
+        external_imports,
+    })
+}
+
 /// Infers a logical module `(id, name)` from a normalized relative file path for TS/JS projects.
 ///
 /// Examples:
@@ -258,6 +342,23 @@ fn infer_python_module_boundary(relative_path: &str) -> (String, String) {
     if parts.len() >= 2 {
         let id = parts[0].to_string();
         let name = parts[0].to_string();
+        return (id, name);
+    }
+    ("root".to_string(), "root".to_string())
+}
+
+/// Infers a logical package `(id, name)` from a normalized relative Go file path.
+///
+/// In Go, packages are organized by directory:
+/// - `"cmd/server/main.go"` -> `("cmd/server", "server")`
+/// - `"internal/services/user.go"` -> `("internal/services", "services")`
+/// - `"main.go"` -> `("root", "root")`
+fn infer_go_module_boundary(relative_path: &str) -> (String, String) {
+    let parts: Vec<&str> = relative_path.split('/').collect();
+    if parts.len() >= 2 {
+        let dir_parts = &parts[..parts.len() - 1];
+        let id = dir_parts.join("/");
+        let name = dir_parts.last().unwrap_or(&"root").to_string();
         return (id, name);
     }
     ("root".to_string(), "root".to_string())
