@@ -13,6 +13,7 @@ describe("toElements pure transformation", () => {
       tool_version: "0.2.0",
       architecture: { circular_dependencies: [], high_centrality_modules: [] },
       hotspots: [],
+      rules: [],
       repository: {
         name: "empty-repo",
         root_path: "/workspace",
@@ -40,6 +41,7 @@ describe("toElements pure transformation", () => {
         high_centrality_modules: ["crates/forge-core"],
       },
       hotspots: [],
+      rules: [],
       repository: {
         name: "test-repo",
         root_path: "/workspace",

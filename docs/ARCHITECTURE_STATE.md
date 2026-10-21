@@ -238,3 +238,105 @@
   - Node/pnpm workflows (`ci-web.yml`, `eforge-dogfood.yml`) use deterministic `npm install -g pnpm@12.8.1` + `actions/cache@v4` on `pnpm store path --silent` to avoid `pnpm/action-setup@v4` self-installer incompatibilities.
   - `security-durability.yml` enforces `cargo audit` (RustSec Advisory DB) and `eforge security --format sarif`; `release-binaries.yml` builds cross-platform `--locked` binaries with `SHA256SUMS.txt`.
   - **Mandatory Green-CI Pre-Merge Gate:** Every PR must pass `gh pr checks <PR_NUMBER> --watch` 100% green before running `gh pr merge --squash`.
+
+## Issue #110 — Declarative Custom Rule Schema, IR Models, and Rule Loader (COMPLETED)
+- **Crates:** `crates/forge-rules` (`src/declarative.rs`, `src/lib.rs`) and `crates/forge-core` (`src/config.rs`)
+- **Public Types & Functions (`forge_rules` / `forge_core`):**
+  - `RuleCategory { Architecture, Quality, Security, Dependencies }` with `as_str`, `Display`, `FromStr`.
+  - `RuleSource { Builtin(String), Pack(String), Custom(String) }`.
+  - `MatcherKind { ForbiddenImports, RequiredCompanion, FileNaming, FileSize, RegexPattern, DependencyRestriction, Unknown }`.
+  - `RuleMatcher`, `DeclarativeRule`, `RuleFile`.
+  - `validate_rule_id(id: &str) -> Result<(), ForgeError>`.
+  - `validate_rule(rule: &DeclarativeRule) -> Result<(), ForgeError>`.
+  - `parse_rule_file(content: &str, source: RuleSource) -> Result<Vec<DeclarativeRule>, ForgeError>`.
+  - `load_declarative_rules(repo_root: &Path, custom_paths: &[String]) -> Result<Vec<DeclarativeRule>, ForgeError>`.
+  - `ForgeConfig`: added `rule_packs: Vec<String>` and `custom_rule_paths: Vec<String>` with full `eforge.config.yaml` parsing.
+- **Invariants:**
+  - Rule IDs must strictly follow `<category>/<slug>` (`arch`, `quality`, `security`, `deps`).
+  - Safe path resolution via `path_guard::resolve_safe_path` enforces that all rule files and packs stay strictly within the analyzed repository root, preventing path traversal attacks (`../`).
+  - Zero-panic parsing of both YAML and JSON rule specifications with line-aware diagnostics.
+
+## Issue #111 — Six Deterministic Rule Matchers & Engine Integration (COMPLETED)
+- **Crate:** `crates/forge-rules` (`src/matchers/`, `src/engine.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_rules::matchers` & `forge_rules::engine`):**
+  - Six deterministic matchers:
+    - `forbidden_imports`: enforces module import boundaries against forbidden target patterns.
+    - `required_companion`: verifies source files have corresponding test companion files.
+    - `file_naming`: validates file naming conventions (`kebab-case`, `snake_case`, `camelCase`, `PascalCase`, wildcard patterns).
+    - `file_size`: enforces maximum line count (`max_lines`) and byte limits (`max_bytes`).
+    - `regex_pattern`: scans source text for forbidden tokens or antipatterns with safe path guard and per-file caps.
+    - `dependency_restriction`: detects prohibited packages and unpinned wildcard versions (`*`, `latest`).
+  - `evaluate_declarative_rule(rule: &DeclarativeRule, repo: &Repository) -> Result<Vec<Finding>, ForgeError>`.
+  - `RuleEngine`: added `declarative_rules: Vec<DeclarativeRule>`, `with_declarative_rules`, `add_declarative_rule`, and `declarative_rules()`.
+- **Invariants:**
+  - Evaluates both built-in and declarative rules within `RuleEngine::evaluate`.
+  - Deterministic findings sorting by `(Severity::desc, id::asc)` and deduplication.
+  - Zero-panic execution across all matchers with canonical path-guard protection for file-reading matchers.
+
+## Issue #113 — Rule Packs Engine & Config Extends Hierarchy (COMPLETED)
+- **Crates:** `crates/forge-rules` (`src/packs.rs`, `src/engine.rs`, `src/lib.rs`) and `crates/forge-core` (`src/config.rs`)
+- **Public Types & Functions (`forge_rules::packs` & `forge_rules::engine`):**
+  - `RulePack`: pre-packaged architectural, quality, or security rule bundle.
+  - Four built-in packs:
+    - `recommended`: standard engineering baseline (`no-direct-db-in-ui`, `no-circular-dependencies`, `require-service-tests`, `max-file-lines: 300`).
+    - `strict`: elevated discipline (critical architecture boundaries, 250-line file limit, strict test companions, unpinned version prevention).
+    - `security`: code hardening (prohibits `eval()`, `child_process.exec()`, debugger statements, `dangerouslySetInnerHTML`, and known vulnerable packages).
+    - `clean-architecture`: hexagonal/onion layer boundaries (`ui-no-infra`, `domain-pure`, `infra-no-ui`, `ui-no-db`).
+  - `get_builtin_pack(name: &str) -> Option<RulePack>` and `list_builtin_packs() -> Vec<RulePack>`.
+  - `resolve_rule_hierarchy(repo_root: &Path, config: &ForgeConfig) -> Result<(Vec<RuleConfig>, Vec<DeclarativeRule>), ForgeError>`.
+  - `RuleEngine::from_config(repo_root: &Path, config: &ForgeConfig) -> Result<RuleEngine, ForgeError>`.
+  - `ForgeConfig`: added inline array parsing support (`extends: ["recommended", "clean-architecture"]`).
+- **Invariants:**
+  - Inheritance precedence strictly enforced: `Built-in Defaults < Extended Packs < Custom Local Rules < Per-rule Overrides`.
+  - Projects without explicit extends implicitly extend `recommended` for backward compatibility.
+
+## Issue #114 — CLI Rules Command (List, Check, Init) & Scanner Integration (COMPLETED)
+- **Crate:** `crates/forge-cli` (`src/commands/rules.rs`, `src/cli.rs`, `src/commands/scan.rs`, `src/commands/doctor.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_cli::commands::rules`):**
+  - CLI Subcommands:
+    - `eforge rules [list]`: renders rich rule catalog with ID, category, severity, source (`builtin`, `pack:*`, `custom:*`), and status; supports `--category` and `--enabled-only` filters.
+    - `eforge rules check [path]`: verifies rule syntax without scanning; validates against schema with zero panics.
+    - `eforge rules init`: creates `.eforge/rules/custom-rules.yaml` with starter examples for all 6 matchers.
+  - Reports: `RulesListReport`, `RulesCheckReport`, `RulesInitReport`, and `RuleItemDescriptor`.
+  - Formatters: terminal table, JSON (`--format json`), and Markdown (`--format markdown`).
+  - `eforge scan`: updated to instantiate `RuleEngine::from_config(repo_root, config)` to evaluate declarative rules alongside built-in rules.
+  - `eforge doctor`: added Check 6 for architectural & declarative rules hygiene.
+- **Invariants:**
+  - `eforge rules check` returns `ExitCode::ConfigurationError` on invalid syntax.
+  - Starter template includes valid examples for all 6 matchers (`forbidden_imports`, `required_companion`, `file_naming`, `file_size`, `regex_pattern`, `dependency_restriction`).
+
+
+## Issue #115 — `forge-mcp` `eforge_get_rules` MCP Tool with Untrusted Envelope (COMPLETED)
+- **Crate:** `crates/forge-mcp` (`src/tools.rs`, `src/server.rs`, `src/lib.rs`)
+- **Public Types & Functions (`forge_mcp::tools` & `forge_mcp::server`):**
+  - Tool Name: `eforge_get_rules` added to `list_mcp_tools()` (catalog expanded from 6 to 7 tools).
+  - Descriptor Struct: `McpRuleDescriptor` with `id`, `name`, `category`, `severity`, `description`, `remediation`, `source`, and `enabled`.
+  - Input Schema: `{ "category"?: string, "enabled_only"?: boolean }`.
+  - Tool Handler: `call_mcp_tool(..., "eforge_get_rules", arguments)` resolves active rule hierarchy via `resolve_rule_hierarchy`, filters by category/enabled status, sorts deterministically by `(Severity::desc, id::asc)`, and wraps payload in `UntrustedEnvelope` with prompt-injection defense signal detection.
+- **Invariants:**
+  - Fast execution: `eforge_get_rules` does not run full AST parsing, resolving rule configurations directly via `load_config` and `resolve_rule_hierarchy`.
+  - Strict containment: rule descriptors and filtering arguments are sanitized and protected within `UntrustedEnvelope` with `trust_level: "untrusted_repository_data"`.
+
+
+## Issue #117 — ReportBundle Rules Schema Evolution & Rules Catalog Screen (COMPLETED)
+- **Crate & Packages:** `crates/forge-cli` (`src/commands/report.rs`, `src/commands/schema.rs`), `packages/forge-schema`, `apps/dashboard`
+- **Public Types & Functions:**
+  - Rust: `RuleDescriptor` struct deriving `JsonSchema` added to `ReportBundle::rules` in `crates/forge-cli/src/commands/report.rs`.
+  - TypeScript (`@elcode-forge/schema`): `RuleDescriptor` exported from `@elcode-forge/schema` and embedded into `ReportBundle`.
+  - Dashboard: `/rules` route (`apps/dashboard/src/routes/rules/+page.svelte`) with category tabs, source pack selector, search filter, enabled toggle, and project violation count counters.
+  - Deep linking: Findings rule IDs link to `/rules?id=...`, and rule violation cards link to `/findings?rule_prefix=...`.
+- **Invariants:**
+  - `build_report_bundle` resolves active rule hierarchy via `RuleEngine::from_config` and sorts rules deterministically by `(Severity::desc, id::asc)`.
+  - Zero schema drift between `ReportBundle` Rust IR and `report-bundle.schema.json`.
+
+
+## Issue #118 — Custom Rules Fixture, E2E Evaluation Suite, Rules Guide & v0.5.0 Release (COMPLETED)
+- **Crates, Packages & Fixtures:** `fixtures/custom-rules-app`, `crates/forge-cli` (`tests/custom_rules_e2e.rs`), `docs/RULES_GUIDE.md`, `README.md`, `Cargo.toml`, `package.json`
+- **Capabilities & Deliverables:**
+  - `fixtures/custom-rules-app`: Curated fixture demonstrating all 6 custom matchers (`forbidden_imports`, `required_companion`, `file_naming`, `file_size`, `regex_pattern`, `dependency_restriction`) and compliant files with zero false positives.
+  - `tests/custom_rules_e2e.rs`: Integration suite verifying `eforge rules list`, `eforge rules check`, `eforge scan`, and `eforge report` against `fixtures/custom-rules-app`.
+  - `docs/RULES_GUIDE.md`: Living guide detailing custom rule syntax, matcher schemas, pack extension precedence, and MCP tool usage.
+  - Version Release: Bumped workspace to `v0.5.0` across Rust crates (`Cargo.toml`) and TypeScript packages (`packages/forge-schema`, `packages/forge-ui`, `apps/dashboard`).
+- **Invariants:**
+  - Zero-panic test discipline: integration test suite complies strictly with zero `.unwrap()` and `.expect()` policy.
+  - Zero schema drift and 100% green CI verification across all dogfooding and release workflows.

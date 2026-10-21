@@ -162,7 +162,13 @@
               <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase font-bold border {severityColor(finding.severity)}">
                 {finding.severity}
               </span>
-              <span class="font-mono text-slate-400 text-[11px]">{finding.rule_id}</span>
+              <a
+                href="/rules?id={encodeURIComponent(finding.rule_id)}"
+                class="font-mono text-blue-400 hover:text-blue-300 hover:underline text-[11px]"
+                title="View rule definition in catalog"
+              >
+                {finding.rule_id}
+              </a>
               <span class="text-slate-600">•</span>
               <span class="text-slate-400 font-mono text-[10px] uppercase">Confidence: {finding.confidence}</span>
             </div>

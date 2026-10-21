@@ -27,6 +27,7 @@ export interface ReportBundle {
   hotspots: HotspotEntry[];
   repository: Repository;
   revision?: GitRevision | null;
+  rules: RuleDescriptor[];
   schema_version: number;
   tool_version: string;
   [k: string]: unknown;
@@ -179,5 +180,19 @@ export interface Module {
 export interface GitRevision {
   commit_unix_ts: number;
   head_sha: string;
+  [k: string]: unknown;
+}
+/**
+ * Rule metadata embedded in [`ReportBundle`] for rules catalog and violation linkage.
+ */
+export interface RuleDescriptor {
+  category: string;
+  description: string;
+  enabled: boolean;
+  id: string;
+  name: string;
+  remediation?: string | null;
+  severity: Severity;
+  source: string;
   [k: string]: unknown;
 }

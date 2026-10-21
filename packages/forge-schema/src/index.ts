@@ -15,6 +15,7 @@ export type {
   Repository,
   RiskLevel,
   RiskReport,
+  RuleDescriptor,
   Severity,
   SourceLocation,
 } from "./generated";

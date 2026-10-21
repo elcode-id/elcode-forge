@@ -13,6 +13,7 @@ pub mod mcp;
 pub mod onboard;
 pub mod report;
 pub mod review;
+pub mod rules;
 pub mod scan;
 pub mod schema;
 pub mod security;

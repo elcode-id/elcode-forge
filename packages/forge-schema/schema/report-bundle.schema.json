@@ -7,6 +7,7 @@
     "architecture",
     "hotspots",
     "repository",
+    "rules",
     "schema_version",
     "tool_version"
   ],
@@ -52,6 +53,12 @@
           "type": "null"
         }
       ]
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/RuleDescriptor"
+      }
     },
     "schema_version": {
       "type": "integer",
@@ -533,6 +540,48 @@
           "type": "integer",
           "format": "uint8",
           "minimum": 0.0
+        }
+      }
+    },
+    "RuleDescriptor": {
+      "description": "Rule metadata embedded in [`ReportBundle`] for rules catalog and violation linkage.",
+      "type": "object",
+      "required": [
+        "category",
+        "description",
+        "enabled",
+        "id",
+        "name",
+        "severity",
+        "source"
+      ],
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "remediation": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "severity": {
+          "$ref": "#/definitions/Severity"
+        },
+        "source": {
+          "type": "string"
         }
       }
     },
