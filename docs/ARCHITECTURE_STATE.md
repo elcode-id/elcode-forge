@@ -340,3 +340,15 @@
 - **Invariants:**
   - Zero-panic test discipline: integration test suite complies strictly with zero `.unwrap()` and `.expect()` policy.
   - Zero schema drift and 100% green CI verification across all dogfooding and release workflows.
+
+
+## Issue #130 — Native Git Hooks Lifecycle & Configuration Schema (COMPLETED)
+- **Crates:** `crates/forge-core` (`src/config.rs`), `crates/forge-git` (`src/hooks.rs`, `src/lib.rs`)
+- **Public Types & Functions:**
+  - `forge_core::config`: `HooksConfig`, `HookActionConfig` added to `ForgeConfig::hooks`.
+  - `forge_git::hooks`: `HookType` (`PreCommit`, `PrePush`, `All`), `HookEntryStatus`, `HookStatusReport`, `HookInstallResult`, `HookUninstallResult`, `install_hooks(repo_root, hook_type, force)`, `uninstall_hooks(repo_root, hook_type)`, `get_hooks_status(repo_root)`.
+- **Invariants:**
+  - Non-destructive backup preservation: foreign pre-existing hooks are copied to `<hook>.forge-backup` and restored on uninstall.
+  - Executable permissions: hook scripts are marked `0o755` on Unix.
+  - Bypass support: generated shell scripts check `FORGE_SKIP_HOOK=1` before attempting execution.
+  - Worktree/submodule awareness: resolves `.git` when it is a file (`gitdir: <path>`).
