@@ -112,7 +112,8 @@ jobs:
       - name: Upload assets to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         working-directory: dist
         run: |
           set -euo pipefail
-          gh release upload "${{ github.ref_name }}" eforge-*.tar.gz eforge-*.zip SHA256SUMS.txt --clobber
+          gh release upload "${{ github.ref_name }}" --repo "${{ github.repository }}" eforge-*.tar.gz eforge-*.zip SHA256SUMS.txt --clobber
