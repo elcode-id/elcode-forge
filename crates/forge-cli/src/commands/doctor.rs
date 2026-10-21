@@ -87,6 +87,27 @@ pub fn run_doctor(repo_root: &Path) -> Result<DoctorReport, ForgeError> {
                 manifest.duplicate_packages.len()
             ),
         });
+    } else if repo_root.join("pyproject.toml").exists()
+        || repo_root.join("requirements.txt").exists()
+    {
+        let manifest = forge_analyzer::parse_python_manifests(repo_root)?;
+        let has_lockfile = repo_root.join("poetry.lock").exists()
+            || repo_root.join("uv.lock").exists()
+            || repo_root.join("Pipfile.lock").exists();
+        let unpinned_warn = !manifest.unpinned_packages.is_empty();
+        let dup_warn = !manifest.duplicate_packages.is_empty();
+        checks.push(DoctorCheck {
+            label: "Python manifest & lockfile hygiene".to_string(),
+            passed: true,
+            warning: !has_lockfile || dup_warn || unpinned_warn,
+            detail: format!(
+                "{} dependency(ies) declared, lockfile present: {}, unpinned: {}, duplicates: {}",
+                manifest.dependencies.len(),
+                has_lockfile,
+                manifest.unpinned_packages.len(),
+                manifest.duplicate_packages.len()
+            ),
+        });
     } else if repo_root.join("Cargo.toml").exists() {
         let has_cargo_lock = repo_root.join("Cargo.lock").exists();
         checks.push(DoctorCheck {

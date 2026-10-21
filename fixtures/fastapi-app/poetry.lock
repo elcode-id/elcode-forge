@@ -1,0 +1,41 @@
+[[package]]
+name = "fastapi"
+version = "0.110.0"
+description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
+optional = false
+python-versions = ">=3.8"
+
+[[package]]
+name = "uvicorn"
+version = "0.28.0"
+description = "The lightning-fast ASGI server."
+optional = false
+python-versions = ">=3.8"
+
+[[package]]
+name = "pydantic"
+version = "2.6.0"
+description = "Data validation using Python type hints."
+optional = false
+python-versions = ">=3.8"
+
+[[package]]
+name = "requests"
+version = "2.31.0"
+description = "Python HTTP for Humans."
+optional = false
+python-versions = ">=3.8"
+
+[[package]]
+name = "pytest"
+version = "8.1.0"
+description = "pytest: simple powerful testing with Python"
+optional = false
+python-versions = ">=3.8"
+
+[[package]]
+name = "httpx"
+version = "0.27.0"
+description = "The next generation HTTP client for Python."
+optional = false
+python-versions = ">=3.8"

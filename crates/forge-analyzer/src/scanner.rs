@@ -30,6 +30,10 @@ const DEFAULT_IGNORED_DIRS: &[&str] = &[
     ".next",
     ".nuxt",
     ".svelte-kit",
+    "__pycache__",
+    ".pytest_cache",
+    ".venv",
+    "venv",
 ];
 
 /// Walks `repo_root` respecting `.gitignore` and `extra_ignores`, computes deterministic file
@@ -97,7 +101,6 @@ pub fn scan_repository(
             Ok(e) => e,
             Err(_) => continue,
         };
-
         let Some(file_type) = entry.file_type() else {
             continue;
         };

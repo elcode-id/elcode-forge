@@ -487,3 +487,20 @@
 - **Invariants:**
   - Zero-panic: all parsing and graph construction operations strictly propagate errors or handle empty/malformed lines safely.
   - Standard library imports are filtered out from `external_imports` to avoid false-positive external dependencies.
+
+
+## Issue #152 — Python Unsafe Pattern Rules, Framework Detectors & fixtures/fastapi-app (COMPLETED)
+- **Crates:** `crates/forge-security`, `crates/forge-analyzer`, `crates/forge-cli`, `fixtures/fastapi-app/`
+- **Public Types & Functions:**
+  - `RULE_PYTHON_UNSAFE_EVAL: &str = "security/python-unsafe-eval"`: Flags dynamic evaluation via `eval(...)` and `exec(...)`.
+  - `RULE_PYTHON_INSECURE_SUBPROCESS: &str = "security/python-insecure-subprocess"`: Flags shell execution with `shell=True`, `os.system(...)`, or `os.popen(...)`.
+  - `RULE_PYTHON_PICKLE_DESERIALIZATION: &str = "security/python-pickle-deserialization"`: Flags untrusted deserialization via `pickle.loads(...)` and `_pickle.loads(...)`.
+  - `scan_python_unsafe_patterns(relative_path: &str, content: &str) -> Vec<Finding>`: Scans Python source while stripping comments and docstrings.
+  - `analyze_python_dependencies(repo_root: &Path, imported_packages: &BTreeSet<String>) -> Result<DependencyReport, ForgeError>`: Detects unpinned versions (`deps/unpinned-version`), duplicate requirements (`deps/duplicate-dependency`), and unused packages.
+  - Ecosystem detection: Added native detectors for `FastAPI`, `Flask`, `Django`, and `pytest`.
+  - `DEFAULT_IGNORED_DIRS`: Added Python bytecode and virtualenv directories (`__pycache__`, `.pytest_cache`, `.venv`, `venv`).
+  - Curated Fixture: `fixtures/fastapi-app/` with FastAPI routing, models, circular import between `app/routers` and `app/services`, unpinned dependency `requests = "*"`, and `pickle.loads` security violation.
+  - Golden Test: `crates/forge-cli/tests/fastapi_app_golden_test.rs` validating doctor diagnostics and full scan signal determinism.
+- **Invariants:**
+  - 100% adherence to zero-panic policy; test assertions return `Result<(), Box<dyn Error>>`.
+  - Completes **Epic #149** (Phase 7A: Python Ecosystem Intelligence).

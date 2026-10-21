@@ -18,7 +18,22 @@ const IMPLICIT_RUNTIME_PACKAGES: &[&str] = &[
     "typescript",
 ];
 
-/// Aggregated dependency health report for a Node/TypeScript repository.
+/// Implicit Python runners, frameworks, or linters that are executed via CLI rather than direct source import.
+const PYTHON_IMPLICIT_RUNNERS: &[&str] = &[
+    "uvicorn",
+    "gunicorn",
+    "hypercorn",
+    "daphne",
+    "waitress",
+    "celery",
+    "pytest",
+    "mypy",
+    "ruff",
+    "black",
+    "flake8",
+];
+
+/// Aggregated dependency health report for a repository.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DependencyReport {
     pub dependencies: Vec<Dependency>,
@@ -117,6 +132,113 @@ pub fn analyze_npm_dependencies(
             recommendation: format!(
                 "Keep '{dup}' in only one section ('dependencies' or 'devDependencies')."
             ),
+            rule_id: "deps/duplicate-dependency".to_string(),
+        });
+    }
+
+    Ok(DependencyReport {
+        dependencies: manifest.dependencies,
+        unused_dependencies: unused.into_iter().collect(),
+        duplicate_packages: manifest.duplicate_packages,
+        wildcard_or_unpinned: wildcard_or_unpinned.into_iter().collect(),
+        findings,
+    })
+}
+
+/// Analyzes Python manifests (`pyproject.toml`, `requirements.txt`, and lockfiles)
+/// against the set of `imported_packages` observed in Python source files.
+pub fn analyze_python_dependencies(
+    repo_root: &Path,
+    imported_packages: &BTreeSet<String>,
+) -> Result<DependencyReport, ForgeError> {
+    let manifest = crate::python_manifest::parse_python_manifests(repo_root)?;
+
+    let mut unused = BTreeSet::new();
+    let mut wildcard_or_unpinned = BTreeSet::new();
+    let mut findings = Vec::new();
+
+    let manifest_file = if repo_root.join("pyproject.toml").is_file() {
+        "pyproject.toml"
+    } else {
+        "requirements.txt"
+    };
+
+    for dep in &manifest.dependencies {
+        if crate::python_manifest::is_python_unpinned(&dep.version_req) {
+            wildcard_or_unpinned.insert(dep.name.clone());
+            findings.push(Finding {
+                id: format!("DEP-PY-UNPINNED-{}", dep.name),
+                category: "dependencies".to_string(),
+                severity: Severity::Medium,
+                confidence: Confidence::Certain,
+                title: format!("Unpinned or wildcard dependency version for '{}'", dep.name),
+                description: format!(
+                    "Package '{}' uses non-deterministic version specifier '{}' in {manifest_file}.",
+                    dep.name, dep.version_req
+                ),
+                evidence: format!("{} = \"{}\"", dep.name, dep.version_req),
+                location: Some(SourceLocation {
+                    file_path: manifest_file.to_string(),
+                    start_line: None,
+                    end_line: None,
+                }),
+                recommendation: format!(
+                    "Pin '{}' to an explicit semver range (e.g., '>=0.100.0, <1.0.0' or exact version).",
+                    dep.name
+                ),
+                rule_id: "deps/unpinned-version".to_string(),
+            });
+        }
+
+        let normalized_name = crate::python_manifest::normalize_python_package_name(&dep.name);
+        if !dep.is_dev
+            && !PYTHON_IMPLICIT_RUNNERS.contains(&normalized_name.as_str())
+            && !imported_packages.contains(&normalized_name)
+            && !imported_packages.contains(&dep.name)
+        {
+            unused.insert(dep.name.clone());
+            findings.push(Finding {
+                id: format!("DEP-PY-UNUSED-{}", dep.name),
+                category: "dependencies".to_string(),
+                severity: Severity::Low,
+                confidence: Confidence::High,
+                title: format!("Unused production dependency '{}'", dep.name),
+                description: format!(
+                    "Package '{}' is declared in {manifest_file} but never imported in scanned source files.",
+                    dep.name
+                ),
+                evidence: dep.name.clone(),
+                location: Some(SourceLocation {
+                    file_path: manifest_file.to_string(),
+                    start_line: None,
+                    end_line: None,
+                }),
+                recommendation: format!(
+                    "Remove '{}' or move it to dev-dependencies if only needed for tooling.",
+                    dep.name
+                ),
+                rule_id: "deps/unused-dependency".to_string(),
+            });
+        }
+    }
+
+    for dup in &manifest.duplicate_packages {
+        findings.push(Finding {
+            id: format!("DEP-PY-DUP-{dup}"),
+            category: "dependencies".to_string(),
+            severity: Severity::Medium,
+            confidence: Confidence::Certain,
+            title: format!("Duplicate dependency declaration for '{dup}'"),
+            description: format!(
+                "Package '{dup}' is declared multiple times across Python manifests."
+            ),
+            evidence: format!("Duplicate key '{dup}' in {manifest_file}"),
+            location: Some(SourceLocation {
+                file_path: manifest_file.to_string(),
+                start_line: None,
+                end_line: None,
+            }),
+            recommendation: format!("Keep '{dup}' in only one section or requirements file."),
             rule_id: "deps/duplicate-dependency".to_string(),
         });
     }

@@ -1,11 +1,11 @@
 //! `eforge scan` command — full and incremental repository intelligence pipeline.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
 use forge_analyzer::{
-    dep_health::analyze_npm_dependencies, graph::build_ts_architecture_graph,
-    scanner::scan_repository,
+    analyze_npm_dependencies, analyze_python_dependencies, build_python_architecture_graph,
+    build_ts_architecture_graph, scan_repository,
 };
 use forge_core::{
     cache::{CacheMetadata, ForgeCache, EFORGE_DIR},
@@ -35,8 +35,50 @@ pub struct ScanOptions {
 pub fn execute_scan(opts: &ScanOptions) -> Result<(Repository, ExitCode), ForgeError> {
     let config = load_config(&opts.repo_root)?;
     let discovery = scan_repository(&opts.repo_root, &config.ignore_patterns)?;
-    let arch_graph = build_ts_architecture_graph(&opts.repo_root, &discovery.files)?;
-    let dep_report = analyze_npm_dependencies(&opts.repo_root, &arch_graph.external_imports)?;
+
+    let has_py = discovery
+        .files
+        .iter()
+        .any(|f| f.relative_path.ends_with(".py"));
+    let has_ts_js = discovery.files.iter().any(|f| {
+        matches!(
+            f.language.as_deref(),
+            Some("typescript") | Some("javascript") | Some("vue") | Some("svelte")
+        )
+    });
+
+    let mut modules = Vec::new();
+    let mut external_imports = BTreeSet::new();
+
+    if has_ts_js {
+        let ts_graph = build_ts_architecture_graph(&opts.repo_root, &discovery.files)?;
+        modules.extend(ts_graph.modules);
+        external_imports.extend(ts_graph.external_imports);
+    }
+    if has_py {
+        let py_graph = build_python_architecture_graph(&opts.repo_root, &discovery.files)?;
+        modules.extend(py_graph.modules);
+        external_imports.extend(py_graph.external_imports);
+    }
+
+    let mut dependencies = Vec::new();
+    let mut dep_findings = Vec::new();
+
+    if opts.repo_root.join("package.json").is_file() {
+        let npm_report = analyze_npm_dependencies(&opts.repo_root, &external_imports)?;
+        dependencies.extend(npm_report.dependencies);
+        dep_findings.extend(npm_report.findings);
+    }
+
+    if opts.repo_root.join("pyproject.toml").is_file()
+        || opts.repo_root.join("requirements.txt").is_file()
+        || opts.repo_root.join("poetry.lock").is_file()
+        || opts.repo_root.join("uv.lock").is_file()
+    {
+        let py_report = analyze_python_dependencies(&opts.repo_root, &external_imports)?;
+        dependencies.extend(py_report.dependencies);
+        dep_findings.extend(py_report.findings);
+    }
 
     let current_hashes: BTreeMap<String, String> = discovery
         .files
@@ -95,15 +137,15 @@ pub fn execute_scan(opts: &ScanOptions) -> Result<(Repository, ExitCode), ForgeE
         detected_frameworks: discovery.frameworks,
         package_managers: discovery.package_managers,
         files: discovery.files,
-        modules: arch_graph.modules,
-        dependencies: dep_report.dependencies,
+        modules,
+        dependencies,
         findings: Vec::new(),
         health: None,
     };
 
     let rule_engine = RuleEngine::from_config(&opts.repo_root, &config)?;
     let mut findings: Vec<Finding> = Vec::new();
-    findings.extend(dep_report.findings);
+    findings.extend(dep_findings);
     findings.extend(rule_engine.evaluate(&repo)?);
     findings.extend(SecurityScanner::scan_repository_files(
         &opts.repo_root,
