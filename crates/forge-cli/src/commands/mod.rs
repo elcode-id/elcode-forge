@@ -8,6 +8,7 @@ pub mod doctor;
 pub mod explain;
 pub mod graph;
 pub mod history;
+pub mod hook;
 pub mod init;
 pub mod mcp;
 pub mod onboard;
