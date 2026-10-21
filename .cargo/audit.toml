@@ -1,0 +1,9 @@
+# Configuration for cargo-audit (RustSec supply-chain advisory checks)
+
+[advisories]
+# RUSTSEC-2026-0381 flags webpki-roots < 1.0.10 (distrusted emSign intermediates).
+# In our Cargo.lock, webpki-roots is upgraded to 1.0.10.
+# webpki-roots 0.26.11 is a shim re-exporting webpki-roots 1.0.10, but falsely matched by semver < 1.0.10.
+ignore = [
+    "RUSTSEC-2026-0381",
+]
