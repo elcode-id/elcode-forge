@@ -204,10 +204,7 @@ fn test_resolve_rust_import_internal_and_external() -> Result<(), Box<dyn Error>
 fn test_infer_rust_module_boundary() -> Result<(), Box<dyn Error>> {
     assert_eq!(
         infer_rust_module_boundary("crates/forge-cli/src/commands/doctor.rs"),
-        (
-            "crates/forge-cli/commands".to_string(),
-            "commands".to_string()
-        )
+        ("crates/forge-cli".to_string(), "forge-cli".to_string())
     );
     assert_eq!(
         infer_rust_module_boundary("crates/forge-analyzer/src/lib.rs"),
