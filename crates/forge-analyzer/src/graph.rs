@@ -472,14 +472,12 @@ fn infer_go_module_boundary(relative_path: &str) -> (String, String) {
 /// - `"src/main.rs"` -> `("src", "src")`
 pub fn infer_rust_module_boundary(relative_path: &str) -> (String, String) {
     let parts: Vec<&str> = relative_path.split('/').collect();
-    if parts.len() >= 3 && parts[0] == "crates" {
+    if parts.len() >= 2 && (parts[0] == "crates" || parts[0] == "packages") {
         let crate_name = parts[1];
-        if parts.len() >= 5 && parts[2] == "src" {
-            let submod = parts[3];
-            (format!("crates/{crate_name}/{submod}"), submod.to_string())
-        } else {
-            (format!("crates/{crate_name}"), crate_name.to_string())
-        }
+        (
+            format!("{}/{}", parts[0], crate_name),
+            crate_name.to_string(),
+        )
     } else if parts.len() >= 3 && parts[0] == "src" {
         (format!("src/{}", parts[1]), parts[1].to_string())
     } else if parts.len() >= 2 && parts[0] == "src" {

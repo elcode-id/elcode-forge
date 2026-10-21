@@ -1,0 +1,7 @@
+github.com/bytedance/sonic v1.9.1 h1:6iJ6NqdoxCDr6mbY8h18oSO+cShGSMRGCEo7F2h0x8s=
+github.com/gin-gonic/gin v1.9.1 h1:4idEAncQnU5cB7BeOkPtxjfCSye0AAm1R0RVIqJ+Jmg=
+github.com/gin-gonic/gin v1.9.1/go.mod h1:hPrL7YrpYKXt5YId3A/Tnip5kqbEAP+KLuIQUAhRPWA=
+github.com/google/uuid v1.6.0 h1:NIvaJDKgcr6UqLqhMF/xoPkwJxVGHZ12JzsxNuahnCc=
+github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvF322718Lcn45RCdZuwSfr5mxEIaf0504=
+golang.org/x/sys v0.19.0 h1:q5f1Da2ELTVRMaKnQCZkdJQhy26AsAmuxgCdlgbpJlE=
+golang.org/x/sys v0.19.0/go.mod h1:/VUhepiaJMQUp4+oa/7zk3Tp84VEzWhbWkWunfqAmJ8=

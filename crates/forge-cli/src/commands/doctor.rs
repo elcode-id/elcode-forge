@@ -109,19 +109,57 @@ pub fn run_doctor(repo_root: &Path) -> Result<DoctorReport, ForgeError> {
             ),
         });
     } else if repo_root.join("Cargo.toml").exists() {
-        let has_cargo_lock = repo_root.join("Cargo.lock").exists();
-        checks.push(DoctorCheck {
-            label: "Cargo manifest & lockfile hygiene".to_string(),
-            passed: true,
-            warning: !has_cargo_lock,
-            detail: format!("Cargo.toml present, Cargo.lock present: {has_cargo_lock}"),
-        });
+        if let Ok(manifest) = forge_analyzer::parse_rust_workspace(repo_root) {
+            let wild_warn = !manifest.wildcard_dependencies.is_empty();
+            let lock_warn = !manifest.has_cargo_lock;
+            checks.push(DoctorCheck {
+                label: "Rust manifest & lockfile hygiene".to_string(),
+                passed: true,
+                warning: lock_warn || wild_warn,
+                detail: format!(
+                    "{} dependency(ies) declared, lockfile present: {}, wildcards: {}",
+                    manifest.dependencies.len(),
+                    manifest.has_cargo_lock,
+                    manifest.wildcard_dependencies.len()
+                ),
+            });
+        } else {
+            let has_cargo_lock = repo_root.join("Cargo.lock").exists();
+            checks.push(DoctorCheck {
+                label: "Rust manifest & lockfile hygiene".to_string(),
+                passed: true,
+                warning: !has_cargo_lock,
+                detail: format!("Cargo.toml present, Cargo.lock present: {has_cargo_lock}"),
+            });
+        }
+    } else if repo_root.join("go.mod").exists() {
+        if let Ok(manifest) = forge_analyzer::parse_go_manifest(repo_root) {
+            let has_sum = manifest.has_go_sum;
+            checks.push(DoctorCheck {
+                label: "Go manifest & lockfile hygiene".to_string(),
+                passed: true,
+                warning: !has_sum,
+                detail: format!(
+                    "{} dependency(ies) declared, go.sum present: {}",
+                    manifest.dependencies.len(),
+                    has_sum
+                ),
+            });
+        } else {
+            let has_go_sum = repo_root.join("go.sum").exists();
+            checks.push(DoctorCheck {
+                label: "Go manifest & lockfile hygiene".to_string(),
+                passed: true,
+                warning: !has_go_sum,
+                detail: format!("go.mod present, go.sum present: {has_go_sum}"),
+            });
+        }
     } else {
         checks.push(DoctorCheck {
             label: "Package manifest".to_string(),
             passed: true,
             warning: true,
-            detail: "No package.json found at repository root".to_string(),
+            detail: "No manifest (package.json, pyproject.toml, Cargo.toml, go.mod) found at repository root".to_string(),
         });
     }
 
