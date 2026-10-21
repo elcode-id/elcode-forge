@@ -8,6 +8,8 @@ pub mod graph;
 pub mod package_json;
 pub mod python_imports;
 pub mod python_manifest;
+pub mod rust_imports;
+pub mod rust_manifest;
 pub mod scanner;
 pub mod ts_imports;
 
@@ -20,8 +22,8 @@ pub use go_imports::{
 };
 pub use go_manifest::{parse_go_manifest, parse_go_mod_content, ParsedGoManifest};
 pub use graph::{
-    build_go_architecture_graph, build_python_architecture_graph, build_ts_architecture_graph,
-    ArchitectureGraph,
+    build_go_architecture_graph, build_python_architecture_graph, build_rust_architecture_graph,
+    build_ts_architecture_graph, infer_rust_module_boundary, ArchitectureGraph,
 };
 pub use package_json::{parse_package_json, ParsedManifest};
 pub use python_imports::{
@@ -32,6 +34,14 @@ pub use python_manifest::{
     is_python_unpinned, normalize_python_package_name, parse_pyproject_toml_content,
     parse_python_manifests, parse_requirement_line, parse_requirements_txt_content,
     read_python_lockfile_versions, ParsedPythonManifest,
+};
+pub use rust_imports::{
+    expand_use_tree, extract_rust_external_crate, extract_rust_mods_and_uses, is_rust_std,
+    resolve_rust_import, strip_rust_comments, RUST_STD_CRATES,
+};
+pub use rust_manifest::{
+    parse_cargo_dependencies, parse_cargo_toml_content, parse_rust_workspace,
+    read_cargo_lock_versions, ParsedCargoDeps, ParsedRustWorkspace,
 };
 pub use scanner::{scan_repository, DiscoverySummary};
 pub use ts_imports::{
