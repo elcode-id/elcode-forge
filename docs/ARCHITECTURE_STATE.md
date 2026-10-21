@@ -611,3 +611,20 @@
 - **Invariants:**
   - Strict zero-panic policy enforced in all tests (`Result<(), Box<dyn Error>>`).
   - Completes **Epic #157** (Phase 7C) and concludes **Phase 7: Multi-Language Expansion**.
+
+## Issue #171 — Composer Manifest Parser, Lockfile Hygiene & Dependency Health for PHP (COMPLETED)
+- **Crates:** `crates/forge-analyzer` (`src/composer_manifest.rs`, `src/detector.rs`, `src/dep_health.rs`, `tests/composer_manifest_test.rs`), `crates/forge-cli` (`src/commands/doctor.rs`)
+- **Public Types & Functions (`forge_analyzer::composer_manifest`):**
+  - `ParsedComposerManifest`: `name`, `dependencies`, `psr4_mappings`, `unpinned_packages`, `duplicate_packages`, `has_composer_lock`.
+  - `parse_composer_manifest(repo_root: &Path) -> Result<ParsedComposerManifest, ForgeError>`.
+  - `parse_composer_json_content(content: &str, has_lock: bool, lock_versions: &BTreeMap<String, String>) -> Result<ParsedComposerManifest, ForgeError>`.
+  - `read_composer_lock_versions(repo_root: &Path) -> BTreeMap<String, String>`.
+  - `is_composer_unpinned(version_req: &str) -> bool`.
+  - `analyze_composer_dependencies(repo_root: &Path, external_imports: &BTreeSet<String>) -> Result<DependencyReport, ForgeError>`.
+  - `PHP_IMPLICIT_RUNNERS`: runtime catalog for `phpunit`, `pest`, `phpstan`, `psalm`, `rector`, `pint`, `sail`, `faker`, `mockery`, `collision`, `ignition`.
+- **Ecosystem & CLI Doctor Integration:**
+  - `detect_ecosystem`: Detects package manager `"composer"`, frameworks (`"laravel"`, `"symfony"`, `"wordpress"`), and test runners (`"phpunit"`, `"pest"`).
+  - `eforge doctor`: Evaluates `PHP manifest & lockfile hygiene`, flagging missing `composer.lock`, unpinned packages, and duplicate declarations.
+  - `analyze_polyglot_dependencies`: Integrates `composer.json` discovery and evaluation across repository subdirectories.
+- **Invariants:**
+  - Zero panics; all operations propagate `ForgeError`.

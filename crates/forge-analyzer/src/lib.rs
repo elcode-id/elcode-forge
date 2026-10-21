@@ -1,5 +1,6 @@
 //! `forge-analyzer` — Project discovery, AST/import graph, and language/framework detectors.
 
+pub mod composer_manifest;
 pub mod dep_health;
 pub mod detector;
 pub mod go_imports;
@@ -13,6 +14,11 @@ pub mod rust_manifest;
 pub mod scanner;
 pub mod ts_imports;
 
+pub use composer_manifest::{
+    analyze_composer_dependencies, is_composer_unpinned, parse_composer_json_content,
+    parse_composer_manifest, read_composer_lock_versions, ParsedComposerManifest,
+    PHP_IMPLICIT_RUNNERS,
+};
 pub use dep_health::{
     analyze_npm_dependencies, analyze_polyglot_dependencies, analyze_python_dependencies,
     DependencyReport,
