@@ -15,7 +15,7 @@
   "homepage": "https://elcode.id/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/elcode-id/elcode-forge.git",
+    "url": "git+https://github.com/elcode-id/elcode-forge.git",
     "directory": "packages/forge-cli-npm"
   },
   "license": "MIT",
