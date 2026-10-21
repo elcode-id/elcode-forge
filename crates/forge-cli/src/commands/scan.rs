@@ -4,14 +4,15 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
 use forge_analyzer::{
-    analyze_npm_dependencies, analyze_python_dependencies, build_python_architecture_graph,
-    build_ts_architecture_graph, scan_repository,
+    analyze_npm_dependencies, analyze_python_dependencies, build_go_architecture_graph,
+    build_python_architecture_graph, build_rust_architecture_graph, build_ts_architecture_graph,
+    parse_go_manifest, parse_rust_workspace, scan_repository,
 };
 use forge_core::{
     cache::{CacheMetadata, ForgeCache, EFORGE_DIR},
     config::load_config,
     scoring::calculate_health_score,
-    FileNode, Finding, ForgeError, Repository,
+    Confidence, FileNode, Finding, ForgeError, Repository, Severity,
 };
 use forge_rules::RuleEngine;
 use forge_security::SecurityScanner;
@@ -46,6 +47,14 @@ pub fn execute_scan(opts: &ScanOptions) -> Result<(Repository, ExitCode), ForgeE
             Some("typescript") | Some("javascript") | Some("vue") | Some("svelte")
         )
     });
+    let has_go = discovery
+        .files
+        .iter()
+        .any(|f| matches!(f.language.as_deref(), Some("go")) || f.relative_path.ends_with(".go"));
+    let has_rust = discovery
+        .files
+        .iter()
+        .any(|f| matches!(f.language.as_deref(), Some("rust")) || f.relative_path.ends_with(".rs"));
 
     let mut modules = Vec::new();
     let mut external_imports = BTreeSet::new();
@@ -59,6 +68,24 @@ pub fn execute_scan(opts: &ScanOptions) -> Result<(Repository, ExitCode), ForgeE
         let py_graph = build_python_architecture_graph(&opts.repo_root, &discovery.files)?;
         modules.extend(py_graph.modules);
         external_imports.extend(py_graph.external_imports);
+    }
+    if has_go {
+        let module_path = if opts.repo_root.join("go.mod").is_file() {
+            parse_go_manifest(&opts.repo_root)
+                .ok()
+                .and_then(|m| m.module_path)
+        } else {
+            None
+        };
+        let go_graph =
+            build_go_architecture_graph(&opts.repo_root, &discovery.files, module_path.as_deref())?;
+        modules.extend(go_graph.modules);
+        external_imports.extend(go_graph.external_imports);
+    }
+    if has_rust {
+        let rust_graph = build_rust_architecture_graph(&opts.repo_root, &discovery.files)?;
+        modules.extend(rust_graph.modules);
+        external_imports.extend(rust_graph.external_imports);
     }
 
     let mut dependencies = Vec::new();
@@ -78,6 +105,34 @@ pub fn execute_scan(opts: &ScanOptions) -> Result<(Repository, ExitCode), ForgeE
         let py_report = analyze_python_dependencies(&opts.repo_root, &external_imports)?;
         dependencies.extend(py_report.dependencies);
         dep_findings.extend(py_report.findings);
+    }
+
+    if opts.repo_root.join("go.mod").is_file() {
+        if let Ok(go_manifest) = parse_go_manifest(&opts.repo_root) {
+            dependencies.extend(go_manifest.dependencies);
+        }
+    }
+
+    if opts.repo_root.join("Cargo.toml").is_file() {
+        if let Ok(rust_ws) = parse_rust_workspace(&opts.repo_root) {
+            dependencies.extend(rust_ws.dependencies);
+            for wild in rust_ws.wildcard_dependencies {
+                dep_findings.push(Finding {
+                    id: format!("dep/cargo-wildcard-{wild}"),
+                    category: "dependencies".to_string(),
+                    severity: Severity::High,
+                    confidence: Confidence::Certain,
+                    title: format!("Wildcard dependency constraint on '{wild}'"),
+                    description: format!(
+                        "Package '{wild}' uses wildcard constraint '*' in Cargo manifest. This allows untested breaking versions to be pulled in."
+                    ),
+                    evidence: format!("Cargo.toml: {wild} = \"*\""),
+                    location: None,
+                    recommendation: "Pin the dependency to a specific version requirement.".to_string(),
+                    rule_id: "deps/unpinned-version".to_string(),
+                });
+            }
+        }
     }
 
     let current_hashes: BTreeMap<String, String> = discovery

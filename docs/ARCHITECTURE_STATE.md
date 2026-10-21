@@ -546,3 +546,15 @@
 - **Invariants:**
   - 100% adherence to zero-panic policy; test assertions return `Result<(), Box<dyn Error>>`.
   - Self-dogfooding test verified against `elcode-forge` workspace itself.
+
+## Issue #156 — Curated Go (fixtures/go-service) and Rust (fixtures/rust-cli) Fixtures & Golden Integration Tests (COMPLETED)
+- **Crates & Fixtures:** `fixtures/go-service/`, `fixtures/rust-cli/`, `crates/forge-cli` (`src/commands/doctor.rs`, `src/commands/scan.rs`, `src/commands/graph.rs`, `tests/go_rust_fixtures_golden_test.rs`), `crates/forge-core` (`src/cache.rs`)
+- **Deliverables & Capabilities:**
+  - `fixtures/go-service/`: Idiomatic Go microservice with `go.mod` (module `example.com/goservice`), `go.sum`, `cmd/api/main.go`, `internal/handlers/`, `internal/services/`, `internal/storage/`, and `internal/services/user_test.go`. Features an intentional circular package dependency between `internal/handlers` and `internal/services`.
+  - `fixtures/rust-cli/`: Modular Rust CLI crate with `Cargo.toml`, `Cargo.lock`, `src/main.rs`, `src/config.rs`, `src/commands/`, `src/utils/`, and `tests/cli_test.rs`. Features an intentional wildcard dependency (`log = "*"`).
+  - Multi-language pipeline wiring in `crates/forge-cli`: `eforge doctor` checks `Go manifest & lockfile hygiene` and `Rust manifest & lockfile hygiene`; `eforge scan` maps Go and Rust architecture graphs and parses dependencies; `eforge graph` supports language-aware Mermaid exports.
+  - Race-condition hardening in `crates/forge-core/src/cache.rs`: `save_metadata` ensures parent directories exist prior to atomic writes.
+  - Golden integration tests in `crates/forge-cli/tests/go_rust_fixtures_golden_test.rs` validating doctor diagnostics and full scan determinism across Go and Rust fixtures.
+- **Invariants:**
+  - Strict zero-panic test discipline (`Result<(), Box<dyn Error>>` everywhere).
+  - Completes **Epic #153** (Phase 7B: Go & Rust Ecosystems Intelligence).
