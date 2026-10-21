@@ -5,12 +5,15 @@ use std::path::Path;
 use forge_core::{FileNode, ForgeError, Module};
 use serde::{Deserialize, Serialize};
 
+use crate::python_imports::{
+    extract_pypi_package_name, extract_python_imports_and_exports, resolve_python_import,
+};
 use crate::ts_imports::{
     extract_npm_package_name, extract_sfc_script_content, extract_ts_imports_and_exports,
     resolve_import_specifier,
 };
 
-/// Inferred architecture graph for TypeScript/JavaScript repositories.
+/// Inferred architecture graph for repositories.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ArchitectureGraph {
     pub modules: Vec<Module>,
@@ -126,7 +129,93 @@ pub fn build_ts_architecture_graph(
     })
 }
 
-/// Infers a logical module `(id, name)` from a normalized relative file path.
+/// Builds the [`ArchitectureGraph`] for all Python files in `files`,
+/// inferring logical module boundaries, external PyPI imports, high-centrality modules, and
+/// circular dependencies using Tarjan's Strongly Connected Components (SCC) algorithm.
+pub fn build_python_architecture_graph(
+    repo_root: &Path,
+    files: &[FileNode],
+) -> Result<ArchitectureGraph, ForgeError> {
+    let py_files: Vec<&FileNode> = files
+        .iter()
+        .filter(|f| {
+            matches!(f.language.as_deref(), Some("python")) || f.relative_path.ends_with(".py")
+        })
+        .collect();
+
+    let known_files: BTreeSet<String> = py_files.iter().map(|f| f.relative_path.clone()).collect();
+
+    let mut module_map: BTreeMap<String, ModuleAccumulator> = BTreeMap::new();
+    let mut external_imports = BTreeSet::new();
+
+    for file in &py_files {
+        let (mod_id, mod_name) = infer_python_module_boundary(&file.relative_path);
+        let acc = module_map
+            .entry(mod_id.clone())
+            .or_insert_with(|| ModuleAccumulator {
+                name: mod_name,
+                root_path: mod_id.clone(),
+                ..Default::default()
+            });
+        acc.files.insert(file.relative_path.clone());
+    }
+
+    for file in &py_files {
+        let (source_mod_id, _) = infer_python_module_boundary(&file.relative_path);
+        let full_path = repo_root.join(&file.relative_path);
+        let content = fs::read_to_string(&full_path).map_err(|source| ForgeError::Io {
+            path: full_path,
+            source,
+        })?;
+
+        let (raw_imports, file_exports) = extract_python_imports_and_exports(&content);
+
+        if let Some(acc) = module_map.get_mut(&source_mod_id) {
+            for exp in file_exports {
+                acc.exports.insert(exp);
+            }
+        }
+
+        for spec in raw_imports {
+            if let Some(target_file) =
+                resolve_python_import(&file.relative_path, &spec, &known_files)
+            {
+                let (target_mod_id, _) = infer_python_module_boundary(&target_file);
+                if target_mod_id != source_mod_id {
+                    if let Some(acc) = module_map.get_mut(&source_mod_id) {
+                        acc.imports.insert(target_mod_id);
+                    }
+                }
+            } else if let Some(pkg) = extract_pypi_package_name(&spec) {
+                external_imports.insert(pkg);
+            }
+        }
+    }
+
+    let modules: Vec<Module> = module_map
+        .into_iter()
+        .map(|(id, acc)| Module {
+            id,
+            name: acc.name,
+            root_path: acc.root_path,
+            files: acc.files.into_iter().collect(),
+            imports: acc.imports.into_iter().collect(),
+            exports: acc.exports.into_iter().collect(),
+        })
+        .collect();
+
+    let circular_dependencies = detect_circular_dependencies(&modules);
+    let high_centrality_modules = compute_high_centrality(&modules);
+
+    Ok(ArchitectureGraph {
+        modules,
+        circular_dependencies,
+        high_centrality_modules,
+        external_imports,
+    })
+}
+
+/// Infers a logical module `(id, name)` from a normalized relative file path for TS/JS projects.
 ///
 /// Examples:
 /// - `"src/components/UserCard.tsx"` -> `("src/components", "components")`
@@ -135,6 +224,34 @@ fn infer_module_boundary(relative_path: &str) -> (String, String) {
     let parts: Vec<&str> = relative_path.split('/').collect();
     if parts.len() >= 3 && parts[0] == "src" {
         let id = format!("src/{}", parts[1]);
+        let name = parts[1].to_string();
+        return (id, name);
+    }
+    if parts.len() >= 2 {
+        let id = parts[0].to_string();
+        let name = parts[0].to_string();
+        return (id, name);
+    }
+    ("root".to_string(), "root".to_string())
+}
+
+/// Infers a logical module `(id, name)` from a normalized relative Python file path.
+///
+/// Examples:
+/// - `"app/routers/items.py"` -> `("app/routers", "routers")`
+/// - `"app/services/user.py"` -> `("app/services", "services")`
+/// - `"src/my_app/routers/items.py"` -> `("src/my_app/routers", "routers")`
+/// - `"src/services/user.py"` -> `("src/services", "services")`
+/// - `"main.py"` -> `("root", "root")`
+fn infer_python_module_boundary(relative_path: &str) -> (String, String) {
+    let parts: Vec<&str> = relative_path.split('/').collect();
+    if parts.len() >= 4 && parts[0] == "src" {
+        let id = format!("src/{}/{}", parts[1], parts[2]);
+        let name = parts[2].to_string();
+        return (id, name);
+    }
+    if parts.len() >= 3 && (parts[0] == "src" || parts[0] == "app") {
+        let id = format!("{}/{}", parts[0], parts[1]);
         let name = parts[1].to_string();
         return (id, name);
     }
