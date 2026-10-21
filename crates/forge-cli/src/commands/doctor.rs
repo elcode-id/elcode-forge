@@ -166,12 +166,41 @@ pub fn run_doctor(repo_root: &Path) -> Result<DoctorReport, ForgeError> {
         }
     }
 
+    if repo_root.join("composer.json").exists() {
+        manifest_found = true;
+        if let Ok(manifest) = forge_analyzer::parse_composer_manifest(repo_root) {
+            let has_lock = manifest.has_composer_lock;
+            let unpinned_warn = !manifest.unpinned_packages.is_empty();
+            let dup_warn = !manifest.duplicate_packages.is_empty();
+            checks.push(DoctorCheck {
+                label: "PHP manifest & lockfile hygiene".to_string(),
+                passed: true,
+                warning: !has_lock || unpinned_warn || dup_warn,
+                detail: format!(
+                    "{} dependency(ies) declared, lockfile present: {}, unpinned: {}, duplicates: {}",
+                    manifest.dependencies.len(),
+                    has_lock,
+                    manifest.unpinned_packages.len(),
+                    manifest.duplicate_packages.len()
+                ),
+            });
+        } else {
+            let has_lock = repo_root.join("composer.lock").exists();
+            checks.push(DoctorCheck {
+                label: "PHP manifest & lockfile hygiene".to_string(),
+                passed: true,
+                warning: !has_lock,
+                detail: format!("composer.json present, composer.lock present: {has_lock}"),
+            });
+        }
+    }
+
     if !manifest_found {
         checks.push(DoctorCheck {
             label: "Package manifest".to_string(),
             passed: true,
             warning: true,
-            detail: "No manifest (package.json, pyproject.toml, Cargo.toml, go.mod) found at repository root".to_string(),
+            detail: "No manifest (package.json, pyproject.toml, Cargo.toml, go.mod, composer.json) found at repository root".to_string(),
         });
     }
 

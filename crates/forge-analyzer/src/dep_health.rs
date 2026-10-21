@@ -285,6 +285,7 @@ pub fn analyze_polyglot_dependencies(
     let mut py_dirs: BTreeSet<PathBuf> = BTreeSet::new();
     let mut go_dirs: BTreeSet<PathBuf> = BTreeSet::new();
     let mut rust_dirs: BTreeSet<PathBuf> = BTreeSet::new();
+    let mut php_dirs: BTreeSet<PathBuf> = BTreeSet::new();
 
     if repo_root.join("package.json").is_file() {
         npm_dirs.insert(repo_root.to_path_buf());
@@ -301,6 +302,9 @@ pub fn analyze_polyglot_dependencies(
     }
     if repo_root.join("Cargo.toml").is_file() {
         rust_dirs.insert(repo_root.to_path_buf());
+    }
+    if repo_root.join("composer.json").is_file() {
+        php_dirs.insert(repo_root.to_path_buf());
     }
 
     for f in files {
@@ -324,6 +328,11 @@ pub fn analyze_polyglot_dependencies(
             let full = repo_root.join(p);
             if let Some(parent) = full.parent() {
                 rust_dirs.insert(parent.to_path_buf());
+            }
+        } else if p.ends_with("composer.json") {
+            let full = repo_root.join(p);
+            if let Some(parent) = full.parent() {
+                php_dirs.insert(parent.to_path_buf());
             }
         }
     }
@@ -378,6 +387,19 @@ pub fn analyze_polyglot_dependencies(
                     rule_id: "deps/unpinned-version".to_string(),
                 });
             }
+        }
+    }
+
+    // 6. Analyze PHP Composer manifests
+    for dir in php_dirs {
+        if let Ok(php_report) =
+            crate::composer_manifest::analyze_composer_dependencies(&dir, external_imports)
+        {
+            all_dependencies.extend(php_report.dependencies);
+            all_unused.extend(php_report.unused_dependencies);
+            all_duplicates.extend(php_report.duplicate_packages);
+            all_wildcards.extend(php_report.wildcard_or_unpinned);
+            all_findings.extend(php_report.findings);
         }
     }
 

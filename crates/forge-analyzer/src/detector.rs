@@ -91,6 +91,13 @@ pub fn detect_ecosystem(repo_root: &Path, files: &[FileNode]) -> EcosystemSignal
         } else if file_name == "pytest.ini" || file_name == "conftest.py" {
             frameworks.insert("pytest".to_string());
             has_tests = true;
+        } else if file_name == "artisan" {
+            frameworks.insert("laravel".to_string());
+        } else if file_name == "phpunit.xml" || file_name == "phpunit.xml.dist" {
+            frameworks.insert("phpunit".to_string());
+            has_tests = true;
+        } else if file_name == "wp-config.php" {
+            frameworks.insert("wordpress".to_string());
         }
     }
 
@@ -130,6 +137,9 @@ pub fn detect_ecosystem(repo_root: &Path, files: &[FileNode]) -> EcosystemSignal
     }
     if repo_root.join("go.mod").is_file() {
         package_managers.insert("go".to_string());
+    }
+    if repo_root.join("composer.json").is_file() || repo_root.join("composer.lock").is_file() {
+        package_managers.insert("composer".to_string());
     }
 
     // Inspect package.json dependencies for JS/TS frameworks and test runners
@@ -239,6 +249,28 @@ pub fn detect_ecosystem(repo_root: &Path, files: &[FileNode]) -> EcosystemSignal
                         frameworks.insert("rocket".to_string());
                     }
                     _ => {}
+                }
+            }
+        }
+    }
+
+    // Inspect Composer manifest for PHP frameworks (Laravel, Symfony, WordPress) and test runners
+    if repo_root.join("composer.json").is_file() {
+        if let Ok(manifest) = crate::composer_manifest::parse_composer_manifest(repo_root) {
+            for dep in &manifest.dependencies {
+                let name = dep.name.to_lowercase();
+                if name == "laravel/framework" {
+                    frameworks.insert("laravel".to_string());
+                } else if name.starts_with("symfony/") {
+                    frameworks.insert("symfony".to_string());
+                } else if name == "johnpbloch/wordpress" || name == "roots/bedrock" {
+                    frameworks.insert("wordpress".to_string());
+                } else if name == "phpunit/phpunit" {
+                    frameworks.insert("phpunit".to_string());
+                    has_tests = true;
+                } else if name == "pestphp/pest" {
+                    frameworks.insert("pest".to_string());
+                    has_tests = true;
                 }
             }
         }
