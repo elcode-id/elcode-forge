@@ -472,3 +472,18 @@
 - **Invariants:**
   - Zero-panic: all parsing operations map errors to `ForgeError::Serialization` or `ForgeError::Io`.
   - Dependencies are sorted deterministically by `(name, is_dev)` with `ecosystem: "pypi"`.
+
+
+## Issue #151 — Python Import Graph Extractor, Module Resolver & Cycle Detector (COMPLETED)
+- **Crate:** `crates/forge-analyzer` (`src/python_imports.rs`, `src/graph.rs`, `src/lib.rs`, `tests/python_imports_test.rs`)
+- **Public Types & Functions:**
+  - `PYTHON_STDLIB_MODULES: &[&str]`: Immutable catalog of 200+ Python standard library modules across Python 3.8–3.13.
+  - `is_python_stdlib(module_name: &str) -> bool`: Filters standard library imports vs local internal imports vs third-party PyPI packages.
+  - `strip_python_comments(source: &str) -> String`: Strips `#` line comments and `"""` / `'''` docstrings while preserving line breaks.
+  - `extract_python_imports_and_exports(source: &str) -> (Vec<String>, Vec<String>)`: Extracts `import`, `from ... import`, relative imports, multiline parenthesized imports, and top-level exports (`def`, `async def`, `class`, `__all__`).
+  - `resolve_python_import(importer_rel_path: &str, raw_import: &str, known_files: &BTreeSet<String>) -> Option<String>`: Resolves relative (`.`, `..`, `...`) and package imports (`app/...`, `src/...`) to internal repository `.py` files.
+  - `extract_pypi_package_name(raw_import: &str) -> Option<String>`: Extracts normalized PyPI package name for third-party imports.
+  - `build_python_architecture_graph(repo_root: &Path, files: &[FileNode]) -> Result<ArchitectureGraph, ForgeError>`: Infers logical module boundaries (`app/routers`, `app/services`, etc.), PyPI external dependencies, high-centrality modules, and Tarjan SCC circular import cycles.
+- **Invariants:**
+  - Zero-panic: all parsing and graph construction operations strictly propagate errors or handle empty/malformed lines safely.
+  - Standard library imports are filtered out from `external_imports` to avoid false-positive external dependencies.
