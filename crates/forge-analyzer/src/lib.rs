@@ -7,6 +7,7 @@ pub mod go_imports;
 pub mod go_manifest;
 pub mod graph;
 pub mod package_json;
+pub mod php_imports;
 pub mod python_imports;
 pub mod python_manifest;
 pub mod rust_imports;
@@ -36,6 +37,11 @@ pub use graph::{
     infer_rust_module_boundary, ArchitectureGraph,
 };
 pub use package_json::{parse_package_json, ParsedManifest};
+pub use php_imports::{
+    build_php_architecture_graph, extract_composer_package_name, extract_php_namespace_and_uses,
+    infer_php_module_boundary, is_php_builtin, resolve_php_import, strip_php_comments,
+    PHP_BUILTIN_CLASSES,
+};
 pub use python_imports::{
     extract_pypi_package_name, extract_python_imports_and_exports, is_python_stdlib,
     resolve_python_import, strip_python_comments, PYTHON_STDLIB_MODULES,

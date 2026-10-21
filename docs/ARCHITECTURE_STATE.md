@@ -628,3 +628,25 @@
   - `analyze_polyglot_dependencies`: Integrates `composer.json` discovery and evaluation across repository subdirectories.
 - **Invariants:**
   - Zero panics; all operations propagate `ForgeError`.
+
+
+## Issue #172 — PHP Namespace & Use Import Graph, Cycle Detection & Security Pattern Scanner (COMPLETED)
+- **Crates:** `crates/forge-analyzer` (`src/php_imports.rs`, `src/graph.rs`, `tests/php_imports_test.rs`), `crates/forge-security` (`src/php_patterns.rs`, `src/lib.rs`, `tests/php_security_test.rs`)
+- **Public Types & Functions (`forge_analyzer::php_imports`):**
+  - `build_php_architecture_graph(repo_root: &Path, files: &[FileNode]) -> Result<ArchitectureGraph, ForgeError>`.
+  - `extract_php_namespace_and_uses(source: &str) -> (Option<String>, Vec<String>)`: Extracts namespace declaration and use statements (including aliases and group use statements), filtering out PHP built-in classes (`stdClass`, `DateTime`, `Exception`, `PDO`, etc.).
+  - `strip_php_comments(source: &str) -> String`: Strips single-line (`//`, `#`) and multi-line (`/* ... */`) comments while preserving string literals.
+  - `infer_php_module_boundary(relative_path: &str) -> String`: Infers architecture module boundaries for Laravel structures (`app/Http/Controllers`, `app/Models`, `app/Services`, `app/Providers`, `tests/Feature`, `tests/Unit`) and PSR-4 directory layouts.
+  - `resolve_php_import(target_class: &str, psr4_mappings: &[(String, String)], repo_root: &Path) -> Option<String>`: Resolves PHP class names to file paths using PSR-4 mappings or default `App\` conventions.
+  - `extract_composer_package_name(import: &str) -> Option<String>`: Identifies external Composer vendor packages (`Illuminate\` -> `laravel/framework`, `GuzzleHttp\` -> `guzzlehttp/guzzle`, `Symfony\Component\<Name>` -> `symfony/<kebab-name>`).
+  - Integrated into `build_polyglot_architecture_graph` in `crates/forge-analyzer/src/graph.rs` with Tarjan's SCC cycle detection.
+- **PHP Security Pattern Scanner (`forge_security::php_patterns`):**
+  - `scan_php_unsafe_patterns(relative_path: &str, content: &str) -> Vec<Finding>`.
+  - Built-in rules:
+    - `RULE_PHP_UNSAFE_EVAL` (`security/php-unsafe-eval`, Critical): Flags dynamic code execution via `eval(...)`.
+    - `RULE_PHP_INSECURE_UNSERIALIZE` (`security/php-insecure-unserialize`, High): Flags PHP object injection via untrusted `unserialize(...)`.
+    - `RULE_PHP_COMMAND_INJECTION` (`security/php-command-injection`, High): Flags arbitrary shell execution via `exec`, `passthru`, `shell_exec`, `system`, `popen`, or `proc_open`.
+    - `RULE_PHP_CREATE_FUNCTION` (`security/php-create-function`, High): Flags deprecated runtime code generation via `create_function(...)`.
+  - Wired into `SecurityScanner::scan_file_content` for `.php` files with comment filtering.
+- **Invariants:**
+  - Zero panics across library crates (`unsafe_code = "forbid"`, strict `ForgeError` propagation).
