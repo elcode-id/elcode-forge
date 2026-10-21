@@ -265,6 +265,17 @@ pub enum Commands {
         #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
         format: OutputFormat,
     },
+    /// Manage native Git hooks automation (`install`, `run`, `uninstall`, `status`).
+    Hook {
+        #[command(subcommand)]
+        action: Option<HookAction>,
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
     /// Manage AI configuration, check provider status, and inspect usage ledgers.
     Ai {
         #[command(subcommand)]
@@ -338,6 +349,61 @@ pub enum RulesAction {
         /// Force overwrite if destination file already exists.
         #[arg(long)]
         force: bool,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+}
+
+/// Subcommands available under `eforge hook`.
+#[derive(Debug, Subcommand)]
+pub enum HookAction {
+    /// Install native Git hook scripts into `.git/hooks/`.
+    Install {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Hook type to install (`pre-commit`, `pre-push`, `all`).
+        #[arg(long, default_value = "all")]
+        hook: String,
+        /// Force overwrite of existing hook files.
+        #[arg(long)]
+        force: bool,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Execute a hook lifecycle check (called by git or manual invocation).
+    Run {
+        /// Hook event being executed (`pre-commit`, `pre-push`).
+        hook: String,
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Minimum finding severity to fail the hook (`critical|high|medium|low|info`).
+        #[arg(long)]
+        fail_on: Option<String>,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Remove managed Git hook scripts and restore backups.
+    Uninstall {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Hook type to uninstall (`pre-commit`, `pre-push`, `all`).
+        #[arg(long, default_value = "all")]
+        hook: String,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Inspect the installation and configuration status of Git hooks.
+    Status {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
         /// Output format (`terminal`, `json`, `markdown`).
         #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
         format: OutputFormat,

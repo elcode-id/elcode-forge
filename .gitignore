@@ -1,5 +1,7 @@
 /target
 /.eforge
+**/.eforge/metadata.json
+**/.eforge/cache/
 **/*.rs.bk
 .DS_Store
 node_modules/

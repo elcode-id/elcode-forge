@@ -170,6 +170,38 @@ pub fn run_doctor(repo_root: &Path) -> Result<DoctorReport, ForgeError> {
 }
 
 /// Formats a [`DoctorReport`] according to the requested [`OutputFormat`].
+/// Renders a [`DoctorReport`] in terminal format with an explicit [`Theme`].
+pub fn render_doctor_terminal_with_theme(
+    report: &DoctorReport,
+    theme: &crate::theme::Theme,
+) -> String {
+    let mut out = String::new();
+    out.push_str("============================================================\n");
+    out.push_str(&format!(" {}\n", theme.bold("ELCODE Forge Doctor")));
+    out.push_str("============================================================\n");
+    for check in &report.checks {
+        let badge = if !check.passed {
+            theme.status_fail(&check.label)
+        } else if check.warning {
+            theme.status_warn(&check.label)
+        } else {
+            theme.status_ok(&check.label)
+        };
+        out.push_str(&format!("{} — {}\n", badge, check.detail));
+    }
+    let summary_text = format!(
+        "Summary: {} warning(s) in {}ms",
+        report.warnings_count, report.duration_ms
+    );
+    let summary_styled = if report.warnings_count == 0 {
+        theme.green(&summary_text)
+    } else {
+        theme.yellow(&summary_text)
+    };
+    out.push_str(&format!("\n{}\n", summary_styled));
+    out
+}
+
 pub fn render_doctor_report(
     report: &DoctorReport,
     format: OutputFormat,
@@ -203,24 +235,8 @@ pub fn render_doctor_report(
             Ok(md)
         }
         OutputFormat::Terminal => {
-            let mut out = String::new();
-            out.push_str("ELCODE Forge Doctor\n");
-            out.push_str("-------------------\n");
-            for check in &report.checks {
-                let status = if !check.passed {
-                    "[FAIL]"
-                } else if check.warning {
-                    "[WARN]"
-                } else {
-                    "[ OK ]"
-                };
-                out.push_str(&format!("{} {}: {}\n", status, check.label, check.detail));
-            }
-            out.push_str(&format!(
-                "\nSummary: {} warning(s) in {}ms\n",
-                report.warnings_count, report.duration_ms
-            ));
-            Ok(out)
+            let theme = crate::theme::Theme::default();
+            Ok(render_doctor_terminal_with_theme(report, &theme))
         }
     }
 }
@@ -255,6 +271,14 @@ mod tests {
             assert!(json_res.is_ok());
             if let Ok(json_text) = json_res {
                 assert!(json_text.contains("\"repository_detected\": true"));
+            }
+
+            let term_res = render_doctor_report(&report, OutputFormat::Terminal);
+            assert!(term_res.is_ok());
+            if let Ok(term_text) = term_res {
+                assert!(term_text.contains("ELCODE Forge Doctor"));
+                assert!(term_text.contains("Repository inventory"));
+                assert!(term_text.contains("Summary:"));
             }
         }
     }

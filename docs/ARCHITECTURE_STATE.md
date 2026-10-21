@@ -340,3 +340,99 @@
 - **Invariants:**
   - Zero-panic test discipline: integration test suite complies strictly with zero `.unwrap()` and `.expect()` policy.
   - Zero schema drift and 100% green CI verification across all dogfooding and release workflows.
+
+
+## Issue #130 — Native Git Hooks Lifecycle & Configuration Schema (COMPLETED)
+- **Crates:** `crates/forge-core` (`src/config.rs`), `crates/forge-git` (`src/hooks.rs`, `src/lib.rs`)
+- **Public Types & Functions:**
+  - `forge_core::config`: `HooksConfig`, `HookActionConfig` added to `ForgeConfig::hooks`.
+  - `forge_git::hooks`: `HookType` (`PreCommit`, `PrePush`, `All`), `HookEntryStatus`, `HookStatusReport`, `HookInstallResult`, `HookUninstallResult`, `install_hooks(repo_root, hook_type, force)`, `uninstall_hooks(repo_root, hook_type)`, `get_hooks_status(repo_root)`.
+- **Invariants:**
+  - Non-destructive backup preservation: foreign pre-existing hooks are copied to `<hook>.forge-backup` and restored on uninstall.
+  - Executable permissions: hook scripts are marked `0o755` on Unix.
+  - Bypass support: generated shell scripts check `FORGE_SKIP_HOOK=1` before attempting execution.
+  - Worktree/submodule awareness: resolves `.git` when it is a file (`gitdir: <path>`).
+
+## Issue #131 — `eforge hook` Command & Sub-200ms Fast Staged-Diff Scanner (COMPLETED)
+- **Crates:** `crates/forge-cli` (`src/commands/hook.rs`, `src/commands/mod.rs`, `src/cli.rs`, `src/lib.rs`)
+- **CLI Commands & Structs:**
+  - `Commands::Hook { action: HookAction }`
+  - `HookAction::Install { hook_type, force }`
+  - `HookAction::Uninstall { hook_type }`
+  - `HookAction::Status { format }`
+  - `HookAction::Run { hook_type, staged_only, format }`
+  - `HookRunOutput`, `HookRunResult` with formatted output in terminal, JSON, and Markdown.
+- **Capabilities & Performance:**
+  - Fast staged files collector: `git diff --cached --name-only --diff-filter=ACMR` with `< 10ms` fast-path when no staged files exist.
+  - Sub-200ms staged-diff evaluation: `execute_review` on cached diff with blast-radius, change impact, and rule checking scoped strictly to staged changes.
+  - Pre-push hook verification: runs fast review over unpushed commits (`origin/HEAD..HEAD`).
+  - Formatter support: table/plain terminal UX, machine-readable JSON, and markdown output.
+- **Invariants:**
+  - Non-zero exit code (`1` or `4`) if any violations exceed configured `fail_on` severity threshold, blocking `git commit` or `git push`.
+  - Zero-panic test discipline across all CLI command flows.
+
+## Issue #133 — TTY-Aware ANSI Theme, NO_COLOR Compliance & Visual Health Meter (COMPLETED)
+- **Crates:** `crates/forge-cli` (`src/theme.rs`, `src/lib.rs`)
+- **Public Types & Functions:**
+  - `ColorMode { Auto, Always, Never }`
+  - `Theme { color_enabled: bool, unicode_enabled: bool }`
+  - `is_color_supported(mode: ColorMode) -> bool`, `is_unicode_supported(mode: ColorMode) -> bool`
+  - Theme styling primitives: `bold`, `dim`, `cyan`, `green`, `yellow`, `red`, `magenta`, `white`, `blue`, `gray`
+  - Severity badge formatters: `badge_critical`, `badge_high`, `badge_medium`, `badge_low`, `badge_info`, `badge_severity(Severity)`
+  - Status markers: `status_ok`, `status_fail`, `status_warn`
+  - Health rating: `health_rating(score: u8) -> &'static str`
+  - Score Meter: `render_score_meter(score: u8, color_mode: ColorMode) -> String`
+- **Invariants:**
+  - Zero external color dependencies; purely native ANSI escape codes.
+  - Strict compliance with `NO_COLOR`, `CLICOLOR_FORCE`, and `CLICOLOR` environment standards.
+  - Deterministic plain ASCII fallback (`[=========.] 92/100 (Good)`) for non-TTY/piped environments.
+
+## Issue #134 — Rich Terminal Formatters for Scan, Review & Findings (COMPLETED)
+- **Crates:** `crates/forge-cli` (`src/formatters/terminal.rs`, `src/commands/doctor.rs`, `src/commands/review.rs`)
+- **Public Types & Functions:**
+  - `render_finding_card(finding: &Finding, theme: &Theme) -> String`: renders structured finding cards with colored severity badge, bold title/rule ID, clickable `location`, and border-styled snippet evidence blocks.
+  - `render_terminal(repo: &Repository) -> String` and `render_terminal_with_theme(repo: &Repository, theme: &Theme) -> String`: renders multi-phase milestone progress checklist (`Languages`, `Dependencies`, `Architecture`, `Rules`), visual score bar meter, and tabular dimension breakdown with Unicode box-drawing or ASCII fallback.
+  - `render_doctor_terminal_with_theme(report: &DoctorReport, theme: &Theme) -> String`: modern doctor output with styled status indicators (`[OK]`, `[WARN]`, `[FAIL]`) and elapsed latency metrics.
+  - `render_review_report(report: &ReviewReport, format: OutputFormat)`: upgraded review output with colored risk tiers and structured cards.
+- **Invariants:**
+  - Automatic detection of TTY vs CI/pipe environments ensures clean, zero-escape ASCII formatting when redirected or when `NO_COLOR` is present.
+  - Byte-for-byte deterministic output for identical input repositories.
+
+## Issue #136 — Zero-Install npm Package `@elcode-forge/cli` (COMPLETED)
+- **Package:** `packages/forge-cli-npm/` (`@elcode-forge/cli`)
+- **Public Modules & Executables:**
+  - `bin/eforge.js`: zero-install executable entrypoint registered under `bin.eforge` and `bin["elcode-forge"]`.
+  - `src/index.js`: zero-dependency native launcher.
+  - Functions: `resolveTarget`, `getCacheDir`, `getBinaryPath`, `parseSha256Sums`, `verifyChecksum`, `downloadFile`, `ensureBinary`, `runCli`.
+- **Capabilities:**
+  - Automated release target resolution: `win32-x64` (`x86_64-pc-windows-msvc`), `linux-x64` (`x86_64-unknown-linux-gnu`), `darwin-arm64` (`aarch64-apple-darwin`).
+  - Cache management: caches binary in `~/.eforge/bin/v<version>/` or `%LOCALAPPDATA%\eforge\bin\v<version>\`.
+  - Cryptographic verification: downloads and verifies official `SHA256SUMS.txt` before unpacking.
+  - Zero external npm runtime dependencies: uses pure Node.js built-ins (`node:https`, `node:crypto`, `node:fs`, `node:child_process`).
+  - Environment overrides: `EFORGE_BINARY_PATH`, `EFORGE_CACHE_DIR`, `EFORGE_DOWNLOAD_URL`.
+- **Invariants:**
+  - Strict SHA256 integrity verification rejects any modified or corrupt binary downloads.
+  - Clean exit code and stdio propagation from child process.
+
+## Issue #137 — Standalone Installers (POSIX & Windows), Homebrew Tap & cargo-binstall (COMPLETED)
+- **Files & Manifests:** `scripts/install.sh`, `scripts/install.ps1`, `packaging/homebrew/eforge.rb`, `crates/forge-cli/Cargo.toml`
+- **Capabilities & Deliverables:**
+  - `scripts/install.sh`: POSIX installer detecting OS (`Linux`, `Darwin`) and architecture (`x86_64`, `arm64`), downloading official release archives, verifying `SHA256SUMS.txt`, installing to `~/.local/bin` (or `/usr/local/bin`), and validating execution.
+  - `scripts/install.ps1`: Native PowerShell installer with `Get-FileHash` SHA256 integrity check, extraction to `$env:LOCALAPPDATA\eforge\bin\`, and automated User `PATH` environment registration.
+  - `packaging/homebrew/eforge.rb`: Homebrew formula supporting macOS (Apple Silicon arm64) and Linux x86_64 with cryptographic checksums.
+  - `[package.metadata.binstall]` in `crates/forge-cli/Cargo.toml`: automated 1-command installation via `cargo binstall eforge`.
+- **Invariants:**
+  - Cryptographic verification mandatory: all installers abort with non-zero exit codes if SHA256 checksum fails.
+  - Dual binary support: installs both primary `eforge` and studio alias `elcode-forge`.
+
+## Issue #138 — Git Hooks Integration Tests, Release Prep & Monorepo v0.6.0 Bump (COMPLETED)
+- **Crates, Packages & Tests:** `crates/forge-cli/tests/hooks_e2e.rs`, `README.md`, `Cargo.toml`, `package.json`, `packages/forge-schema`, `packages/forge-ui`, `packages/forge-cli-npm`, `apps/dashboard`, `packaging/homebrew/eforge.rb`
+- **Capabilities & Deliverables:**
+  - `crates/forge-cli/tests/hooks_e2e.rs`: Integration test suite exercising git hooks lifecycle (`install`, `status`, `uninstall`), clean fast path when no staged files exist, and pre-commit detection & rejection of architectural violations in staged files.
+  - Distribution documentation in `README.md` covering zero-install (`npx @elcode-forge/cli`), standalone POSIX installer (`scripts/install.sh`), PowerShell installer (`scripts/install.ps1`), Homebrew tap (`packaging/homebrew/eforge.rb`), and `cargo binstall`.
+  - CLI command reference expanded to 18 subcommands including `eforge hook`.
+  - Synchronized monorepo workspace version to `v0.6.0` across Rust crates and TypeScript packages.
+- **Invariants:**
+  - Zero-panic test discipline maintained across all integration suites.
+  - Zero schema drift between `@elcode-forge/schema` and Rust IR types.
+  - Complete Phase 6 Git Hooks, Terminal UX & Zero-Install Distribution milestone achieved.

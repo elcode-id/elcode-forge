@@ -1,0 +1,47 @@
+{
+  "name": "@elcode-forge/cli",
+  "version": "0.6.0",
+  "description": "Zero-install npm wrapper and binary runner for ELCODE Forge (eforge)",
+  "keywords": [
+    "elcode",
+    "forge",
+    "eforge",
+    "static-analysis",
+    "architecture",
+    "code-health",
+    "git-hooks",
+    "blast-radius"
+  ],
+  "homepage": "https://elcode.id/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/elcode-id/elcode-forge.git",
+    "directory": "packages/forge-cli-npm"
+  },
+  "license": "MIT",
+  "author": "R. Luki Rahayu Agung / ELCODE",
+  "bin": {
+    "eforge": "bin/eforge.js",
+    "elcode-forge": "bin/eforge.js"
+  },
+  "main": "src/index.js",
+  "files": [
+    "bin/",
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "check": "node --check bin/eforge.js && node --check src/index.js",
+    "lint": "node --check bin/eforge.js && node --check src/index.js",
+    "test": "vitest run"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "vitest": "^2.0.0"
+  }
+}

@@ -52,25 +52,47 @@ Every architectural boundary, CLI contract, and CI/CD workflow in `elcode-forge`
 
 ---
 
-## Installation
+## Installation & Distribution
 
-### Prerequisites
-- **Rust Toolchain:** `rustup` (`rustc >= 1.75`, `cargo`)
-- **Git:** Required for working-tree diff and hotspot analysis (`eforge review`, `eforge diff`)
-
-### Build & Install from Source
+### 1. Zero-Install Execution via npx (Node.js)
+No installation required—execute directly in any Node.js / JavaScript / TypeScript project:
 ```bash
-git clone https://github.com/elcode-id/elcode-forge.git
-cd elcode-forge
+npx @elcode-forge/cli doctor
+npx @elcode-forge/cli scan
+npx @elcode-forge/cli review --fast
+```
 
-# Install the `eforge` (and `elcode-forge`) binary to ~/.cargo/bin
+### 2. Standalone Installers (Linux, macOS & Windows)
+**POSIX (Linux & macOS):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/elcode-id/elcode-forge/develop/scripts/install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/elcode-id/elcode-forge/develop/scripts/install.ps1 | iex
+```
+
+### 3. Package Managers & Binary Installers
+**Homebrew (macOS & Linux):**
+```bash
+brew install elcode-id/tap/eforge
+```
+
+**Cargo Binstall (Pre-compiled Binary):**
+```bash
+cargo binstall eforge
+```
+
+**Build & Install from Source (Rust Toolchain >= 1.75):**
+```bash
 cargo install --path crates/forge-cli
 ```
 
 Verify installation:
 ```bash
 eforge --version
-# ELCODE Forge (eforge) v0.5.0
+# ELCODE Forge (eforge) v0.6.0
 ```
 
 ---
@@ -154,7 +176,23 @@ eforge review --fast --path . --format markdown
 eforge diff --path . --format terminal
 ```
 
-### 7. AI-Assisted Explanations & Grounded PR Review
+### 7. Native Git Hooks & Staged-Diff Scanner (`eforge hook`)
+Install zero-dependency pre-commit and pre-push hooks that review staged changes in `< 200ms`:
+```bash
+# Install pre-commit and pre-push hooks into .git/hooks/
+eforge hook install
+
+# Check installation and backup status
+eforge hook status
+
+# Manually trigger pre-commit evaluation against staged files
+eforge hook run pre-commit
+
+# Uninstall hooks cleanly (restores pre-existing .forge-backup hooks)
+eforge hook uninstall
+```
+
+### 8. AI-Assisted Explanations & Grounded PR Review
 ```bash
 # Explain architecture or modules with AI-synthesized, grounded answers
 eforge explain src/services --ai
@@ -172,7 +210,7 @@ eforge ai usage
 
 ---
 
-## CLI Command Reference (17 Subcommands)
+## CLI Command Reference (18 Subcommands)
 
 | Command | Key Flags | Description |
 | :--- | :--- | :--- |
@@ -197,6 +235,7 @@ eforge ai usage
 | `eforge serve` | `--port <PORT>`, `--path <DIR>`, `--static-dir <DIR>` | Serves a read-only, loopback-restricted HTTP API (`/api/v1/health`, `/api/v1/bundle`, `/api/v1/history`). |
 | `eforge schema` | `--out-dir <DIR>` | Exports canonical JSON Schemas for `ReportBundle` and IR types. |
 | `eforge mcp` | `--path <DIR>` | Starts the native Model Context Protocol (MCP) JSON-RPC 2.0 stdio server (`eforge_*` tools). |
+| `eforge hook` | `install`, `run <pre-commit|pre-push>`, `uninstall`, `status` | Manages native Git hooks with non-destructive backup preservation and sub-200ms staged-diff scanning. |
 
 **Supported `--format` values:** `terminal` (default), `json`, `markdown`, `sarif` (SARIF v2.1.0), `github` (GitHub Actions annotations + Markdown).
 
