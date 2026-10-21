@@ -370,3 +370,19 @@
 - **Invariants:**
   - Non-zero exit code (`1` or `4`) if any violations exceed configured `fail_on` severity threshold, blocking `git commit` or `git push`.
   - Zero-panic test discipline across all CLI command flows.
+
+## Issue #133 — TTY-Aware ANSI Theme, NO_COLOR Compliance & Visual Health Meter (COMPLETED)
+- **Crates:** `crates/forge-cli` (`src/theme.rs`, `src/lib.rs`)
+- **Public Types & Functions:**
+  - `ColorMode { Auto, Always, Never }`
+  - `Theme { color_enabled: bool, unicode_enabled: bool }`
+  - `is_color_supported(mode: ColorMode) -> bool`, `is_unicode_supported(mode: ColorMode) -> bool`
+  - Theme styling primitives: `bold`, `dim`, `cyan`, `green`, `yellow`, `red`, `magenta`, `white`, `blue`, `gray`
+  - Severity badge formatters: `badge_critical`, `badge_high`, `badge_medium`, `badge_low`, `badge_info`, `badge_severity(Severity)`
+  - Status markers: `status_ok`, `status_fail`, `status_warn`
+  - Health rating: `health_rating(score: u8) -> &'static str`
+  - Score Meter: `render_score_meter(score: u8, color_mode: ColorMode) -> String`
+- **Invariants:**
+  - Zero external color dependencies; purely native ANSI escape codes.
+  - Strict compliance with `NO_COLOR`, `CLICOLOR_FORCE`, and `CLICOLOR` environment standards.
+  - Deterministic plain ASCII fallback (`[=========.] 92/100 (Good)`) for non-TTY/piped environments.
