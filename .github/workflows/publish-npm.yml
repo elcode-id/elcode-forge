@@ -1,0 +1,36 @@
+name: Publish to npm (elcode-forge)
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  publish-npm:
+    name: Publish elcode-forge to npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies & run tests
+        working-directory: packages/forge-cli-npm
+        run: |
+          npm install
+          npm run test
+          npm run check
+
+      - name: Publish to npm
+        working-directory: packages/forge-cli-npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm publish --access public

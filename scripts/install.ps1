@@ -7,10 +7,10 @@
     from GitHub Releases and registers the executable in the User PATH environment variable.
 
 .EXAMPLE
-    irm https://raw.githubusercontent.com/elcode-id/elcode-forge/develop/scripts/install.ps1 | iex
+    irm https://raw.githubusercontent.com/elcode-id/elcode-forge/main/scripts/install.ps1 | iex
 
 .PARAMETER Version
-    Target release version to install (e.g. "0.5.0", default: latest release).
+    Target release version to install (e.g. "0.6.0", default: latest release).
 
 .PARAMETER InstallDir
     Target directory for installed binaries (default: $env:LOCALAPPDATA\eforge\bin).
@@ -58,7 +58,7 @@ if (-not $Version) {
         $Release = Invoke-RestMethod -Uri $ReleaseUrl -Headers @{ "User-Agent" = "eforge-installer" }
         $Version = $Release.tag_name
     } catch {
-        $Version = "v0.5.0"
+        $Version = "v0.6.0"
     }
 }
 
