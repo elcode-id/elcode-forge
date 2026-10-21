@@ -9,7 +9,7 @@ pub mod python_manifest;
 pub mod scanner;
 pub mod ts_imports;
 
-pub use dep_health::{analyze_npm_dependencies, DependencyReport};
+pub use dep_health::{analyze_npm_dependencies, analyze_python_dependencies, DependencyReport};
 pub use detector::{detect_ecosystem, detect_language, is_test_file, EcosystemSignals};
 pub use forge_core::Analyzer;
 pub use graph::{build_python_architecture_graph, build_ts_architecture_graph, ArchitectureGraph};

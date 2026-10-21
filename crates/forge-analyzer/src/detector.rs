@@ -39,6 +39,7 @@ pub fn is_test_file(relative_path: &str) -> bool {
     lower.contains(".test.")
         || lower.contains(".spec.")
         || lower.contains("_test.")
+        || lower.contains("test_")
         || lower.starts_with("tests/")
         || lower.contains("/tests/")
         || lower.contains("/__tests__/")
@@ -87,6 +88,9 @@ pub fn detect_ecosystem(repo_root: &Path, files: &[FileNode]) -> EcosystemSignal
             frameworks.insert("nuxt".to_string());
         } else if file_name.starts_with("svelte.config.") {
             frameworks.insert("sveltekit".to_string());
+        } else if file_name == "pytest.ini" || file_name == "conftest.py" {
+            frameworks.insert("pytest".to_string());
+            has_tests = true;
         }
     }
 
@@ -169,6 +173,73 @@ pub fn detect_ecosystem(repo_root: &Path, files: &[FileNode]) -> EcosystemSignal
         }
     }
 
+    // Inspect Python manifests and lockfiles for frameworks (FastAPI, Flask, Django) and pytest
+    if repo_root.join("pyproject.toml").is_file()
+        || repo_root.join("requirements.txt").is_file()
+        || repo_root.join("poetry.lock").is_file()
+        || repo_root.join("uv.lock").is_file()
+    {
+        if let Ok(manifest) = crate::python_manifest::parse_python_manifests(repo_root) {
+            for dep in &manifest.dependencies {
+                match dep.name.as_str() {
+                    "fastapi" => {
+                        frameworks.insert("fastapi".to_string());
+                    }
+                    "flask" => {
+                        frameworks.insert("flask".to_string());
+                    }
+                    "django" => {
+                        frameworks.insert("django".to_string());
+                    }
+                    "pytest" => {
+                        frameworks.insert("pytest".to_string());
+                        has_tests = true;
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    // Inspect Python source imports if framework not yet found
+    if !frameworks.contains("fastapi")
+        || !frameworks.contains("flask")
+        || !frameworks.contains("django")
+    {
+        for file in files {
+            if file.language.as_deref() == Some("python") || file.relative_path.ends_with(".py") {
+                let full_path = repo_root.join(&file.relative_path);
+                if let Ok(content) = fs::read_to_string(&full_path) {
+                    if content.contains("fastapi")
+                        && (content.contains("import fastapi")
+                            || content.contains("from fastapi import"))
+                    {
+                        frameworks.insert("fastapi".to_string());
+                    }
+                    if content.contains("flask")
+                        && (content.contains("import flask")
+                            || content.contains("from flask import"))
+                    {
+                        frameworks.insert("flask".to_string());
+                    }
+                    if content.contains("django")
+                        && (content.contains("import django")
+                            || content.contains("from django import"))
+                    {
+                        frameworks.insert("django".to_string());
+                    }
+                    if content.contains("pytest")
+                        && (content.contains("import pytest")
+                            || content.contains("from pytest import"))
+                    {
+                        frameworks.insert("pytest".to_string());
+                        has_tests = true;
+                    }
+                }
+            }
+        }
+    }
+
     EcosystemSignals {
         languages: languages.into_iter().collect(),
         frameworks: frameworks.into_iter().collect(),
@@ -201,6 +272,8 @@ mod tests {
 
         assert!(is_test_file("src/services/userService.test.ts"));
         assert!(is_test_file("src/__tests__/auth.ts"));
+        assert!(is_test_file("tests/test_api.py"));
+        assert!(is_test_file("app/routers/test_items.py"));
         assert!(!is_test_file("src/services/userService.ts"));
     }
 
