@@ -447,3 +447,10 @@
   - `SHA256SUMS.txt`
 - **Release Highlights:** Native Git Hooks Engine (`eforge hook`), TTY-aware ANSI Terminal UX & Health Score Meter, Zero-Install npm distribution (`npx @elcode-forge/cli`), Standalone POSIX & Windows Installers, and Homebrew formula.
 - **Invariants:** 100% green CI gate across all workflows; zero open issues in milestone.
+
+
+## Zero-Install Distribution Package Alignment (`elcode-forge`)
+- **Package Name:** `elcode-forge` (Unscoped package for friction-free `npx elcode-forge doctor` and `npm install -g elcode-forge`).
+- **Release Automation:** Added `.github/workflows/publish-npm.yml` supporting automated publishing to `registry.npmjs.org` upon release publication and manual `workflow_dispatch`.
+- **Homebrew Formula (`packaging/homebrew/eforge.rb`):** Synchronized exact cryptographic SHA-256 hashes matching official GitHub Release `v0.6.0` (`aarch64-apple-darwin` and `x86_64-unknown-linux-gnu`).
+- **Installers (`scripts/install.sh` & `scripts/install.ps1`):** Pointed installation references to `main` branch with `v0.6.0` fallback.

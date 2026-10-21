@@ -1,22 +1,22 @@
-# @elcode-forge/cli
+# elcode-forge
 
-Zero-install npm wrapper and binary runner for **ELCODE Forge (`eforge`)**.
+Zero-install npm wrapper and native binary runner for **ELCODE Forge (`eforge`)**.
 
 ```bash
 # Instant zero-install execution via npx
-npx @elcode-forge/cli doctor
-npx @elcode-forge/cli scan
-npx @elcode-forge/cli review --fast
+npx elcode-forge doctor
+npx elcode-forge scan
+npx elcode-forge review --fast
 
 # Or install globally
-npm install -g @elcode-forge/cli
+npm install -g elcode-forge
 eforge doctor
 ```
 
 ## How It Works
 
 1. Automatically resolves your OS and architecture (`win32-x64`, `linux-x64`, `darwin-arm64`).
-2. Downloads official native release binaries directly from GitHub Releases (`v0.5.0`+).
+2. Downloads official native release binaries directly from GitHub Releases (`v0.6.0`+).
 3. Verifies binary integrity using official cryptographic `SHA256SUMS.txt`.
 4. Caches the verified native executable locally (`~/.eforge/bin/` or `%LOCALAPPDATA%\eforge\bin\`).
 5. Directly executes the native Rust binary with zero wrapper latency on subsequent runs.

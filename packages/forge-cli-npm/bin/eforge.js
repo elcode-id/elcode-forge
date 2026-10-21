@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * @elcode-forge/cli — Executable binary wrapper for `eforge`.
+ * elcode-forge — Executable binary wrapper for `eforge`.
  */
 
 const { runCli } = require('../src/index.js');

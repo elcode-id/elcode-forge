@@ -3,10 +3,10 @@
 # ELCODE Forge (eforge) — Standalone POSIX Installer Script
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/elcode-id/elcode-forge/develop/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/elcode-id/elcode-forge/main/scripts/install.sh | bash
 #
 # Environment variables:
-#   EFORGE_VERSION   Specify target version to install (e.g. "0.5.0", default: latest release)
+#   EFORGE_VERSION   Specify target version to install (e.g. "0.6.0", default: latest release)
 #   BINDIR           Target install directory (default: ~/.local/bin or /usr/local/bin)
 # ==============================================================================
 
@@ -99,7 +99,7 @@ else
   if [ -n "$LATEST_JSON" ]; then
     VERSION=$(echo "$LATEST_JSON" | grep '"tag_name":' | head -n 1 | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')
   else
-    VERSION="v0.5.0"
+    VERSION="v0.6.0"
   fi
   log_info "Target version: ${VERSION}"
 fi
