@@ -54,7 +54,7 @@ Every architectural boundary, CLI contract, and CI/CD workflow in `elcode-forge`
 
 ## Multi-Language & Ecosystem Support Matrix
 
-ELCODE Forge provides unified polyglot scanning across 5 core languages with native AST/import analysis, circular dependency detection, and dependency hygiene:
+ELCODE Forge provides unified polyglot scanning across 6 core languages with native AST/import analysis, circular dependency detection, and dependency hygiene:
 
 | Ecosystem / Language | File Extensions | Manifest & Lockfiles | Frameworks & Detectors | Import Resolution |
 | :--- | :--- | :--- | :--- | :--- |
@@ -62,6 +62,7 @@ ELCODE Forge provides unified polyglot scanning across 5 core languages with nat
 | **Python** | `.py`, `.pyi` | `pyproject.toml`, `requirements.txt`, `poetry.lock`, `Pipfile.lock` | FastAPI, Flask, Django, Pytest, Celery, SQLAlchemy | Absolute, intra-package relative (`.`, `..`), stdlib filtering |
 | **Go** | `.go` | `go.mod`, `go.sum` | Gin, Echo, Fiber, Chi, Go testing | Go module root resolution, intra-module package imports, stdlib filtering |
 | **Rust** | `.rs` | `Cargo.toml`, `Cargo.lock` | Axum, Actix-web, Tokio, Rocket, Cargo test | Workspace crate resolution, inline `mod`, `crate::`, `super::`, `self::` |
+| **PHP** | `.php` | `composer.json`, `composer.lock` | Laravel, Symfony, WordPress, PHPUnit, Pest | PSR-4 namespace mappings (`App\` -> `app/`), single/aliased/group `use` statements, stdlib filtering |
 
 For detailed architectural and resolution documentation, see [docs/MULTI_LANGUAGE.md](./docs/MULTI_LANGUAGE.md).
 

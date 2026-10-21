@@ -1,0 +1,7 @@
+#!/usr/bin/env php
+<?php
+
+define('LARAVEL_START', microtime(true));
+
+// Artisan Console Runner for ELCODE Forge Fixture
+echo "Laravel Artisan CLI\n";

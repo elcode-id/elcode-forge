@@ -93,12 +93,14 @@ describe("Finding filters helper", () => {
     expect(detectFileLanguage("app/routers/items.py")).toBe("python");
     expect(detectFileLanguage("cmd/server/main.go")).toBe("go");
     expect(detectFileLanguage("crates/engine/src/lib.rs")).toBe("rust");
+    expect(detectFileLanguage("app/Http/Controllers/UserController.php")).toBe("php");
     expect(detectFileLanguage("src/index.js")).toBe("javascript");
     expect(detectFileLanguage("src/routes/+page.svelte")).toBe("svelte");
     expect(detectFileLanguage("src/App.vue")).toBe("vue");
     expect(detectFileLanguage("Cargo.toml")).toBe("rust");
     expect(detectFileLanguage("go.mod")).toBe("go");
     expect(detectFileLanguage("requirements.txt")).toBe("python");
+    expect(detectFileLanguage("composer.json")).toBe("php");
     expect(detectFileLanguage("package.json")).toBe("javascript");
     expect(detectFileLanguage("README.md")).toBe(null);
   });

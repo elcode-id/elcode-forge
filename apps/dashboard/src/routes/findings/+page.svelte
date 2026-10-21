@@ -42,6 +42,8 @@
         return "bg-teal-950/80 text-teal-300 border-teal-800";
       case "rust":
         return "bg-amber-950/80 text-amber-300 border-amber-800";
+      case "php":
+        return "bg-purple-950/80 text-purple-300 border-purple-800";
       case "typescript":
       case "javascript":
         return "bg-blue-950/80 text-blue-300 border-blue-800";

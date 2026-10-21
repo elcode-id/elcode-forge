@@ -4,7 +4,7 @@
 **Version:** `v0.7.0`  
 **Studio:** [ELCODE](https://elcode.id/) (Bandung, Indonesia)  
 
-ELCODE Forge features a unified, zero-panic, polyglot static analysis engine capable of analyzing heterogeneous codebases, monorepos, and microservices written in **TypeScript**, **JavaScript**, **Python**, **Go**, and **Rust**.
+ELCODE Forge features a unified, zero-panic, polyglot static analysis engine capable of analyzing heterogeneous codebases, monorepos, and microservices written in **TypeScript**, **JavaScript**, **Python**, **Go**, **Rust**, and **PHP**.
 
 ---
 
@@ -16,6 +16,7 @@ ELCODE Forge features a unified, zero-panic, polyglot static analysis engine cap
 | **Python** | `.py`, `.pyi` | `pyproject.toml`<br>`requirements.txt`<br>`poetry.lock`<br>`Pipfile.lock` | FastAPI, Flask, Django, Pytest, Celery, SQLAlchemy | Absolute module imports, relative (`from .`, `from ..`), standard library filtering | Unpinned requirements, missing lockfiles, unused packages |
 | **Go** | `.go` | `go.mod`<br>`go.sum` | Gin, Echo, Fiber, Chi, Go standard testing | Go module root resolution, intra-module package imports, stdlib filtering | Unpinned/indirect tracking, missing lockfiles (`go.sum`) |
 | **Rust** | `.rs` | `Cargo.toml`<br>`Cargo.lock` | Axum, Actix-web, Tokio, Rocket, Cargo test | Workspace crate resolution, inline `mod`, `crate::`, `super::`, `self::`, external crates | Wildcard versions (`*`), unpinned deps, missing `Cargo.lock` |
+| **PHP** | `.php` | `composer.json`<br>`composer.lock` | Laravel, Symfony, WordPress, PHPUnit, Pest | PSR-4 namespace mappings (`App\` -> `app/`), single/aliased/group `use` statements, PHP stdlib filtering | Unpinned requirements, missing lockfiles (`composer.lock`), duplicate declarations |
 
 ---
 
@@ -78,10 +79,10 @@ Circular dependencies represent tight coupling and fragile architecture. Forge r
 
 ## 3. CLI Command Parity Across All Languages
 
-Every `eforge` CLI command supports all five languages natively:
+Every `eforge` CLI command supports all six languages natively:
 
 ### `eforge doctor`
-Diagnoses repository health, languages, frameworks, lockfile hygiene across Node, Python, Go, and Rust, automated test suites, and secrets in `< 5 seconds`.
+Diagnoses repository health, languages, frameworks, lockfile hygiene across Node, Python, Go, Rust, and PHP, automated test suites, and secrets in `< 5 seconds`.
 
 ### `eforge scan`
 Executes full or incremental polyglot scans, computing weighted scores across all 8 health dimensions (*Architecture*, *Security*, *Maintainability*, *Testing*, *Dependencies*, *Documentation*, *Performance*, *CI/CD*).
@@ -90,19 +91,19 @@ Executes full or incremental polyglot scans, computing weighted scores across al
 Renders architecture graphs in Mermaid format (`flowchart TD`) or JSON, with language-aware node clustering.
 
 ### `eforge review` & `eforge diff`
-Performs blast-radius impact analysis and risk assessment on Git diffs across any combination of Python, Go, Rust, and TypeScript/JavaScript files.
+Performs blast-radius impact analysis and risk assessment on Git diffs across any combination of Python, Go, Rust, PHP, and TypeScript/JavaScript files.
 
 ### `eforge explain [target]`
 Explains repository or module architecture, inbound dependents, outbound dependencies, and associated rule findings.
 
 ### `eforge dependencies`
-Lists all declared and resolved dependencies categorized by ecosystem (`npm`, `PyPI`, `Go`, `Cargo`), flagging unused packages and wildcard versions.
+Lists all declared and resolved dependencies categorized by ecosystem (`npm`, `PyPI`, `Go`, `Cargo`, `Composer`), flagging unused packages and wildcard versions.
 
 ---
 
 ## 4. Web Intelligence Dashboard Multi-Ecosystem Experience
 
 The local web dashboard (`apps/dashboard`) provides first-class support for multi-language projects:
-- **`/dependencies`**: Interactive filtering pills for `npm`, `PyPI`, `Go`, and `Cargo`, with `DIRECT`, `DEV`, and `INDIRECT` badges.
+- **`/dependencies`**: Interactive filtering pills for `npm`, `PyPI`, `Go`, `Cargo`, and `Composer`, with `DIRECT`, `DEV`, and `INDIRECT` badges.
 - **`/findings`**: Dynamic language filter pills and inline location tags.
 - **`/architecture`**: Primary language inference per module, table language filtering, and module inspector details.

@@ -58,6 +58,8 @@
         return "Go";
       case "cargo":
         return "Cargo";
+      case "composer":
+        return "Composer";
       default:
         return eco;
     }
@@ -73,6 +75,8 @@
         return "bg-teal-950/70 text-teal-300 border-teal-800/80";
       case "cargo":
         return "bg-amber-950/70 text-amber-300 border-amber-800/80";
+      case "composer":
+        return "bg-indigo-950/70 text-indigo-300 border-indigo-800/80";
       default:
         return "bg-slate-800 text-slate-300 border-slate-700";
     }

@@ -43,11 +43,19 @@ describe("Multi-ecosystem dependencies logic", () => {
       is_direct: true,
       is_dev: false,
     },
+    {
+      name: "laravel/framework",
+      ecosystem: "composer",
+      version_req: "^10.0",
+      resolved_version: "v10.48.0",
+      is_direct: true,
+      is_dev: false,
+    },
   ];
 
   it("extracts distinct sorted ecosystems from dependencies", () => {
     const ecosystems = Array.from(new Set(dependencies.map((d) => d.ecosystem.toLowerCase()))).sort();
-    expect(ecosystems).toEqual(["cargo", "go", "npm", "pypi"]);
+    expect(ecosystems).toEqual(["cargo", "composer", "go", "npm", "pypi"]);
   });
 
   it("filters dependencies accurately by ecosystem", () => {
@@ -62,6 +70,9 @@ describe("Multi-ecosystem dependencies logic", () => {
 
     const cargoDeps = dependencies.filter((d) => d.ecosystem.toLowerCase() === "cargo");
     expect(cargoDeps.map((d) => d.name)).toEqual(["serde"]);
+
+    const composerDeps = dependencies.filter((d) => d.ecosystem.toLowerCase() === "composer");
+    expect(composerDeps.map((d) => d.name)).toEqual(["laravel/framework"]);
   });
 
   it("filters dependencies by direct vs dev type", () => {
@@ -71,6 +82,7 @@ describe("Multi-ecosystem dependencies logic", () => {
       "fastapi",
       "github.com/gin-gonic/gin",
       "serde",
+      "laravel/framework",
     ]);
 
     const devDeps = dependencies.filter((d) => d.is_dev);
