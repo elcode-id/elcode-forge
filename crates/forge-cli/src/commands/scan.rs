@@ -1,18 +1,16 @@
 //! `eforge scan` command — full and incremental repository intelligence pipeline.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use forge_analyzer::{
-    analyze_npm_dependencies, analyze_python_dependencies, build_go_architecture_graph,
-    build_python_architecture_graph, build_rust_architecture_graph, build_ts_architecture_graph,
-    parse_go_manifest, parse_rust_workspace, scan_repository,
+    analyze_polyglot_dependencies, build_polyglot_architecture_graph, scan_repository,
 };
 use forge_core::{
     cache::{CacheMetadata, ForgeCache, EFORGE_DIR},
     config::load_config,
     scoring::calculate_health_score,
-    Confidence, FileNode, Finding, ForgeError, Repository, Severity,
+    FileNode, Finding, ForgeError, Repository,
 };
 use forge_rules::RuleEngine;
 use forge_security::SecurityScanner;
@@ -36,104 +34,16 @@ pub struct ScanOptions {
 pub fn execute_scan(opts: &ScanOptions) -> Result<(Repository, ExitCode), ForgeError> {
     let config = load_config(&opts.repo_root)?;
     let discovery = scan_repository(&opts.repo_root, &config.ignore_patterns)?;
+    let arch_graph = build_polyglot_architecture_graph(&opts.repo_root, &discovery.files)?;
+    let dep_report = analyze_polyglot_dependencies(
+        &opts.repo_root,
+        &discovery.files,
+        &arch_graph.external_imports,
+    )?;
 
-    let has_py = discovery
-        .files
-        .iter()
-        .any(|f| f.relative_path.ends_with(".py"));
-    let has_ts_js = discovery.files.iter().any(|f| {
-        matches!(
-            f.language.as_deref(),
-            Some("typescript") | Some("javascript") | Some("vue") | Some("svelte")
-        )
-    });
-    let has_go = discovery
-        .files
-        .iter()
-        .any(|f| matches!(f.language.as_deref(), Some("go")) || f.relative_path.ends_with(".go"));
-    let has_rust = discovery
-        .files
-        .iter()
-        .any(|f| matches!(f.language.as_deref(), Some("rust")) || f.relative_path.ends_with(".rs"));
-
-    let mut modules = Vec::new();
-    let mut external_imports = BTreeSet::new();
-
-    if has_ts_js {
-        let ts_graph = build_ts_architecture_graph(&opts.repo_root, &discovery.files)?;
-        modules.extend(ts_graph.modules);
-        external_imports.extend(ts_graph.external_imports);
-    }
-    if has_py {
-        let py_graph = build_python_architecture_graph(&opts.repo_root, &discovery.files)?;
-        modules.extend(py_graph.modules);
-        external_imports.extend(py_graph.external_imports);
-    }
-    if has_go {
-        let module_path = if opts.repo_root.join("go.mod").is_file() {
-            parse_go_manifest(&opts.repo_root)
-                .ok()
-                .and_then(|m| m.module_path)
-        } else {
-            None
-        };
-        let go_graph =
-            build_go_architecture_graph(&opts.repo_root, &discovery.files, module_path.as_deref())?;
-        modules.extend(go_graph.modules);
-        external_imports.extend(go_graph.external_imports);
-    }
-    if has_rust {
-        let rust_graph = build_rust_architecture_graph(&opts.repo_root, &discovery.files)?;
-        modules.extend(rust_graph.modules);
-        external_imports.extend(rust_graph.external_imports);
-    }
-
-    let mut dependencies = Vec::new();
-    let mut dep_findings = Vec::new();
-
-    if opts.repo_root.join("package.json").is_file() {
-        let npm_report = analyze_npm_dependencies(&opts.repo_root, &external_imports)?;
-        dependencies.extend(npm_report.dependencies);
-        dep_findings.extend(npm_report.findings);
-    }
-
-    if opts.repo_root.join("pyproject.toml").is_file()
-        || opts.repo_root.join("requirements.txt").is_file()
-        || opts.repo_root.join("poetry.lock").is_file()
-        || opts.repo_root.join("uv.lock").is_file()
-    {
-        let py_report = analyze_python_dependencies(&opts.repo_root, &external_imports)?;
-        dependencies.extend(py_report.dependencies);
-        dep_findings.extend(py_report.findings);
-    }
-
-    if opts.repo_root.join("go.mod").is_file() {
-        if let Ok(go_manifest) = parse_go_manifest(&opts.repo_root) {
-            dependencies.extend(go_manifest.dependencies);
-        }
-    }
-
-    if opts.repo_root.join("Cargo.toml").is_file() {
-        if let Ok(rust_ws) = parse_rust_workspace(&opts.repo_root) {
-            dependencies.extend(rust_ws.dependencies);
-            for wild in rust_ws.wildcard_dependencies {
-                dep_findings.push(Finding {
-                    id: format!("dep/cargo-wildcard-{wild}"),
-                    category: "dependencies".to_string(),
-                    severity: Severity::High,
-                    confidence: Confidence::Certain,
-                    title: format!("Wildcard dependency constraint on '{wild}'"),
-                    description: format!(
-                        "Package '{wild}' uses wildcard constraint '*' in Cargo manifest. This allows untested breaking versions to be pulled in."
-                    ),
-                    evidence: format!("Cargo.toml: {wild} = \"*\""),
-                    location: None,
-                    recommendation: "Pin the dependency to a specific version requirement.".to_string(),
-                    rule_id: "deps/unpinned-version".to_string(),
-                });
-            }
-        }
-    }
+    let modules = arch_graph.modules;
+    let dependencies = dep_report.dependencies;
+    let dep_findings = dep_report.findings;
 
     let current_hashes: BTreeMap<String, String> = discovery
         .files
@@ -166,13 +76,14 @@ pub fn execute_scan(opts: &ScanOptions) -> Result<(Repository, ExitCode), ForgeE
         }
     } else {
         if opts.repo_root.join(EFORGE_DIR).is_dir() {
-            let cache = ForgeCache::init(&opts.repo_root)?;
-            let meta = CacheMetadata {
-                analyzer_version: env!("CARGO_PKG_VERSION").to_string(),
-                config_hash,
-                file_hashes: current_hashes,
-            };
-            cache.save_metadata(&meta)?;
+            if let Ok(cache) = ForgeCache::init(&opts.repo_root) {
+                let meta = CacheMetadata {
+                    analyzer_version: env!("CARGO_PKG_VERSION").to_string(),
+                    config_hash,
+                    file_hashes: current_hashes,
+                };
+                let _ = cache.save_metadata(&meta);
+            }
         }
         discovery.files.clone()
     };

@@ -3,7 +3,7 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
-use forge_analyzer::{graph::build_ts_architecture_graph, scanner::scan_repository};
+use forge_analyzer::{build_polyglot_architecture_graph, scanner::scan_repository};
 use forge_core::{config::load_config, ForgeError};
 use forge_git::{
     collect_working_tree_diff, compute_change_impact, parse_unified_diff, ChangeImpactReport,
@@ -19,7 +19,7 @@ pub fn execute_diff(
 ) -> Result<ChangeImpactReport, ForgeError> {
     let config = load_config(repo_root)?;
     let discovery = scan_repository(repo_root, &config.ignore_patterns)?;
-    let arch_graph = build_ts_architecture_graph(repo_root, &discovery.files)?;
+    let arch_graph = build_polyglot_architecture_graph(repo_root, &discovery.files)?;
 
     let raw_diff = match diff_input {
         Some(text) => text.to_string(),

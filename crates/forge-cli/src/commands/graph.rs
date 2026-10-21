@@ -2,10 +2,7 @@
 
 use std::path::Path;
 
-use forge_analyzer::{
-    build_go_architecture_graph, build_python_architecture_graph, build_rust_architecture_graph,
-    build_ts_architecture_graph, parse_go_manifest, scanner::scan_repository,
-};
+use forge_analyzer::{build_polyglot_architecture_graph, scanner::scan_repository};
 use forge_core::{config::load_config, ForgeError};
 
 use crate::cli::OutputFormat;
@@ -14,38 +11,7 @@ use crate::cli::OutputFormat;
 pub fn run_graph(repo_root: &Path, format: OutputFormat) -> Result<String, ForgeError> {
     let config = load_config(repo_root)?;
     let discovery = scan_repository(repo_root, &config.ignore_patterns)?;
-
-    let graph = if discovery.languages.contains(&"python".to_string())
-        || discovery
-            .files
-            .iter()
-            .any(|f| f.relative_path.ends_with(".py"))
-    {
-        build_python_architecture_graph(repo_root, &discovery.files)?
-    } else if discovery.languages.contains(&"go".to_string())
-        || discovery
-            .files
-            .iter()
-            .any(|f| f.relative_path.ends_with(".go"))
-    {
-        let module_path = if repo_root.join("go.mod").is_file() {
-            parse_go_manifest(repo_root)
-                .ok()
-                .and_then(|m| m.module_path)
-        } else {
-            None
-        };
-        build_go_architecture_graph(repo_root, &discovery.files, module_path.as_deref())?
-    } else if discovery.languages.contains(&"rust".to_string())
-        || discovery
-            .files
-            .iter()
-            .any(|f| f.relative_path.ends_with(".rs"))
-    {
-        build_rust_architecture_graph(repo_root, &discovery.files)?
-    } else {
-        build_ts_architecture_graph(repo_root, &discovery.files)?
-    };
+    let graph = build_polyglot_architecture_graph(repo_root, &discovery.files)?;
 
     match format {
         OutputFormat::Json | OutputFormat::Sarif => {

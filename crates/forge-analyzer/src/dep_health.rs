@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use forge_core::{Confidence, Dependency, Finding, ForgeError, Severity, SourceLocation};
+use forge_core::{Confidence, Dependency, FileNode, Finding, ForgeError, Severity, SourceLocation};
 use serde::{Deserialize, Serialize};
 
 use crate::package_json::parse_package_json;
@@ -262,6 +262,140 @@ fn is_unpinned_or_wildcard(version_req: &str) -> bool {
         || trimmed.starts_with("https://")
         || trimmed.starts_with("git+")
         || trimmed.starts_with("github:")
+}
+
+/// Analyzes all project dependency manifests across ecosystems (npm, PyPI, Go, and Cargo)
+/// in `repo_root` (and subdirectories identified from `files`) against `external_imports`.
+///
+/// Emits unified dependency health findings for unpinned versions, wildcards, unused dependencies,
+/// and duplicate declarations.
+pub fn analyze_polyglot_dependencies(
+    repo_root: &Path,
+    files: &[FileNode],
+    external_imports: &BTreeSet<String>,
+) -> Result<DependencyReport, ForgeError> {
+    let mut all_dependencies: Vec<Dependency> = Vec::new();
+    let mut all_unused: BTreeSet<String> = BTreeSet::new();
+    let mut all_duplicates: BTreeSet<String> = BTreeSet::new();
+    let mut all_wildcards: BTreeSet<String> = BTreeSet::new();
+    let mut all_findings: Vec<Finding> = Vec::new();
+
+    // 1. Locate manifest root directories
+    let mut npm_dirs: BTreeSet<PathBuf> = BTreeSet::new();
+    let mut py_dirs: BTreeSet<PathBuf> = BTreeSet::new();
+    let mut go_dirs: BTreeSet<PathBuf> = BTreeSet::new();
+    let mut rust_dirs: BTreeSet<PathBuf> = BTreeSet::new();
+
+    if repo_root.join("package.json").is_file() {
+        npm_dirs.insert(repo_root.to_path_buf());
+    }
+    if repo_root.join("pyproject.toml").is_file()
+        || repo_root.join("requirements.txt").is_file()
+        || repo_root.join("poetry.lock").is_file()
+        || repo_root.join("uv.lock").is_file()
+    {
+        py_dirs.insert(repo_root.to_path_buf());
+    }
+    if repo_root.join("go.mod").is_file() {
+        go_dirs.insert(repo_root.to_path_buf());
+    }
+    if repo_root.join("Cargo.toml").is_file() {
+        rust_dirs.insert(repo_root.to_path_buf());
+    }
+
+    for f in files {
+        let p = &f.relative_path;
+        if p.ends_with("package.json") {
+            let full = repo_root.join(p);
+            if let Some(parent) = full.parent() {
+                npm_dirs.insert(parent.to_path_buf());
+            }
+        } else if p.ends_with("pyproject.toml") || p.ends_with("requirements.txt") {
+            let full = repo_root.join(p);
+            if let Some(parent) = full.parent() {
+                py_dirs.insert(parent.to_path_buf());
+            }
+        } else if p.ends_with("go.mod") {
+            let full = repo_root.join(p);
+            if let Some(parent) = full.parent() {
+                go_dirs.insert(parent.to_path_buf());
+            }
+        } else if p.ends_with("Cargo.toml") && !rust_dirs.contains(repo_root) {
+            let full = repo_root.join(p);
+            if let Some(parent) = full.parent() {
+                rust_dirs.insert(parent.to_path_buf());
+            }
+        }
+    }
+
+    // 2. Analyze NPM manifests
+    for dir in npm_dirs {
+        if let Ok(npm_report) = analyze_npm_dependencies(&dir, external_imports) {
+            all_dependencies.extend(npm_report.dependencies);
+            all_unused.extend(npm_report.unused_dependencies);
+            all_duplicates.extend(npm_report.duplicate_packages);
+            all_wildcards.extend(npm_report.wildcard_or_unpinned);
+            all_findings.extend(npm_report.findings);
+        }
+    }
+
+    // 3. Analyze Python manifests
+    for dir in py_dirs {
+        if let Ok(py_report) = analyze_python_dependencies(&dir, external_imports) {
+            all_dependencies.extend(py_report.dependencies);
+            all_unused.extend(py_report.unused_dependencies);
+            all_duplicates.extend(py_report.duplicate_packages);
+            all_wildcards.extend(py_report.wildcard_or_unpinned);
+            all_findings.extend(py_report.findings);
+        }
+    }
+
+    // 4. Analyze Go manifests
+    for dir in go_dirs {
+        if let Ok(go_manifest) = crate::go_manifest::parse_go_manifest(&dir) {
+            all_dependencies.extend(go_manifest.dependencies);
+        }
+    }
+
+    // 5. Analyze Rust workspaces
+    for dir in rust_dirs {
+        if let Ok(rust_ws) = crate::rust_manifest::parse_rust_workspace(&dir) {
+            all_dependencies.extend(rust_ws.dependencies);
+            for wild in &rust_ws.wildcard_dependencies {
+                all_wildcards.insert(wild.clone());
+                all_findings.push(Finding {
+                    id: format!("dep/cargo-wildcard-{wild}"),
+                    category: "dependencies".to_string(),
+                    severity: Severity::High,
+                    confidence: Confidence::Certain,
+                    title: format!("Wildcard dependency constraint on '{wild}'"),
+                    description: format!(
+                        "Package '{wild}' uses wildcard constraint '*' in Cargo manifest. This allows untested breaking versions to be pulled in."
+                    ),
+                    evidence: format!("Cargo.toml: {wild} = \"*\""),
+                    location: None,
+                    recommendation: "Pin the dependency to a specific version requirement.".to_string(),
+                    rule_id: "deps/unpinned-version".to_string(),
+                });
+            }
+        }
+    }
+
+    // Deterministic deduplication by (name, ecosystem)
+    all_dependencies.sort_by(|a, b| {
+        a.name
+            .cmp(&b.name)
+            .then_with(|| a.ecosystem.cmp(&b.ecosystem))
+    });
+    all_dependencies.dedup_by(|a, b| a.name == b.name && a.ecosystem == b.ecosystem);
+
+    Ok(DependencyReport {
+        dependencies: all_dependencies,
+        unused_dependencies: all_unused.into_iter().collect(),
+        duplicate_packages: all_duplicates.into_iter().collect(),
+        wildcard_or_unpinned: all_wildcards.into_iter().collect(),
+        findings: all_findings,
+    })
 }
 
 #[cfg(test)]

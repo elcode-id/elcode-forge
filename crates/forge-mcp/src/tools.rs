@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 use forge_analyzer::{
-    dep_health::analyze_npm_dependencies, detector::is_test_file,
-    graph::build_ts_architecture_graph, scanner::scan_repository,
+    analyze_polyglot_dependencies, build_polyglot_architecture_graph, detector::is_test_file,
+    scanner::scan_repository,
 };
 use forge_core::{
     config::load_config,
@@ -123,8 +123,9 @@ struct AnalyzedContext {
 fn build_analyzed_repo(repo_root: &Path) -> Result<AnalyzedContext, ForgeError> {
     let config = load_config(repo_root)?;
     let discovery = scan_repository(repo_root, &config.ignore_patterns)?;
-    let arch = build_ts_architecture_graph(repo_root, &discovery.files)?;
-    let dep_report = analyze_npm_dependencies(repo_root, &arch.external_imports)?;
+    let arch = build_polyglot_architecture_graph(repo_root, &discovery.files)?;
+    let dep_report =
+        analyze_polyglot_dependencies(repo_root, &discovery.files, &arch.external_imports)?;
 
     let mut repo = Repository {
         name: config.project_name.clone().unwrap_or_else(|| {

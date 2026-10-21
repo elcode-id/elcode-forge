@@ -398,6 +398,164 @@ pub fn build_rust_architecture_graph(
     })
 }
 
+/// Builds a unified, cross-language [`ArchitectureGraph`] covering all detected source files
+/// (TypeScript, JavaScript, Python, Go, and Rust) in the repository.
+///
+/// Ensures clean module namespace isolation across polyglot subprojects while merging
+/// shared modules, unifying external dependencies, and evaluating global circular dependencies
+/// via Tarjan's Strongly Connected Components (SCC) algorithm.
+pub fn build_polyglot_architecture_graph(
+    repo_root: &Path,
+    files: &[FileNode],
+) -> Result<ArchitectureGraph, ForgeError> {
+    let has_ts_js = files.iter().any(|f| {
+        matches!(
+            f.language.as_deref(),
+            Some("typescript") | Some("javascript")
+        ) || f.relative_path.ends_with(".ts")
+            || f.relative_path.ends_with(".tsx")
+            || f.relative_path.ends_with(".js")
+            || f.relative_path.ends_with(".jsx")
+            || f.relative_path.ends_with(".vue")
+            || f.relative_path.ends_with(".svelte")
+    });
+
+    let has_py = files.iter().any(|f| {
+        matches!(f.language.as_deref(), Some("python")) || f.relative_path.ends_with(".py")
+    });
+
+    let has_go = files
+        .iter()
+        .any(|f| matches!(f.language.as_deref(), Some("go")) || f.relative_path.ends_with(".go"));
+
+    let has_rust = files
+        .iter()
+        .any(|f| matches!(f.language.as_deref(), Some("rust")) || f.relative_path.ends_with(".rs"));
+
+    let mut all_modules: BTreeMap<String, Module> = BTreeMap::new();
+    let mut all_external_imports: BTreeSet<String> = BTreeSet::new();
+
+    if has_ts_js {
+        let ts_graph = build_ts_architecture_graph(repo_root, files)?;
+        for m in ts_graph.modules {
+            all_modules
+                .entry(m.id.clone())
+                .and_modify(|existing| {
+                    let mut file_set: BTreeSet<String> = existing.files.drain(..).collect();
+                    file_set.extend(m.files.clone());
+                    existing.files = file_set.into_iter().collect();
+
+                    let mut import_set: BTreeSet<String> = existing.imports.drain(..).collect();
+                    import_set.extend(m.imports.clone());
+                    existing.imports = import_set.into_iter().collect();
+
+                    let mut export_set: BTreeSet<String> = existing.exports.drain(..).collect();
+                    export_set.extend(m.exports.clone());
+                    existing.exports = export_set.into_iter().collect();
+                })
+                .or_insert(m);
+        }
+        all_external_imports.extend(ts_graph.external_imports);
+    }
+
+    if has_py {
+        let py_graph = build_python_architecture_graph(repo_root, files)?;
+        for m in py_graph.modules {
+            all_modules
+                .entry(m.id.clone())
+                .and_modify(|existing| {
+                    let mut file_set: BTreeSet<String> = existing.files.drain(..).collect();
+                    file_set.extend(m.files.clone());
+                    existing.files = file_set.into_iter().collect();
+
+                    let mut import_set: BTreeSet<String> = existing.imports.drain(..).collect();
+                    import_set.extend(m.imports.clone());
+                    existing.imports = import_set.into_iter().collect();
+
+                    let mut export_set: BTreeSet<String> = existing.exports.drain(..).collect();
+                    export_set.extend(m.exports.clone());
+                    existing.exports = export_set.into_iter().collect();
+                })
+                .or_insert(m);
+        }
+        all_external_imports.extend(py_graph.external_imports);
+    }
+
+    if has_go {
+        let module_path = if repo_root.join("go.mod").is_file() {
+            crate::go_manifest::parse_go_manifest(repo_root)
+                .ok()
+                .and_then(|m| m.module_path)
+        } else {
+            files
+                .iter()
+                .find(|f| f.relative_path.ends_with("go.mod"))
+                .and_then(|f| {
+                    let full = repo_root.join(&f.relative_path);
+                    let parent = full.parent().unwrap_or(repo_root);
+                    crate::go_manifest::parse_go_manifest(parent)
+                        .ok()
+                        .and_then(|m| m.module_path)
+                })
+        };
+
+        let go_graph = build_go_architecture_graph(repo_root, files, module_path.as_deref())?;
+        for m in go_graph.modules {
+            all_modules
+                .entry(m.id.clone())
+                .and_modify(|existing| {
+                    let mut file_set: BTreeSet<String> = existing.files.drain(..).collect();
+                    file_set.extend(m.files.clone());
+                    existing.files = file_set.into_iter().collect();
+
+                    let mut import_set: BTreeSet<String> = existing.imports.drain(..).collect();
+                    import_set.extend(m.imports.clone());
+                    existing.imports = import_set.into_iter().collect();
+
+                    let mut export_set: BTreeSet<String> = existing.exports.drain(..).collect();
+                    export_set.extend(m.exports.clone());
+                    existing.exports = export_set.into_iter().collect();
+                })
+                .or_insert(m);
+        }
+        all_external_imports.extend(go_graph.external_imports);
+    }
+
+    if has_rust {
+        let rust_graph = build_rust_architecture_graph(repo_root, files)?;
+        for m in rust_graph.modules {
+            all_modules
+                .entry(m.id.clone())
+                .and_modify(|existing| {
+                    let mut file_set: BTreeSet<String> = existing.files.drain(..).collect();
+                    file_set.extend(m.files.clone());
+                    existing.files = file_set.into_iter().collect();
+
+                    let mut import_set: BTreeSet<String> = existing.imports.drain(..).collect();
+                    import_set.extend(m.imports.clone());
+                    existing.imports = import_set.into_iter().collect();
+
+                    let mut export_set: BTreeSet<String> = existing.exports.drain(..).collect();
+                    export_set.extend(m.exports.clone());
+                    existing.exports = export_set.into_iter().collect();
+                })
+                .or_insert(m);
+        }
+        all_external_imports.extend(rust_graph.external_imports);
+    }
+
+    let modules: Vec<Module> = all_modules.into_values().collect();
+    let circular_dependencies = detect_circular_dependencies(&modules);
+    let high_centrality_modules = compute_high_centrality(&modules);
+
+    Ok(ArchitectureGraph {
+        modules,
+        circular_dependencies,
+        high_centrality_modules,
+        external_imports: all_external_imports,
+    })
+}
+
 /// Infers a logical module `(id, name)` from a normalized relative file path for TS/JS projects.
 ///
 /// Examples:
@@ -405,14 +563,21 @@ pub fn build_rust_architecture_graph(
 /// - `"src/index.ts"` -> `("src", "src")`
 fn infer_module_boundary(relative_path: &str) -> (String, String) {
     let parts: Vec<&str> = relative_path.split('/').collect();
-    if parts.len() >= 3 && parts[0] == "src" {
-        let id = format!("src/{}", parts[1]);
-        let name = parts[1].to_string();
-        return (id, name);
+    if let Some(src_idx) = parts.iter().position(|&p| p == "src") {
+        if parts.len() >= src_idx + 3 {
+            let id = parts[..=src_idx + 1].join("/");
+            let name = parts[src_idx + 1].to_string();
+            return (id, name);
+        } else if parts.len() >= src_idx + 2 {
+            let id = parts[..=src_idx].join("/");
+            let name = parts[src_idx].to_string();
+            return (id, name);
+        }
     }
     if parts.len() >= 2 {
-        let id = parts[0].to_string();
-        let name = parts[0].to_string();
+        let dir_parts = &parts[..parts.len() - 1];
+        let id = dir_parts.join("/");
+        let name = dir_parts.last().unwrap_or(&"root").to_string();
         return (id, name);
     }
     ("root".to_string(), "root".to_string())
@@ -428,19 +593,32 @@ fn infer_module_boundary(relative_path: &str) -> (String, String) {
 /// - `"main.py"` -> `("root", "root")`
 fn infer_python_module_boundary(relative_path: &str) -> (String, String) {
     let parts: Vec<&str> = relative_path.split('/').collect();
-    if parts.len() >= 4 && parts[0] == "src" {
-        let id = format!("src/{}/{}", parts[1], parts[2]);
-        let name = parts[2].to_string();
-        return (id, name);
+    if let Some(src_idx) = parts.iter().position(|&p| p == "src") {
+        if parts.len() >= src_idx + 4 {
+            let id = parts[..=src_idx + 2].join("/");
+            let name = parts[src_idx + 2].to_string();
+            return (id, name);
+        } else if parts.len() >= src_idx + 3 {
+            let id = parts[..=src_idx + 1].join("/");
+            let name = parts[src_idx + 1].to_string();
+            return (id, name);
+        }
     }
-    if parts.len() >= 3 && (parts[0] == "src" || parts[0] == "app") {
-        let id = format!("{}/{}", parts[0], parts[1]);
-        let name = parts[1].to_string();
-        return (id, name);
+    if let Some(app_idx) = parts.iter().position(|&p| p == "app") {
+        if parts.len() >= app_idx + 3 {
+            let id = parts[..=app_idx + 1].join("/");
+            let name = parts[app_idx + 1].to_string();
+            return (id, name);
+        } else if parts.len() >= app_idx + 2 {
+            let id = parts[..=app_idx].join("/");
+            let name = parts[app_idx].to_string();
+            return (id, name);
+        }
     }
     if parts.len() >= 2 {
-        let id = parts[0].to_string();
-        let name = parts[0].to_string();
+        let dir_parts = &parts[..parts.len() - 1];
+        let id = dir_parts.join("/");
+        let name = dir_parts.last().unwrap_or(&"root").to_string();
         return (id, name);
     }
     ("root".to_string(), "root".to_string())

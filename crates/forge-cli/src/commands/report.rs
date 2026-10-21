@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use forge_analyzer::{graph::build_ts_architecture_graph, scanner::scan_repository};
+use forge_analyzer::{build_polyglot_architecture_graph, scanner::scan_repository};
 use forge_core::{
     config::load_config,
     scoring::{calculate_change_risk, RiskReport},
@@ -84,7 +84,7 @@ pub fn build_report_bundle(
     let (repo, _) = execute_scan(&scan_opts)?;
 
     let discovery = scan_repository(repo_root, &[])?;
-    let arch_graph = build_ts_architecture_graph(repo_root, &discovery.files)?;
+    let arch_graph = build_polyglot_architecture_graph(repo_root, &discovery.files)?;
 
     let architecture = ArchitectureSummary {
         circular_dependencies: arch_graph.circular_dependencies,
