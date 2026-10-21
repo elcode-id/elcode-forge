@@ -67,8 +67,11 @@ pub fn run_doctor(repo_root: &Path) -> Result<DoctorReport, ForgeError> {
     });
 
     // Check 3: Package Manager & Manifest Hygiene
+    let mut manifest_found = false;
+
     let pkg_json_path = repo_root.join("package.json");
     if pkg_json_path.exists() {
+        manifest_found = true;
         let manifest = parse_package_json(repo_root)?;
         let has_lockfile = !discovery.package_managers.is_empty()
             && (repo_root.join("pnpm-lock.yaml").exists()
@@ -87,9 +90,10 @@ pub fn run_doctor(repo_root: &Path) -> Result<DoctorReport, ForgeError> {
                 manifest.duplicate_packages.len()
             ),
         });
-    } else if repo_root.join("pyproject.toml").exists()
-        || repo_root.join("requirements.txt").exists()
-    {
+    }
+
+    if repo_root.join("pyproject.toml").exists() || repo_root.join("requirements.txt").exists() {
+        manifest_found = true;
         let manifest = forge_analyzer::parse_python_manifests(repo_root)?;
         let has_lockfile = repo_root.join("poetry.lock").exists()
             || repo_root.join("uv.lock").exists()
@@ -108,7 +112,10 @@ pub fn run_doctor(repo_root: &Path) -> Result<DoctorReport, ForgeError> {
                 manifest.duplicate_packages.len()
             ),
         });
-    } else if repo_root.join("Cargo.toml").exists() {
+    }
+
+    if repo_root.join("Cargo.toml").exists() {
+        manifest_found = true;
         if let Ok(manifest) = forge_analyzer::parse_rust_workspace(repo_root) {
             let wild_warn = !manifest.wildcard_dependencies.is_empty();
             let lock_warn = !manifest.has_cargo_lock;
@@ -132,7 +139,10 @@ pub fn run_doctor(repo_root: &Path) -> Result<DoctorReport, ForgeError> {
                 detail: format!("Cargo.toml present, Cargo.lock present: {has_cargo_lock}"),
             });
         }
-    } else if repo_root.join("go.mod").exists() {
+    }
+
+    if repo_root.join("go.mod").exists() {
+        manifest_found = true;
         if let Ok(manifest) = forge_analyzer::parse_go_manifest(repo_root) {
             let has_sum = manifest.has_go_sum;
             checks.push(DoctorCheck {
@@ -154,7 +164,9 @@ pub fn run_doctor(repo_root: &Path) -> Result<DoctorReport, ForgeError> {
                 detail: format!("go.mod present, go.sum present: {has_go_sum}"),
             });
         }
-    } else {
+    }
+
+    if !manifest_found {
         checks.push(DoctorCheck {
             label: "Package manifest".to_string(),
             passed: true,

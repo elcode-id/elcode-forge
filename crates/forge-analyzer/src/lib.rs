@@ -13,7 +13,10 @@ pub mod rust_manifest;
 pub mod scanner;
 pub mod ts_imports;
 
-pub use dep_health::{analyze_npm_dependencies, analyze_python_dependencies, DependencyReport};
+pub use dep_health::{
+    analyze_npm_dependencies, analyze_polyglot_dependencies, analyze_python_dependencies,
+    DependencyReport,
+};
 pub use detector::{detect_ecosystem, detect_language, is_test_file, EcosystemSignals};
 pub use forge_core::Analyzer;
 pub use go_imports::{
@@ -22,8 +25,9 @@ pub use go_imports::{
 };
 pub use go_manifest::{parse_go_manifest, parse_go_mod_content, ParsedGoManifest};
 pub use graph::{
-    build_go_architecture_graph, build_python_architecture_graph, build_rust_architecture_graph,
-    build_ts_architecture_graph, infer_rust_module_boundary, ArchitectureGraph,
+    build_go_architecture_graph, build_polyglot_architecture_graph,
+    build_python_architecture_graph, build_rust_architecture_graph, build_ts_architecture_graph,
+    infer_rust_module_boundary, ArchitectureGraph,
 };
 pub use package_json::{parse_package_json, ParsedManifest};
 pub use python_imports::{

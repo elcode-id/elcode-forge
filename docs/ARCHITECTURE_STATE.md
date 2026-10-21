@@ -558,3 +558,19 @@
 - **Invariants:**
   - Strict zero-panic test discipline (`Result<(), Box<dyn Error>>` everywhere).
   - Completes **Epic #153** (Phase 7B: Go & Rust Ecosystems Intelligence).
+
+## Issue #158 — Polyglot Repository Scanner & Unified Architecture Graph Builder (COMPLETED)
+- **Crates:** `crates/forge-analyzer` (`src/graph.rs`, `src/dep_health.rs`, `src/lib.rs`, `tests/polyglot_scanner_test.rs`), `crates/forge-cli` (`src/commands/{scan.rs, graph.rs, diff.rs, report.rs, dependencies.rs, doctor.rs}`, `tests/polyglot_golden_test.rs`), `crates/forge-mcp` (`src/tools.rs`)
+- **Public Functions Exposed:**
+  - `build_polyglot_architecture_graph(repo_root: &Path, files: &[FileNode]) -> Result<ArchitectureGraph, ForgeError>`: Unifies TypeScript, JavaScript, Python, Go, and Rust AST/import graphs into a single namespaced architecture graph, re-evaluating global circular dependencies via Tarjan's SCC and computing high-centrality modules.
+  - `analyze_polyglot_dependencies(repo_root: &Path, files: &[FileNode], external_imports: &BTreeSet<String>) -> Result<DependencyReport, ForgeError>`: Recursively discovers and analyzes manifests across npm (`package.json`), PyPI (`pyproject.toml`, `requirements.txt`), Go (`go.mod`), and Cargo (`Cargo.toml`), returning aggregated dependencies and hygiene findings.
+- **CLI Commands Parity:**
+  - `eforge scan`: Migrated to unified polyglot pipeline, automatically analyzing all detected ecosystems in a single scan pass.
+  - `eforge graph`: Generates unified polyglot Mermaid and JSON graphs across all repository languages.
+  - `eforge diff` & `eforge report`: Unified graph enables cross-language blast-radius and impact analysis.
+  - `eforge dependencies`: Formats ecosystem-labeled dependencies across npm, PyPI, Go, and Cargo.
+  - `eforge doctor`: Evaluates hygiene for all present manifests (Node, Python, Rust, Go) in parallel without short-circuiting.
+  - `crates/forge-mcp`: `build_analyzed_repo` exposes full polyglot architecture and dependencies to MCP tools.
+- **Invariants:**
+  - Preserves module namespace isolation across polyglot subprojects (e.g. `frontend/src/components` vs `backend/app/routers`).
+  - Zero-panic: all operations propagate `ForgeError`.

@@ -3,8 +3,7 @@
 use std::path::Path;
 
 use forge_analyzer::{
-    dep_health::analyze_npm_dependencies, graph::build_ts_architecture_graph,
-    scanner::scan_repository,
+    analyze_polyglot_dependencies, build_polyglot_architecture_graph, scanner::scan_repository,
 };
 use forge_core::{config::load_config, ForgeError};
 
@@ -14,8 +13,9 @@ use crate::cli::OutputFormat;
 pub fn run_dependencies(repo_root: &Path, format: OutputFormat) -> Result<String, ForgeError> {
     let config = load_config(repo_root)?;
     let discovery = scan_repository(repo_root, &config.ignore_patterns)?;
-    let arch_graph = build_ts_architecture_graph(repo_root, &discovery.files)?;
-    let report = analyze_npm_dependencies(repo_root, &arch_graph.external_imports)?;
+    let arch_graph = build_polyglot_architecture_graph(repo_root, &discovery.files)?;
+    let report =
+        analyze_polyglot_dependencies(repo_root, &discovery.files, &arch_graph.external_imports)?;
 
     match format {
         OutputFormat::Json | OutputFormat::Sarif => {
@@ -35,12 +35,13 @@ pub fn run_dependencies(repo_root: &Path, format: OutputFormat) -> Result<String
             ));
             if !report.dependencies.is_empty() {
                 md.push_str(
-                    "| Package | Version Req | Resolved | Type |\n| :--- | :--- | :--- | :--- |\n",
+                    "| Package | Ecosystem | Version Req | Resolved | Type |\n| :--- | :--- | :--- | :--- | :--- |\n",
                 );
                 for dep in &report.dependencies {
                     md.push_str(&format!(
-                        "| `{}` | `{}` | `{}` | {} |\n",
+                        "| `{}` | `{}` | `{}` | `{}` | {} |\n",
                         dep.name,
+                        dep.ecosystem,
                         dep.version_req,
                         dep.resolved_version.as_deref().unwrap_or("-"),
                         if dep.is_dev { "dev" } else { "prod" }
