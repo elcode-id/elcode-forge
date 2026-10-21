@@ -75,6 +75,43 @@ impl Default for AiConfig {
     }
 }
 
+/// Configuration for native Git hooks automation (`eforge hook`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct HooksConfig {
+    #[serde(default)]
+    pub pre_commit: Option<HookActionConfig>,
+    #[serde(default)]
+    pub pre_push: Option<HookActionConfig>,
+}
+
+/// Action settings for a specific Git hook lifecycle event.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HookActionConfig {
+    #[serde(default = "default_hook_enabled")]
+    pub enabled: bool,
+    #[serde(default)]
+    pub fail_on: Option<Severity>,
+    #[serde(default)]
+    pub fast: Option<bool>,
+    #[serde(default)]
+    pub staged_only: Option<bool>,
+}
+
+fn default_hook_enabled() -> bool {
+    true
+}
+
+impl Default for HookActionConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            fail_on: Some(Severity::High),
+            fast: Some(true),
+            staged_only: Some(true),
+        }
+    }
+}
+
 /// Deterministic configuration model for ELCODE Forge (`eforge`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ForgeConfig {
@@ -93,6 +130,8 @@ pub struct ForgeConfig {
     pub rule_packs: Vec<String>,
     #[serde(default)]
     pub custom_rule_paths: Vec<String>,
+    #[serde(default)]
+    pub hooks: Option<HooksConfig>,
 }
 
 impl Default for ForgeConfig {
@@ -114,6 +153,7 @@ impl Default for ForgeConfig {
             rules: BTreeMap::new(),
             rule_packs: Vec::new(),
             custom_rule_paths: Vec::new(),
+            hooks: None,
         }
     }
 }
@@ -154,6 +194,7 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
     let mut active_list: Option<&str> = None;
     let mut active_rule_id: Option<(String, usize)> = None;
     let mut active_ai_sub: Option<(String, usize)> = None;
+    let mut active_hook_sub: Option<(String, usize)> = None;
     let mut custom_ignores_started = false;
 
     for (idx, raw_line) in content.lines().enumerate() {
@@ -214,6 +255,7 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
             active_list = None;
             active_rule_id = None;
             active_ai_sub = None;
+            active_hook_sub = None;
 
             match key {
                 "version" => {
@@ -288,6 +330,12 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                 "ai" => current_section = Some("ai"),
                 "rules" => current_section = Some("rules"),
                 "scoring" => current_section = Some("scoring"),
+                "hooks" => {
+                    current_section = Some("hooks");
+                    if config.hooks.is_none() {
+                        config.hooks = Some(HooksConfig::default());
+                    }
+                }
                 _ => {
                     return Err(ForgeError::Config {
                         message: format!("line {line_no}: unknown top-level config key '{key}'"),
@@ -335,6 +383,47 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                     continue;
                 }
                 active_ai_sub = None;
+            }
+
+            if let Some((ref hook_name, hook_indent)) = active_hook_sub {
+                if indent > hook_indent {
+                    let hooks = config.hooks.get_or_insert_with(HooksConfig::default);
+                    let target_hook = match hook_name.as_str() {
+                        "pre_commit" | "pre-commit" => hooks
+                            .pre_commit
+                            .get_or_insert_with(HookActionConfig::default),
+                        "pre_push" | "pre-push" => {
+                            hooks.pre_push.get_or_insert_with(HookActionConfig::default)
+                        }
+                        _ => {
+                            return Err(ForgeError::Config {
+                                message: format!("line {line_no}: unknown hook '{hook_name}'"),
+                            });
+                        }
+                    };
+
+                    match key {
+                        "enabled" => target_hook.enabled = parse_bool(val, line_no)?,
+                        "fail_on" | "fail_on_severity" => {
+                            if !val.is_empty() {
+                                target_hook.fail_on = Some(parse_severity(val, line_no)?);
+                            }
+                        }
+                        "fast" => target_hook.fast = Some(parse_bool(val, line_no)?),
+                        "staged_only" | "staged" => {
+                            target_hook.staged_only = Some(parse_bool(val, line_no)?)
+                        }
+                        _ => {
+                            return Err(ForgeError::Config {
+                                message: format!(
+                                    "line {line_no}: unsupported key '{key}' in hook '{hook_name}'"
+                                ),
+                            });
+                        }
+                    }
+                    continue;
+                }
+                active_hook_sub = None;
             }
 
             if let Some((ref rule_id, rule_indent)) = active_rule_id {
@@ -472,6 +561,28 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                     }
                 }
                 (Some("scoring"), _) => {}
+                (Some("hooks"), hook_key) => match hook_key {
+                    "pre_commit" | "pre-commit" | "pre_push" | "pre-push" => {
+                        active_hook_sub = Some((hook_key.to_string(), indent));
+                        let hooks = config.hooks.get_or_insert_with(HooksConfig::default);
+                        if matches!(hook_key, "pre_commit" | "pre-commit")
+                            && hooks.pre_commit.is_none()
+                        {
+                            hooks.pre_commit = Some(HookActionConfig::default());
+                        } else if matches!(hook_key, "pre_push" | "pre-push")
+                            && hooks.pre_push.is_none()
+                        {
+                            hooks.pre_push = Some(HookActionConfig::default());
+                        }
+                    }
+                    _ => {
+                        return Err(ForgeError::Config {
+                            message: format!(
+                                "line {line_no}: unsupported hook key '{hook_key}' in 'hooks' section"
+                            ),
+                        });
+                    }
+                },
                 (Some("rules"), "extends") => {
                     if let Some(items) = parse_inline_array(val) {
                         config.rule_packs.extend(items);
@@ -874,6 +985,42 @@ rules:
                 cfg.custom_rule_paths,
                 vec!["rules/team.yaml", "rules/strict.json"]
             );
+        }
+    }
+
+    #[test]
+    fn parses_hooks_configuration_cleanly() {
+        let yaml = r#"
+version: 1
+hooks:
+  pre_commit:
+    enabled: true
+    fail_on: high
+    fast: true
+    staged_only: true
+  pre_push:
+    enabled: false
+    fail_on: critical
+"#;
+        let res = parse_config_yaml(yaml);
+        assert!(res.is_ok());
+        if let Ok(cfg) = res {
+            assert!(cfg.hooks.is_some());
+            if let Some(hooks) = cfg.hooks {
+                assert!(hooks.pre_commit.is_some());
+                if let Some(pre_commit) = hooks.pre_commit {
+                    assert!(pre_commit.enabled);
+                    assert_eq!(pre_commit.fail_on, Some(Severity::High));
+                    assert_eq!(pre_commit.fast, Some(true));
+                    assert_eq!(pre_commit.staged_only, Some(true));
+                }
+
+                assert!(hooks.pre_push.is_some());
+                if let Some(pre_push) = hooks.pre_push {
+                    assert!(!pre_push.enabled);
+                    assert_eq!(pre_push.fail_on, Some(Severity::Critical));
+                }
+            }
         }
     }
 
