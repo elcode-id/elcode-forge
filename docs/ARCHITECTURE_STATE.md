@@ -596,3 +596,18 @@
   - Tests in `apps/dashboard/tests/filters.test.ts` and `apps/dashboard/tests/dependencies.test.ts` validating language detection, query serialization, and multi-ecosystem filtering.
 - **Invariants:**
   - Reactive runes adhere to Svelte 5 standards; clean lint and test execution with zero warnings.
+
+## Issue #160 — Multi-Language E2E Integration Suite, Documentation & Workspace v0.7.0 Bump (COMPLETED)
+- **Crates & Packages:** `crates/forge-cli/tests/multi_language_e2e.rs`, `README.md`, `docs/MULTI_LANGUAGE.md`, `Cargo.toml`, `package.json`, `apps/dashboard/package.json`, `packages/forge-schema/package.json`, `packages/forge-ui/package.json`, `packages/forge-cli-npm/package.json`
+- **Deliverables & Capabilities:**
+  - Multi-Language E2E Integration Test Suite (`crates/forge-cli/tests/multi_language_e2e.rs`):
+    - Full pipeline execution across all 4 curated fixtures (`fixtures/next-app/`, `fixtures/fastapi-app/`, `fixtures/go-service/`, `fixtures/rust-cli/`).
+    - Validates CLI command matrix: `doctor` (manifest hygiene & framework detection), `scan` (polyglot architecture graph, 8 health dimensions, SARIF/terminal/markdown rendering), `review` (blast radius & change risk with synthetic diffs), `explain` (repo & module level structural inspection), and `dependencies` (multi-ecosystem manifest parsing).
+    - Cross-language determinism test verifying byte-identical JSON output across successive scans and ensuring dimension score weights sum to 100%.
+  - Comprehensive documentation updates:
+    - Updated `README.md` with multi-language and ecosystem capability descriptions, version bump to `v0.7.0`, and added the Multi-Language & Ecosystem Support Matrix table.
+    - Added [`docs/MULTI_LANGUAGE.md`](./MULTI_LANGUAGE.md) detailing language parsers, import resolution strategies, cycle detection algorithms (Tarjan's SCC), and CLI command parity.
+  - Synchronized monorepo workspace version to `v0.7.0` across Rust crates and TypeScript packages.
+- **Invariants:**
+  - Strict zero-panic policy enforced in all tests (`Result<(), Box<dyn Error>>`).
+  - Completes **Epic #157** (Phase 7C) and concludes **Phase 7: Multi-Language Expansion**.
