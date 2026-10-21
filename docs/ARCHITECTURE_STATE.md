@@ -523,3 +523,26 @@
 - **Invariants:**
   - Zero-panic: all parsing operations strictly propagate `ForgeError`.
   - Go standard library imports are filtered out from external dependency findings.
+
+## Issue #155 — Cargo.toml Workspace Dependency Parser & Rust Module Graph Extractor (COMPLETED)
+- **Crate:** `crates/forge-analyzer` (`src/rust_manifest.rs`, `src/rust_imports.rs`, `src/graph.rs`, `src/detector.rs`, `src/lib.rs`, `tests/rust_manifest_test.rs`, `tests/rust_imports_test.rs`)
+- **Public Types & Functions:**
+  - `ParsedRustWorkspace`: Struct holding `is_workspace: bool`, `workspace_members: Vec<String>`, `dependencies: Vec<Dependency>`, `wildcard_dependencies: Vec<String>`, `path_dependencies: Vec<String>`, and `has_cargo_lock: bool`.
+  - `ParsedCargoDeps`: Type alias for `(Vec<Dependency>, Vec<String>, Vec<String>)`.
+  - `parse_cargo_dependencies(table: &TomlValue, section: &str, is_dev: bool, lock_versions: &BTreeMap<String, String>) -> ParsedCargoDeps`: Parses dependencies under `[dependencies]`, `[dev-dependencies]`, `[build-dependencies]`, and `[workspace.dependencies]`, flagging wildcards (`*`) and path dependencies.
+  - `parse_cargo_toml_content(content: &str, lock_versions: &BTreeMap<String, String>) -> Result<ParsedCargoDeps, ForgeError>`.
+  - `parse_rust_workspace(repo_root: &Path) -> Result<ParsedRustWorkspace, ForgeError>`: Deeply parses single-crate projects and multi-member workspaces (`[workspace.members]`), expanding glob patterns (`crates/*`), and merging crate dependencies.
+  - `read_cargo_lock_versions(repo_root: &Path) -> BTreeMap<String, String>`: Resolves exact installed versions from root `Cargo.lock`.
+  - `RUST_STD_CRATES`: Catalog of Rust standard library crates (`std`, `core`, `alloc`, `proc_macro`, `test`).
+  - `is_rust_std(crate_name: &str) -> bool`: Filters standard library crates.
+  - `strip_rust_comments(source: &str) -> String`: Strips `//` line comments, doc comments, and nested `/* ... */` block comments while preserving string and raw string literals.
+  - `expand_use_tree(prefix: &str, tree: &str) -> Vec<String>`: Recursively expands nested Rust `use` trees, braces, and aliases.
+  - `extract_rust_mods_and_uses(source: &str) -> (Vec<String>, Vec<String>)`: Extracts `mod <name>;` declarations and `use` import statements.
+  - `resolve_rust_import(importer_rel_path: &str, raw_use: &str, known_files: &BTreeSet<String>) -> Option<String>`: Resolves `crate::...`, `super::...`, `self::...`, declared submodules `mod::<name>`, and workspace crate references.
+  - `extract_rust_external_crate(raw_use: &str) -> Option<String>`: Extracts third-party external crates while filtering stdlib and internal modules.
+  - `infer_rust_module_boundary(relative_path: &str) -> (String, String)`: Normalizes workspace crate and submodule boundaries.
+  - `build_rust_architecture_graph(repo_root: &Path, files: &[FileNode]) -> Result<ArchitectureGraph, ForgeError>`: Builds Rust architecture graph and runs Tarjan SCC cycle detection.
+  - Ecosystem detection: Added detection for `axum`, `actix-web`, `tokio`, and `rocket`.
+- **Invariants:**
+  - 100% adherence to zero-panic policy; test assertions return `Result<(), Box<dyn Error>>`.
+  - Self-dogfooding test verified against `elcode-forge` workspace itself.

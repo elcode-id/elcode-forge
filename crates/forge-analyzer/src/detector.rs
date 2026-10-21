@@ -221,6 +221,29 @@ pub fn detect_ecosystem(repo_root: &Path, files: &[FileNode]) -> EcosystemSignal
         }
     }
 
+    // Inspect Rust manifest for frameworks (axum, actix-web, tokio, rocket)
+    if repo_root.join("Cargo.toml").is_file() {
+        if let Ok(workspace) = crate::rust_manifest::parse_rust_workspace(repo_root) {
+            for dep in &workspace.dependencies {
+                match dep.name.as_str() {
+                    "axum" => {
+                        frameworks.insert("axum".to_string());
+                    }
+                    "actix-web" => {
+                        frameworks.insert("actix-web".to_string());
+                    }
+                    "tokio" => {
+                        frameworks.insert("tokio".to_string());
+                    }
+                    "rocket" => {
+                        frameworks.insert("rocket".to_string());
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
     // Inspect source imports if frameworks not yet found
     let need_python_fw = !frameworks.contains("fastapi")
         || !frameworks.contains("flask")

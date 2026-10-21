@@ -299,6 +299,105 @@ pub fn build_go_architecture_graph(
     })
 }
 
+/// Builds the [`ArchitectureGraph`] for all Rust files in `files`,
+/// inferring logical crate/module boundaries, external crate imports, high-centrality modules, and
+/// circular dependencies using Tarjan's Strongly Connected Components (SCC) algorithm.
+pub fn build_rust_architecture_graph(
+    repo_root: &Path,
+    files: &[FileNode],
+) -> Result<ArchitectureGraph, ForgeError> {
+    let rust_files: Vec<&FileNode> = files
+        .iter()
+        .filter(|f| {
+            matches!(f.language.as_deref(), Some("rust")) || f.relative_path.ends_with(".rs")
+        })
+        .collect();
+
+    let known_files: BTreeSet<String> =
+        rust_files.iter().map(|f| f.relative_path.clone()).collect();
+
+    let mut module_map: BTreeMap<String, ModuleAccumulator> = BTreeMap::new();
+    let mut external_imports = BTreeSet::new();
+
+    for file in &rust_files {
+        let (mod_id, mod_name) = infer_rust_module_boundary(&file.relative_path);
+        let acc = module_map
+            .entry(mod_id.clone())
+            .or_insert_with(|| ModuleAccumulator {
+                name: mod_name,
+                root_path: mod_id.clone(),
+                ..Default::default()
+            });
+        acc.files.insert(file.relative_path.clone());
+    }
+
+    for file in &rust_files {
+        let (source_mod_id, _) = infer_rust_module_boundary(&file.relative_path);
+        let full_path = repo_root.join(&file.relative_path);
+        let content = fs::read_to_string(&full_path).map_err(|source| ForgeError::Io {
+            path: full_path,
+            source,
+        })?;
+
+        let (declared_mods, use_paths) = crate::rust_imports::extract_rust_mods_and_uses(&content);
+
+        // 1. Process declared submodules: `mod <name>;`
+        for mod_name in declared_mods {
+            let mod_spec = format!("mod::{mod_name}");
+            if let Some(target_file) = crate::rust_imports::resolve_rust_import(
+                &file.relative_path,
+                &mod_spec,
+                &known_files,
+            ) {
+                let (target_mod_id, _) = infer_rust_module_boundary(&target_file);
+                if target_mod_id != source_mod_id {
+                    if let Some(acc) = module_map.get_mut(&source_mod_id) {
+                        acc.imports.insert(target_mod_id);
+                    }
+                }
+            }
+        }
+
+        // 2. Process use imports
+        for spec in use_paths {
+            if let Some(target_file) =
+                crate::rust_imports::resolve_rust_import(&file.relative_path, &spec, &known_files)
+            {
+                let (target_mod_id, _) = infer_rust_module_boundary(&target_file);
+                if target_mod_id != source_mod_id {
+                    if let Some(acc) = module_map.get_mut(&source_mod_id) {
+                        acc.imports.insert(target_mod_id);
+                    }
+                }
+            } else if let Some(pkg) = crate::rust_imports::extract_rust_external_crate(&spec) {
+                external_imports.insert(pkg);
+            }
+        }
+    }
+
+    let modules: Vec<Module> = module_map
+        .into_iter()
+        .map(|(id, acc)| Module {
+            id,
+            name: acc.name,
+            root_path: acc.root_path,
+            files: acc.files.into_iter().collect(),
+            imports: acc.imports.into_iter().collect(),
+            exports: acc.exports.into_iter().collect(),
+        })
+        .collect();
+
+    let circular_dependencies = detect_circular_dependencies(&modules);
+    let high_centrality_modules = compute_high_centrality(&modules);
+
+    Ok(ArchitectureGraph {
+        modules,
+        circular_dependencies,
+        high_centrality_modules,
+        external_imports,
+    })
+}
+
 /// Infers a logical module `(id, name)` from a normalized relative file path for TS/JS projects.
 ///
 /// Examples:
@@ -362,6 +461,35 @@ fn infer_go_module_boundary(relative_path: &str) -> (String, String) {
         return (id, name);
     }
     ("root".to_string(), "root".to_string())
+}
+
+/// Infers a logical crate or submodule `(id, name)` from a normalized relative Rust file path.
+///
+/// Examples:
+/// - `"crates/forge-cli/src/commands/doctor.rs"` -> `("crates/forge-cli/commands", "commands")`
+/// - `"crates/forge-analyzer/src/lib.rs"` -> `("crates/forge-analyzer", "forge-analyzer")`
+/// - `"src/handlers/auth.rs"` -> `("src/handlers", "handlers")`
+/// - `"src/main.rs"` -> `("src", "src")`
+pub fn infer_rust_module_boundary(relative_path: &str) -> (String, String) {
+    let parts: Vec<&str> = relative_path.split('/').collect();
+    if parts.len() >= 3 && parts[0] == "crates" {
+        let crate_name = parts[1];
+        if parts.len() >= 5 && parts[2] == "src" {
+            let submod = parts[3];
+            (format!("crates/{crate_name}/{submod}"), submod.to_string())
+        } else {
+            (format!("crates/{crate_name}"), crate_name.to_string())
+        }
+    } else if parts.len() >= 3 && parts[0] == "src" {
+        (format!("src/{}", parts[1]), parts[1].to_string())
+    } else if parts.len() >= 2 && parts[0] == "src" {
+        ("src".to_string(), "src".to_string())
+    } else if parts.len() >= 2 {
+        let dir = parts[0];
+        (dir.to_string(), dir.to_string())
+    } else {
+        ("root".to_string(), "root".to_string())
+    }
 }
 
 fn compute_high_centrality(modules: &[Module]) -> Vec<String> {
