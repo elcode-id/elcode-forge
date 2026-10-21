@@ -6,6 +6,7 @@ pub mod commands;
 pub mod exit_code;
 pub mod formatters;
 pub mod serve;
+pub mod theme;
 
 use std::fs;
 use std::path::Path;
@@ -14,6 +15,7 @@ use clap::Parser;
 pub use cli::{Cli, Commands, OutputFormat};
 pub use exit_code::{parse_severity_threshold, ExitCode};
 pub use formatters::render_repository_report;
+pub use theme::{health_rating, render_score_meter, ColorMode, Theme};
 
 /// Returns the formatted version banner for the CLI.
 pub fn version_banner() -> String {
