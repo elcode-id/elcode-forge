@@ -245,6 +245,15 @@ importers:
         specifier: ^3.0.0
         version: 3.2.7(@types/node@20.19.43)(jiti@1.21.7)(lightningcss@1.33.0)(supports-color@7.2.0)
 
+  packages/forge-cli-npm:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.14.0
+        version: 20.19.43
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@20.19.43)(lightningcss@1.33.0)(supports-color@7.2.0)
+
   packages/forge-schema:
     dependencies:
       ajv:

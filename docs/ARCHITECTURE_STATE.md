@@ -397,3 +397,19 @@
 - **Invariants:**
   - Automatic detection of TTY vs CI/pipe environments ensures clean, zero-escape ASCII formatting when redirected or when `NO_COLOR` is present.
   - Byte-for-byte deterministic output for identical input repositories.
+
+## Issue #136 — Zero-Install npm Package `@elcode-forge/cli` (COMPLETED)
+- **Package:** `packages/forge-cli-npm/` (`@elcode-forge/cli`)
+- **Public Modules & Executables:**
+  - `bin/eforge.js`: zero-install executable entrypoint registered under `bin.eforge` and `bin["elcode-forge"]`.
+  - `src/index.js`: zero-dependency native launcher.
+  - Functions: `resolveTarget`, `getCacheDir`, `getBinaryPath`, `parseSha256Sums`, `verifyChecksum`, `downloadFile`, `ensureBinary`, `runCli`.
+- **Capabilities:**
+  - Automated release target resolution: `win32-x64` (`x86_64-pc-windows-msvc`), `linux-x64` (`x86_64-unknown-linux-gnu`), `darwin-arm64` (`aarch64-apple-darwin`).
+  - Cache management: caches binary in `~/.eforge/bin/v<version>/` or `%LOCALAPPDATA%\eforge\bin\v<version>\`.
+  - Cryptographic verification: downloads and verifies official `SHA256SUMS.txt` before unpacking.
+  - Zero external npm runtime dependencies: uses pure Node.js built-ins (`node:https`, `node:crypto`, `node:fs`, `node:child_process`).
+  - Environment overrides: `EFORGE_BINARY_PATH`, `EFORGE_CACHE_DIR`, `EFORGE_DOWNLOAD_URL`.
+- **Invariants:**
+  - Strict SHA256 integrity verification rejects any modified or corrupt binary downloads.
+  - Clean exit code and stdio propagation from child process.
