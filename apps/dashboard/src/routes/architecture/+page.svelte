@@ -4,14 +4,59 @@
   import { toElements, type GraphNodeData } from "$lib/graph/toElements.js";
   import { initCytoscape } from "$lib/graph/cytoscape.js";
   import type { Finding } from "@elcode-forge/schema";
+  import { detectFileLanguage } from "$lib/filters.js";
 
   let containerEl: HTMLDivElement | null = $state(null);
   let cyInstance: Core | null = null;
   let selectedNodeId: string | null = $state(null);
   let viewMode: "canvas" | "list" = $state("canvas");
+  let selectedLanguage = $state<string>("all");
+
+  function inferModuleLanguage(files: string[]): string {
+    for (const f of files) {
+      const lang = detectFileLanguage(f);
+      if (lang) return lang;
+    }
+    return "unknown";
+  }
+
+  function languageBadgeClass(lang?: string | null): string {
+    switch (lang?.toLowerCase()) {
+      case "python":
+        return "bg-sky-950/80 text-sky-300 border-sky-800";
+      case "go":
+        return "bg-teal-950/80 text-teal-300 border-teal-800";
+      case "rust":
+        return "bg-amber-950/80 text-amber-300 border-amber-800";
+      case "typescript":
+      case "javascript":
+        return "bg-blue-950/80 text-blue-300 border-blue-800";
+      case "svelte":
+      case "vue":
+        return "bg-emerald-950/80 text-emerald-300 border-emerald-800";
+      default:
+        return "bg-slate-800 text-slate-400 border-slate-700";
+    }
+  }
 
   const bundle = $derived(dashboardState.bundle);
   const elements = $derived(bundle ? toElements(bundle) : { nodes: [], edges: [] });
+
+  const presentLanguages = $derived<string[]>(
+    Array.from(
+      new Set(
+        elements.nodes
+          .map((node) => inferModuleLanguage(node.data.files))
+          .filter((l) => l !== "unknown")
+      )
+    ).sort()
+  );
+
+  const visibleNodes = $derived(
+    elements.nodes.filter(
+      (node) => selectedLanguage === "all" || inferModuleLanguage(node.data.files) === selectedLanguage
+    )
+  );
   const selectedNode = $derived<GraphNodeData | null>(
     selectedNodeId
       ? elements.nodes.find((n) => n.data.id === selectedNodeId)?.data ?? null
@@ -176,11 +221,37 @@
           </div>
         {:else}
           <!-- Keyboard-accessible module table (WCAG AA non-visual alternative) -->
+          {#if presentLanguages.length > 1}
+            <div class="flex flex-wrap items-center gap-1.5 text-xs mb-3">
+              <span class="text-slate-400 font-mono text-[11px] mr-1">Language:</span>
+              <button
+                onclick={() => (selectedLanguage = "all")}
+                class="px-2 py-0.5 rounded font-mono text-[11px] border transition-colors {selectedLanguage === 'all'
+                  ? 'bg-blue-600 text-white border-blue-500 font-medium'
+                  : 'bg-[#12151f] text-slate-400 border-[#262c3f] hover:border-slate-600'}"
+              >
+                All ({elements.nodes.length})
+              </button>
+              {#each presentLanguages as lang (lang)}
+                {@const count = elements.nodes.filter((n) => inferModuleLanguage(n.data.files) === lang).length}
+                <button
+                  onclick={() => (selectedLanguage = lang)}
+                  class="px-2 py-0.5 rounded font-mono text-[11px] uppercase border transition-colors {selectedLanguage === lang
+                    ? languageBadgeClass(lang) + ' font-medium'
+                    : 'bg-[#12151f] text-slate-400 border-[#262c3f] hover:border-slate-600'}"
+                >
+                  {lang} ({count})
+                </button>
+              {/each}
+            </div>
+          {/if}
+
           <div class="rounded-lg border border-[#262c3f] bg-[#12151f] overflow-hidden">
             <table class="w-full text-left text-xs text-slate-300" aria-label="Modules list">
               <thead class="bg-[#1a1e2e] text-slate-400 uppercase font-mono text-[10px] tracking-wider border-b border-[#262c3f]">
                 <tr>
                   <th scope="col" class="py-2.5 px-4">Module</th>
+                  <th scope="col" class="py-2.5 px-3">Language</th>
                   <th scope="col" class="py-2.5 px-3">Path</th>
                   <th scope="col" class="py-2.5 px-3">Files</th>
                   <th scope="col" class="py-2.5 px-3">Imports</th>
@@ -189,9 +260,19 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-[#262c3f]/50">
-                {#each elements.nodes as node (node.data.id)}
+                {#each visibleNodes as node (node.data.id)}
+                  {@const lang = inferModuleLanguage(node.data.files)}
                   <tr class="hover:bg-[#1a1e2e]/50 {selectedNodeId === node.data.id ? 'bg-blue-950/20' : ''}">
                     <td class="py-2.5 px-4 font-mono font-medium text-slate-100">{node.data.name}</td>
+                    <td class="py-2.5 px-3">
+                      {#if lang !== "unknown"}
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-mono uppercase border {languageBadgeClass(lang)}">
+                          {lang}
+                        </span>
+                      {:else}
+                        <span class="text-slate-500 font-mono text-[10px]">—</span>
+                      {/if}
+                    </td>
                     <td class="py-2.5 px-3 font-mono text-slate-400">{node.data.rootPath}</td>
                     <td class="py-2.5 px-3">{node.data.fileCount}</td>
                     <td class="py-2.5 px-3">{node.data.importCount}</td>
@@ -228,9 +309,17 @@
             <p class="text-xs">Click any module node in the graph or choose inspect in the module table to view its architectural breakdown.</p>
           </div>
         {:else}
+          {@const selLang = inferModuleLanguage(selectedNode.files)}
           <div class="border-b border-[#262c3f] pb-3">
             <div class="flex items-center justify-between">
-              <span class="text-[10px] font-mono uppercase text-blue-400 font-semibold tracking-wider">Module Inspector</span>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-mono uppercase text-blue-400 font-semibold tracking-wider">Module Inspector</span>
+                {#if selLang !== "unknown"}
+                  <span class="px-1.5 py-0.5 rounded text-[10px] font-mono uppercase border {languageBadgeClass(selLang)}">
+                    {selLang}
+                  </span>
+                {/if}
+              </div>
               {#if selectedNode.hasCycle}
                 <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-red-950 text-red-300 border border-red-800">
                   CIRCULAR DEPENDENCY

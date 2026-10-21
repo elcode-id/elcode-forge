@@ -574,3 +574,25 @@
 - **Invariants:**
   - Preserves module namespace isolation across polyglot subprojects (e.g. `frontend/src/components` vs `backend/app/routers`).
   - Zero-panic: all operations propagate `ForgeError`.
+
+## Issue #159 — Web Intelligence Dashboard Multi-Ecosystem Dependency Viewer & Language Badges (COMPLETED)
+- **App & Tests:** `apps/dashboard/src/` (`lib/filters.ts`, `routes/dependencies/+page.svelte`, `routes/findings/+page.svelte`, `routes/architecture/+page.svelte`), `apps/dashboard/tests/` (`filters.test.ts`, `dependencies.test.ts`)
+- **Capabilities & UI Surfaces:**
+  - `apps/dashboard/src/lib/filters.ts`:
+    - Added `language?: string` to `FindingFilter` interface and query serialization (`?language=...`).
+    - Added `detectFileLanguage(filePath?: string | null): string | null` supporting Python, Go, Rust, TypeScript, JavaScript, Svelte, Vue, and manifests (`Cargo.toml`, `go.mod`, `requirements.txt`, `pyproject.toml`, `package.json`).
+  - `apps/dashboard/src/routes/dependencies/+page.svelte`:
+    - Multi-ecosystem filter pills (`All`, `npm`, `PyPI`, `Go`, `Cargo`) with package counts and distinct ecosystem badge colors.
+    - Dependency type classification badges (`DIRECT`, `DEV`, `INDIRECT`).
+    - Search by package name combined with ecosystem and dependency type filtering.
+  - `apps/dashboard/src/routes/findings/+page.svelte`:
+    - Dynamic language filter pills based on findings present in report.
+    - Inline language badges in finding cards next to file locations.
+    - Full URL query state synchronization (`?language=...`).
+  - `apps/dashboard/src/routes/architecture/+page.svelte`:
+    - Primary language inference per architectural module from member files.
+    - Language filter toolbar in accessible module table view.
+    - Language badges in table rows and module inspector pane.
+  - Tests in `apps/dashboard/tests/filters.test.ts` and `apps/dashboard/tests/dependencies.test.ts` validating language detection, query serialization, and multi-ecosystem filtering.
+- **Invariants:**
+  - Reactive runes adhere to Svelte 5 standards; clean lint and test execution with zero warnings.

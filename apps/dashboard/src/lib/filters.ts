@@ -6,6 +6,7 @@ export interface FindingFilter {
   rulePrefix?: string;
   pathPrefix?: string;
   category?: string;
+  language?: string;
 }
 
 const VALID_SEVERITIES: Set<Severity> = new Set(["critical", "high", "medium", "low", "info"]);
@@ -14,12 +15,34 @@ const VALID_CONFIDENCES: Set<Confidence> = new Set(["certain", "high", "medium",
 /**
  * Parse URLSearchParams into a structured FindingFilter.
  */
+
+/**
+ * Detects programming language from a source file path.
+ */
+export function detectFileLanguage(filePath?: string | null): string | null {
+  if (!filePath) return null;
+  const lower = filePath.toLowerCase().replace(/\\/g, "/");
+  if (lower.endsWith(".py")) return "python";
+  if (lower.endsWith(".go")) return "go";
+  if (lower.endsWith(".rs")) return "rust";
+  if (lower.endsWith(".ts") || lower.endsWith(".tsx")) return "typescript";
+  if (lower.endsWith(".js") || lower.endsWith(".jsx") || lower.endsWith(".mjs") || lower.endsWith(".cjs")) return "javascript";
+  if (lower.endsWith(".svelte")) return "svelte";
+  if (lower.endsWith(".vue")) return "vue";
+  if (lower.endsWith("cargo.toml") || lower.endsWith("cargo.lock")) return "rust";
+  if (lower.endsWith("go.mod") || lower.endsWith("go.sum")) return "go";
+  if (lower.endsWith("requirements.txt") || lower.endsWith("pyproject.toml") || lower.endsWith("poetry.lock") || lower.endsWith("uv.lock")) return "python";
+  if (lower.endsWith("package.json") || lower.endsWith("pnpm-lock.yaml") || lower.endsWith("package-lock.json")) return "javascript";
+  return null;
+}
+
 export function parseFilter(params: URLSearchParams): FindingFilter {
   const sevParam = params.get("severity");
   const confParam = params.get("confidence");
   const rulePrefix = params.get("rulePrefix") || params.get("rule_prefix") || undefined;
   const pathPrefix = params.get("pathPrefix") || params.get("path_prefix") || undefined;
   const category = params.get("category") || undefined;
+  const language = params.get("language") || undefined;
 
   const severity: Severity[] = [];
   if (sevParam) {
@@ -47,6 +70,7 @@ export function parseFilter(params: URLSearchParams): FindingFilter {
     rulePrefix: rulePrefix?.trim() || undefined,
     pathPrefix: pathPrefix?.trim() || undefined,
     category: category?.trim() || undefined,
+    language: language?.trim().toLowerCase() || undefined,
   };
 }
 
@@ -76,6 +100,10 @@ export function serializeFilter(filter: FindingFilter): URLSearchParams {
     params.set("category", filter.category);
   }
 
+  if (filter.language) {
+    params.set("language", filter.language);
+  }
+
   return params;
 }
 
@@ -90,6 +118,7 @@ export function applyFilter(findings: Finding[], filter: FindingFilter): Finding
   const rulePrefix = filter.rulePrefix ? filter.rulePrefix.toLowerCase() : null;
   const pathPrefix = filter.pathPrefix ? filter.pathPrefix.toLowerCase() : null;
   const category = filter.category ? filter.category.toLowerCase() : null;
+  const language = filter.language ? filter.language.toLowerCase() : null;
 
   return findings.filter((f) => {
     if (sevSet && !sevSet.has(f.severity)) {
@@ -113,6 +142,13 @@ export function applyFilter(findings: Finding[], filter: FindingFilter): Finding
 
     if (category && f.category?.toLowerCase() !== category) {
       return false;
+    }
+
+    if (language) {
+      const fileLang = detectFileLanguage(f.location?.file_path);
+      if (fileLang !== language) {
+        return false;
+      }
     }
 
     return true;
