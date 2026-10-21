@@ -160,6 +160,152 @@ pub fn run_cli_from_env() -> ExitCode {
                 }
             }
         }
+        Some(Commands::Hook {
+            action,
+            path,
+            format,
+        }) => {
+            let active_action = action.unwrap_or(cli::HookAction::Status {
+                path: path.clone(),
+                format,
+            });
+            match active_action {
+                cli::HookAction::Install {
+                    path: inst_path,
+                    hook,
+                    force,
+                    format: inst_format,
+                } => {
+                    let active_path = if inst_path != Path::new(".") {
+                        inst_path
+                    } else {
+                        path
+                    };
+                    let active_format = if inst_format != cli::OutputFormat::Terminal {
+                        inst_format
+                    } else {
+                        format
+                    };
+                    match commands::hook::run_hook_install(&active_path, &hook, force) {
+                        Ok(res) => match commands::hook::render_hook_install(&res, active_format) {
+                            Ok(rendered) => {
+                                println!("{rendered}");
+                                ExitCode::Success
+                            }
+                            Err(err) => {
+                                eprintln!("Error formatting hook install report: {err}");
+                                ExitCode::ExecutionError
+                            }
+                        },
+                        Err(err) => {
+                            eprintln!("Error installing git hooks: {err}");
+                            ExitCode::ExecutionError
+                        }
+                    }
+                }
+                cli::HookAction::Run {
+                    hook,
+                    path: run_path,
+                    fail_on,
+                    format: run_format,
+                } => {
+                    let active_path = if run_path != Path::new(".") {
+                        run_path
+                    } else {
+                        path
+                    };
+                    let active_format = if run_format != cli::OutputFormat::Terminal {
+                        run_format
+                    } else {
+                        format
+                    };
+                    match commands::hook::run_hook_run(&active_path, &hook, fail_on.as_deref()) {
+                        Ok((report, exit_code)) => {
+                            match commands::hook::render_hook_run(&report, active_format) {
+                                Ok(rendered) => {
+                                    println!("{rendered}");
+                                    exit_code
+                                }
+                                Err(err) => {
+                                    eprintln!("Error formatting hook run report: {err}");
+                                    ExitCode::ExecutionError
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            eprintln!("Error executing git hook: {err}");
+                            ExitCode::ExecutionError
+                        }
+                    }
+                }
+                cli::HookAction::Uninstall {
+                    path: uninst_path,
+                    hook,
+                    format: uninst_format,
+                } => {
+                    let active_path = if uninst_path != Path::new(".") {
+                        uninst_path
+                    } else {
+                        path
+                    };
+                    let active_format = if uninst_format != cli::OutputFormat::Terminal {
+                        uninst_format
+                    } else {
+                        format
+                    };
+                    match commands::hook::run_hook_uninstall(&active_path, &hook) {
+                        Ok(res) => match commands::hook::render_hook_uninstall(&res, active_format)
+                        {
+                            Ok(rendered) => {
+                                println!("{rendered}");
+                                ExitCode::Success
+                            }
+                            Err(err) => {
+                                eprintln!("Error formatting hook uninstall report: {err}");
+                                ExitCode::ExecutionError
+                            }
+                        },
+                        Err(err) => {
+                            eprintln!("Error uninstalling git hooks: {err}");
+                            ExitCode::ExecutionError
+                        }
+                    }
+                }
+                cli::HookAction::Status {
+                    path: status_path,
+                    format: status_format,
+                } => {
+                    let active_path = if status_path != Path::new(".") {
+                        status_path
+                    } else {
+                        path
+                    };
+                    let active_format = if status_format != cli::OutputFormat::Terminal {
+                        status_format
+                    } else {
+                        format
+                    };
+                    match commands::hook::run_hook_status(&active_path) {
+                        Ok(report) => {
+                            match commands::hook::render_hook_status(&report, active_format) {
+                                Ok(rendered) => {
+                                    println!("{rendered}");
+                                    ExitCode::Success
+                                }
+                                Err(err) => {
+                                    eprintln!("Error formatting hook status report: {err}");
+                                    ExitCode::ExecutionError
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            eprintln!("Error inspecting git hooks status: {err}");
+                            ExitCode::ExecutionError
+                        }
+                    }
+                }
+            }
+        }
         Some(Commands::Doctor { path, format }) => match commands::doctor::run_doctor(&path) {
             Ok(report) => match commands::doctor::render_doctor_report(&report, format) {
                 Ok(rendered) => {

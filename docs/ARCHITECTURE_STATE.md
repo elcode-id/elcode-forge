@@ -352,3 +352,21 @@
   - Executable permissions: hook scripts are marked `0o755` on Unix.
   - Bypass support: generated shell scripts check `FORGE_SKIP_HOOK=1` before attempting execution.
   - Worktree/submodule awareness: resolves `.git` when it is a file (`gitdir: <path>`).
+
+## Issue #131 — `eforge hook` Command & Sub-200ms Fast Staged-Diff Scanner (COMPLETED)
+- **Crates:** `crates/forge-cli` (`src/commands/hook.rs`, `src/commands/mod.rs`, `src/cli.rs`, `src/lib.rs`)
+- **CLI Commands & Structs:**
+  - `Commands::Hook { action: HookAction }`
+  - `HookAction::Install { hook_type, force }`
+  - `HookAction::Uninstall { hook_type }`
+  - `HookAction::Status { format }`
+  - `HookAction::Run { hook_type, staged_only, format }`
+  - `HookRunOutput`, `HookRunResult` with formatted output in terminal, JSON, and Markdown.
+- **Capabilities & Performance:**
+  - Fast staged files collector: `git diff --cached --name-only --diff-filter=ACMR` with `< 10ms` fast-path when no staged files exist.
+  - Sub-200ms staged-diff evaluation: `execute_review` on cached diff with blast-radius, change impact, and rule checking scoped strictly to staged changes.
+  - Pre-push hook verification: runs fast review over unpushed commits (`origin/HEAD..HEAD`).
+  - Formatter support: table/plain terminal UX, machine-readable JSON, and markdown output.
+- **Invariants:**
+  - Non-zero exit code (`1` or `4`) if any violations exceed configured `fail_on` severity threshold, blocking `git commit` or `git push`.
+  - Zero-panic test discipline across all CLI command flows.
