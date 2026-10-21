@@ -5,24 +5,60 @@
     parseFilter,
     serializeFilter,
     applyFilter,
+    detectFileLanguage,
     type FindingFilter,
   } from "$lib/filters.js";
   import type { Finding, Severity } from "@elcode-forge/schema";
 
   const ALL_SEVERITIES: Severity[] = ["critical", "high", "medium", "low", "info"];
 
+  const bundle = $derived(dashboardState.bundle);
+  const allFindings = $derived<Finding[]>(bundle?.repository?.findings ?? []);
+
   let selectedSeverities = $state<Severity[]>([]);
   let rulePrefix = $state("");
   let pathPrefix = $state("");
+  let selectedLanguage = $state<string>("all");
 
-  const bundle = $derived(dashboardState.bundle);
-  const allFindings = $derived<Finding[]>(bundle?.repository?.findings ?? []);
+  const presentLanguages = $derived<string[]>(
+    Array.from(
+      new Set(
+        allFindings
+          .map((f) => detectFileLanguage(f.location?.file_path))
+          .filter((l): l is string => Boolean(l))
+      )
+    ).sort()
+  );
+
+  function getLanguageCount(lang: string): number {
+    return allFindings.filter((f) => detectFileLanguage(f.location?.file_path) === lang).length;
+  }
+
+  function languageBadgeClass(lang?: string | null): string {
+    switch (lang?.toLowerCase()) {
+      case "python":
+        return "bg-sky-950/80 text-sky-300 border-sky-800";
+      case "go":
+        return "bg-teal-950/80 text-teal-300 border-teal-800";
+      case "rust":
+        return "bg-amber-950/80 text-amber-300 border-amber-800";
+      case "typescript":
+      case "javascript":
+        return "bg-blue-950/80 text-blue-300 border-blue-800";
+      case "svelte":
+      case "vue":
+        return "bg-emerald-950/80 text-emerald-300 border-emerald-800";
+      default:
+        return "bg-slate-800 text-slate-400 border-slate-700";
+    }
+  }
 
   const activeFilter = $derived<FindingFilter>({
     severity: selectedSeverities,
     confidence: [],
     rulePrefix: rulePrefix || undefined,
     pathPrefix: pathPrefix || undefined,
+    language: selectedLanguage !== "all" ? selectedLanguage : undefined,
   });
 
   const filteredFindings = $derived<Finding[]>(applyFilter(allFindings, activeFilter));
@@ -34,6 +70,7 @@
       selectedSeverities = parsed.severity;
       rulePrefix = parsed.rulePrefix ?? "";
       pathPrefix = parsed.pathPrefix ?? "";
+      selectedLanguage = parsed.language ?? "all";
     }
   });
 
@@ -58,6 +95,7 @@
     selectedSeverities = [];
     rulePrefix = "";
     pathPrefix = "";
+    selectedLanguage = "all";
   }
 
   function severityColor(sev: Severity): string {
@@ -139,6 +177,31 @@
     </div>
   </div>
 
+  <!-- Language Filter Pills -->
+  {#if presentLanguages.length > 1}
+    <div class="flex flex-wrap items-center gap-1.5 text-xs">
+      <span class="text-slate-400 font-mono text-[11px] mr-1">Language:</span>
+      <button
+        onclick={() => (selectedLanguage = "all")}
+        class="px-2 py-0.5 rounded font-mono text-[11px] border transition-colors {selectedLanguage === 'all'
+          ? 'bg-blue-600 text-white border-blue-500 font-medium'
+          : 'bg-[#12151f] text-slate-400 border-[#262c3f] hover:border-slate-600'}"
+      >
+        All ({allFindings.length})
+      </button>
+      {#each presentLanguages as lang (lang)}
+        <button
+          onclick={() => (selectedLanguage = lang)}
+          class="px-2 py-0.5 rounded font-mono text-[11px] uppercase border transition-colors {selectedLanguage === lang
+            ? languageBadgeClass(lang) + ' font-medium'
+            : 'bg-[#12151f] text-slate-400 border-[#262c3f] hover:border-slate-600'}"
+        >
+          {lang} ({getLanguageCount(lang)})
+        </button>
+      {/each}
+    </div>
+  {/if}
+
   <!-- Findings List -->
   {#if !bundle}
     <div class="rounded-lg border border-[#262c3f] bg-[#12151f] p-12 text-center text-slate-400 text-sm">
@@ -174,7 +237,13 @@
             </div>
 
             {#if finding.location?.file_path}
-              <div class="font-mono text-[11px] text-slate-400">
+              {@const fileLang = detectFileLanguage(finding.location.file_path)}
+              <div class="flex items-center gap-1.5 font-mono text-[11px] text-slate-400">
+                {#if fileLang}
+                  <span class="px-1.5 py-0.2 rounded text-[10px] font-mono uppercase border {languageBadgeClass(fileLang)}">
+                    {fileLang}
+                  </span>
+                {/if}
                 <span>{finding.location.file_path}</span>
                 {#if finding.location.start_line}
                   <span class="text-slate-500">:{finding.location.start_line}{finding.location.end_line ? `-${finding.location.end_line}` : ''}</span>
