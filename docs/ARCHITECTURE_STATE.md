@@ -424,3 +424,15 @@
 - **Invariants:**
   - Cryptographic verification mandatory: all installers abort with non-zero exit codes if SHA256 checksum fails.
   - Dual binary support: installs both primary `eforge` and studio alias `elcode-forge`.
+
+## Issue #138 — Git Hooks Integration Tests, Release Prep & Monorepo v0.6.0 Bump (COMPLETED)
+- **Crates, Packages & Tests:** `crates/forge-cli/tests/hooks_e2e.rs`, `README.md`, `Cargo.toml`, `package.json`, `packages/forge-schema`, `packages/forge-ui`, `packages/forge-cli-npm`, `apps/dashboard`, `packaging/homebrew/eforge.rb`
+- **Capabilities & Deliverables:**
+  - `crates/forge-cli/tests/hooks_e2e.rs`: Integration test suite exercising git hooks lifecycle (`install`, `status`, `uninstall`), clean fast path when no staged files exist, and pre-commit detection & rejection of architectural violations in staged files.
+  - Distribution documentation in `README.md` covering zero-install (`npx @elcode-forge/cli`), standalone POSIX installer (`scripts/install.sh`), PowerShell installer (`scripts/install.ps1`), Homebrew tap (`packaging/homebrew/eforge.rb`), and `cargo binstall`.
+  - CLI command reference expanded to 18 subcommands including `eforge hook`.
+  - Synchronized monorepo workspace version to `v0.6.0` across Rust crates and TypeScript packages.
+- **Invariants:**
+  - Zero-panic test discipline maintained across all integration suites.
+  - Zero schema drift between `@elcode-forge/schema` and Rust IR types.
+  - Complete Phase 6 Git Hooks, Terminal UX & Zero-Install Distribution milestone achieved.
