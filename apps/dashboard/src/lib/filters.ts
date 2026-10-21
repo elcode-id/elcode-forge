@@ -25,6 +25,7 @@ export function detectFileLanguage(filePath?: string | null): string | null {
   if (lower.endsWith(".py")) return "python";
   if (lower.endsWith(".go")) return "go";
   if (lower.endsWith(".rs")) return "rust";
+  if (lower.endsWith(".php")) return "php";
   if (lower.endsWith(".ts") || lower.endsWith(".tsx")) return "typescript";
   if (lower.endsWith(".js") || lower.endsWith(".jsx") || lower.endsWith(".mjs") || lower.endsWith(".cjs")) return "javascript";
   if (lower.endsWith(".svelte")) return "svelte";
@@ -32,6 +33,7 @@ export function detectFileLanguage(filePath?: string | null): string | null {
   if (lower.endsWith("cargo.toml") || lower.endsWith("cargo.lock")) return "rust";
   if (lower.endsWith("go.mod") || lower.endsWith("go.sum")) return "go";
   if (lower.endsWith("requirements.txt") || lower.endsWith("pyproject.toml") || lower.endsWith("poetry.lock") || lower.endsWith("uv.lock")) return "python";
+  if (lower.endsWith("composer.json") || lower.endsWith("composer.lock")) return "php";
   if (lower.endsWith("package.json") || lower.endsWith("pnpm-lock.yaml") || lower.endsWith("package-lock.json")) return "javascript";
   return null;
 }

@@ -650,3 +650,24 @@
   - Wired into `SecurityScanner::scan_file_content` for `.php` files with comment filtering.
 - **Invariants:**
   - Zero panics across library crates (`unsafe_code = "forbid"`, strict `ForgeError` propagation).
+
+
+## Issue #173 — Curated Laravel Fixture, Polyglot Integration & Dashboard PHP Badge (COMPLETED)
+- **Paths & Crates:** `fixtures/laravel-app/`, `crates/forge-cli/tests/laravel_app_golden_test.rs`, `crates/forge-cli/tests/multi_language_e2e.rs`, `apps/dashboard/src/lib/filters.ts`, `apps/dashboard/src/routes/dependencies/+page.svelte`, `apps/dashboard/src/routes/findings/+page.svelte`, `apps/dashboard/src/routes/architecture/+page.svelte`, `README.md`, `docs/MULTI_LANGUAGE.md`.
+- **Deliverables & Capabilities:**
+  - Curated Laravel 10 Fixture (`fixtures/laravel-app/`):
+    - Idiomatic structure: `composer.json`, `composer.lock`, `artisan`, `phpunit.xml`.
+    - Controllers (`app/Http/Controllers/UserController.php`), Services (`app/Services/UserService.php`), Models (`app/Models/User.php`), Feature Tests (`tests/Feature/UserTest.php`).
+    - Intentional architectural cycle (`app/Http/Controllers` <-> `app/Services`) and unpinned dependency (`guzzlehttp/guzzle: *`) for deterministic regression testing.
+  - Golden E2E Test Suite (`crates/forge-cli/tests/laravel_app_golden_test.rs` & `multi_language_e2e.rs`):
+    - Validates full CLI lifecycle: `doctor` (manifest hygiene & framework detection), `scan` (8 health dimensions, circular dependency, unpinned versions, SARIF/MD/terminal output), `review` (synthetic diff impact & risk score), `explain` (module inbound/outbound edges), and `dependencies` (Composer dependencies & lockfile versions).
+    - Added `"laravel-app"` to `test_polyglot_cross_language_parity_and_determinism` verifying byte-identical scan output and 100% health score weight invariant across all 5 test repositories.
+  - Web Intelligence Dashboard Multi-Ecosystem Experience:
+    - Updated `detectFileLanguage` to support `.php`, `composer.json`, and `composer.lock`.
+    - Added `Composer` ecosystem filter pill and purple/indigo badges to `/dependencies`.
+    - Added `php` badge styling to `/findings` and `/architecture`.
+    - Unit tests in `apps/dashboard/tests/filters.test.ts` and `apps/dashboard/tests/dependencies.test.ts`.
+  - Comprehensive documentation updates in `README.md` and `docs/MULTI_LANGUAGE.md` reflecting PHP, Composer, and Laravel ecosystem support.
+- **Invariants:**
+  - Zero panics; strict error propagation (`Result<(), Box<dyn Error>>` in tests).
+  - Completes **Epic #170** (Phase 7D: PHP & Laravel Ecosystem Intelligence).
