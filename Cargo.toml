@@ -35,6 +35,7 @@ schemars = { version = "0.8", features = ["derive"] }
 tiny_http = "0.12"
 ureq = { version = "2.12", default-features = false, features = ["tls", "json"] }
 regex = "1.11"
+toml = "0.8"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

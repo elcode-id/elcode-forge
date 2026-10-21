@@ -456,3 +456,19 @@
 - **Installers (`scripts/install.sh` & `scripts/install.ps1`):** Pointed installation references to `main` branch with `v0.6.0` fallback.
 
 - **Homebrew Tap Repository:** Created and initialized `github.com/elcode-id/homebrew-tap` with `Formula/eforge.rb` enabling immediate `brew install elcode-id/tap/eforge`.
+
+
+## Issue #150 — Python Manifest & Lockfile Dependency Parsers (COMPLETED)
+- **Crate:** `crates/forge-analyzer` (`src/python_manifest.rs`, `tests/python_manifest_test.rs`)
+- **Public Types & Functions:**
+  - `ParsedPythonManifest`: struct holding `dependencies: Vec<Dependency>`, `duplicate_packages: Vec<String>`, `unpinned_packages: Vec<String>`.
+  - `normalize_python_package_name(raw: &str) -> String`: PEP 503 normalization (lowercased, extras stripped, underscores to hyphens).
+  - `is_python_unpinned(version_req: &str) -> bool`: flags missing versions, wildcards, or unbounded upper-only limits.
+  - `parse_requirement_line(line: &str) -> Option<(String, String)>`: parses requirements with comments, directives, and environment markers stripped.
+  - `parse_pyproject_toml_content(content: &str, lock_versions: &BTreeMap<String, String>) -> Result<ParsedPythonManifest, ForgeError>`: supports both PEP 621 (`[project.dependencies]`, `[project.optional-dependencies]`) and Poetry (`[tool.poetry.dependencies]`, `[tool.poetry.group.*.dependencies]`).
+  - `parse_requirements_txt_content(content: &str, lock_versions: &BTreeMap<String, String>) -> Result<ParsedPythonManifest, ForgeError>`.
+  - `read_python_lockfile_versions(repo_root: &Path) -> BTreeMap<String, String>`: resolves exact versions from `poetry.lock`, `uv.lock`, and `Pipfile.lock`.
+  - `parse_python_manifests(repo_root: &Path) -> Result<ParsedPythonManifest, ForgeError>`.
+- **Invariants:**
+  - Zero-panic: all parsing operations map errors to `ForgeError::Serialization` or `ForgeError::Io`.
+  - Dependencies are sorted deterministically by `(name, is_dev)` with `ecosystem: "pypi"`.
