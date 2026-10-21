@@ -454,3 +454,5 @@
 - **Release Automation:** Added `.github/workflows/publish-npm.yml` supporting automated publishing to `registry.npmjs.org` upon release publication and manual `workflow_dispatch`.
 - **Homebrew Formula (`packaging/homebrew/eforge.rb`):** Synchronized exact cryptographic SHA-256 hashes matching official GitHub Release `v0.6.0` (`aarch64-apple-darwin` and `x86_64-unknown-linux-gnu`).
 - **Installers (`scripts/install.sh` & `scripts/install.ps1`):** Pointed installation references to `main` branch with `v0.6.0` fallback.
+
+- **Homebrew Tap Repository:** Created and initialized `github.com/elcode-id/homebrew-tap` with `Formula/eforge.rb` enabling immediate `brew install elcode-id/tap/eforge`.
