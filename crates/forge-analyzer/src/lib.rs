@@ -2,6 +2,8 @@
 
 pub mod dep_health;
 pub mod detector;
+pub mod go_imports;
+pub mod go_manifest;
 pub mod graph;
 pub mod package_json;
 pub mod python_imports;
@@ -12,7 +14,15 @@ pub mod ts_imports;
 pub use dep_health::{analyze_npm_dependencies, analyze_python_dependencies, DependencyReport};
 pub use detector::{detect_ecosystem, detect_language, is_test_file, EcosystemSignals};
 pub use forge_core::Analyzer;
-pub use graph::{build_python_architecture_graph, build_ts_architecture_graph, ArchitectureGraph};
+pub use go_imports::{
+    extract_go_external_module, extract_go_imports, is_go_stdlib, resolve_go_import,
+    strip_go_comments, GO_STDLIB_ROOT_PACKAGES,
+};
+pub use go_manifest::{parse_go_manifest, parse_go_mod_content, ParsedGoManifest};
+pub use graph::{
+    build_go_architecture_graph, build_python_architecture_graph, build_ts_architecture_graph,
+    ArchitectureGraph,
+};
 pub use package_json::{parse_package_json, ParsedManifest};
 pub use python_imports::{
     extract_pypi_package_name, extract_python_imports_and_exports, is_python_stdlib,

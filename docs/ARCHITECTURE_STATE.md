@@ -504,3 +504,22 @@
 - **Invariants:**
   - 100% adherence to zero-panic policy; test assertions return `Result<(), Box<dyn Error>>`.
   - Completes **Epic #149** (Phase 7A: Python Ecosystem Intelligence).
+
+
+## Issue #154 — go.mod Manifest Parser, Go Import Extractor & Framework Detectors (COMPLETED)
+- **Crate:** `crates/forge-analyzer` (`src/go_manifest.rs`, `src/go_imports.rs`, `src/detector.rs`, `src/graph.rs`, `src/lib.rs`, `tests/go_manifest_test.rs`, `tests/go_imports_test.rs`)
+- **Public Types & Functions:**
+  - `ParsedGoManifest`: struct holding `module_path`, `go_version`, `dependencies: Vec<Dependency>`, and `has_go_sum: bool`.
+  - `parse_go_mod_content(content: &str, has_go_sum: bool) -> Result<ParsedGoManifest, ForgeError>`: Parses `module`, `go`, and direct/indirect `require` blocks into normalized `Dependency` structs (`ecosystem: "go"`).
+  - `parse_go_manifest(repo_root: &Path) -> Result<ParsedGoManifest, ForgeError>`.
+  - `GO_STDLIB_ROOT_PACKAGES`: Immutable catalog of 40+ official Go standard library root packages.
+  - `is_go_stdlib(import_path: &str) -> bool`: Filters standard library vs external vs internal Go imports.
+  - `strip_go_comments(source: &str) -> String`: Strips `//` line comments and `/* */` block comments while preserving newlines.
+  - `extract_go_imports(source: &str) -> Vec<String>`: Extracts single-line and multiline `import (...)` paths.
+  - `resolve_go_import(importer_rel_path: &str, raw_import: &str, module_path: Option<&str>, known_files: &BTreeSet<String>) -> Option<String>`: Resolves internal module and relative imports to repository Go files.
+  - `extract_go_external_module(raw_import: &str, module_path: Option<&str>) -> Option<String>`: Extracts normalized external module paths (e.g. `github.com/gin-gonic/gin`).
+  - `build_go_architecture_graph(repo_root: &Path, files: &[FileNode], module_path: Option<&str>) -> Result<ArchitectureGraph, ForgeError>`: Maps Go packages to logical `Module` boundaries and detects circular dependencies via Tarjan SCC.
+  - Ecosystem Detectors: Added Gin (`github.com/gin-gonic/gin`), Echo (`github.com/labstack/echo`), Fiber (`github.com/gofiber/fiber`), Chi (`github.com/go-chi/chi`), and Go package manager `go`.
+- **Invariants:**
+  - Zero-panic: all parsing operations strictly propagate `ForgeError`.
+  - Go standard library imports are filtered out from external dependency findings.
