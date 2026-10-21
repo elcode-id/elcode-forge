@@ -413,3 +413,14 @@
 - **Invariants:**
   - Strict SHA256 integrity verification rejects any modified or corrupt binary downloads.
   - Clean exit code and stdio propagation from child process.
+
+## Issue #137 — Standalone Installers (POSIX & Windows), Homebrew Tap & cargo-binstall (COMPLETED)
+- **Files & Manifests:** `scripts/install.sh`, `scripts/install.ps1`, `packaging/homebrew/eforge.rb`, `crates/forge-cli/Cargo.toml`
+- **Capabilities & Deliverables:**
+  - `scripts/install.sh`: POSIX installer detecting OS (`Linux`, `Darwin`) and architecture (`x86_64`, `arm64`), downloading official release archives, verifying `SHA256SUMS.txt`, installing to `~/.local/bin` (or `/usr/local/bin`), and validating execution.
+  - `scripts/install.ps1`: Native PowerShell installer with `Get-FileHash` SHA256 integrity check, extraction to `$env:LOCALAPPDATA\eforge\bin\`, and automated User `PATH` environment registration.
+  - `packaging/homebrew/eforge.rb`: Homebrew formula supporting macOS (Apple Silicon arm64) and Linux x86_64 with cryptographic checksums.
+  - `[package.metadata.binstall]` in `crates/forge-cli/Cargo.toml`: automated 1-command installation via `cargo binstall eforge`.
+- **Invariants:**
+  - Cryptographic verification mandatory: all installers abort with non-zero exit codes if SHA256 checksum fails.
+  - Dual binary support: installs both primary `eforge` and studio alias `elcode-forge`.

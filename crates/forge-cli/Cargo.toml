@@ -33,3 +33,12 @@ clap = { version = "4.5", features = ["derive"] }
 
 [lints]
 workspace = true
+
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/eforge-v{ version }-{ target }.{ archive-format }"
+bin-dir = "eforge-v{ version }-{ target }/{ bin }{ binary-ext }"
+pkg-fmt = "tar.gz"
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-fmt = "zip"
+bin-dir = "{ bin }{ binary-ext }"
