@@ -5,6 +5,7 @@ use std::path::Path;
 use forge_core::{FileNode, ForgeError, Module};
 use serde::{Deserialize, Serialize};
 
+use crate::php_imports::build_php_architecture_graph;
 use crate::python_imports::{
     extract_pypi_package_name, extract_python_imports_and_exports, resolve_python_import,
 };
@@ -432,6 +433,10 @@ pub fn build_polyglot_architecture_graph(
         .iter()
         .any(|f| matches!(f.language.as_deref(), Some("rust")) || f.relative_path.ends_with(".rs"));
 
+    let has_php = files
+        .iter()
+        .any(|f| matches!(f.language.as_deref(), Some("php")) || f.relative_path.ends_with(".php"));
+
     let mut all_modules: BTreeMap<String, Module> = BTreeMap::new();
     let mut all_external_imports: BTreeSet<String> = BTreeSet::new();
 
@@ -542,6 +547,29 @@ pub fn build_polyglot_architecture_graph(
                 .or_insert(m);
         }
         all_external_imports.extend(rust_graph.external_imports);
+    }
+
+    if has_php {
+        let php_graph = build_php_architecture_graph(repo_root, files)?;
+        for m in php_graph.modules {
+            all_modules
+                .entry(m.id.clone())
+                .and_modify(|existing| {
+                    let mut file_set: BTreeSet<String> = existing.files.drain(..).collect();
+                    file_set.extend(m.files.clone());
+                    existing.files = file_set.into_iter().collect();
+
+                    let mut import_set: BTreeSet<String> = existing.imports.drain(..).collect();
+                    import_set.extend(m.imports.clone());
+                    existing.imports = import_set.into_iter().collect();
+
+                    let mut export_set: BTreeSet<String> = existing.exports.drain(..).collect();
+                    export_set.extend(m.exports.clone());
+                    existing.exports = export_set.into_iter().collect();
+                })
+                .or_insert(m);
+        }
+        all_external_imports.extend(php_graph.external_imports);
     }
 
     let modules: Vec<Module> = all_modules.into_values().collect();
@@ -668,7 +696,7 @@ pub fn infer_rust_module_boundary(relative_path: &str) -> (String, String) {
     }
 }
 
-fn compute_high_centrality(modules: &[Module]) -> Vec<String> {
+pub(crate) fn compute_high_centrality(modules: &[Module]) -> Vec<String> {
     let mut in_degree: BTreeMap<&str, usize> = BTreeMap::new();
     let mut out_degree: BTreeMap<&str, usize> = BTreeMap::new();
 
@@ -703,7 +731,7 @@ fn compute_high_centrality(modules: &[Module]) -> Vec<String> {
 }
 
 /// Tarjan's Strongly Connected Components (SCC) algorithm for deterministic cycle detection.
-fn detect_circular_dependencies(modules: &[Module]) -> Vec<Vec<String>> {
+pub(crate) fn detect_circular_dependencies(modules: &[Module]) -> Vec<Vec<String>> {
     struct TarjanState<'a> {
         adj: BTreeMap<&'a str, Vec<&'a str>>,
         index: usize,

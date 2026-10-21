@@ -6,6 +6,7 @@ use std::path::Path;
 use forge_core::{FileNode, Finding, ForgeError};
 
 pub mod patterns;
+pub mod php_patterns;
 pub mod python_patterns;
 pub mod secrets;
 
@@ -13,6 +14,10 @@ pub use forge_core::Analyzer;
 pub use patterns::{
     scan_unsafe_patterns, RULE_NO_DANGEROUS_INNER_HTML, RULE_NO_EVAL, RULE_NO_IMPLIED_EVAL,
     RULE_PERMISSIVE_CORS, RULE_UNSAFE_SHELL_EXEC,
+};
+pub use php_patterns::{
+    scan_php_unsafe_patterns, RULE_PHP_COMMAND_INJECTION, RULE_PHP_CREATE_FUNCTION,
+    RULE_PHP_INSECURE_UNSERIALIZE, RULE_PHP_UNSAFE_EVAL,
 };
 pub use python_patterns::{
     scan_python_unsafe_patterns, RULE_PYTHON_INSECURE_SUBPROCESS,
@@ -30,6 +35,7 @@ impl SecurityScanner {
         let mut findings = scan_secrets(relative_path, content);
         findings.extend(scan_unsafe_patterns(relative_path, content));
         findings.extend(scan_python_unsafe_patterns(relative_path, content));
+        findings.extend(scan_php_unsafe_patterns(relative_path, content));
         findings.sort_by(|a, b| b.severity.cmp(&a.severity).then_with(|| a.id.cmp(&b.id)));
         findings
     }
