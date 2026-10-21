@@ -46,7 +46,7 @@ Every architectural boundary, CLI contract, and CI/CD workflow in `elcode-forge`
 | **Automated Onboarding & Living Docs (`eforge onboard`, `eforge docs`)** | Generates a 5-file deterministic documentation bundle (`architecture.md`, `modules.md`, `dependencies.md`, `onboarding.md`, `risks.md`) with Mermaid `flowchart TD` diagrams in `docs/forge/`. |
 | **Project & Module Explainer (`eforge explain [target]`)** | Explains the structural role, files, outgoing imports, incoming dependents, exported symbols, and related findings for the whole repository or any specific module/file path, with optional AI synthesis (`--ai`). |
 | **Grounded AI PR Review (`eforge ai-review`)** | Combines deterministic change risk, blast radius, and rule findings with grounded AI insights classified as `Confirmed`, `Probable`, or `Suggestion` under strict deterministic guards. |
-| **AI Governance & Privacy (`eforge ai status\|usage`)** | Supports local-only AI execution (Ollama, LM Studio), prompt-injection defense envelopes, in-flight secret redaction, daily USD spend ceilings, and SHA-256 caching. |
+| **AI Governance & Privacy (`eforge ai status|usage`)** | Supports local-only AI execution (Ollama, LM Studio), prompt-injection defense envelopes, in-flight secret redaction, daily USD spend ceilings, and SHA-256 caching. |
 | **Native MCP Server (`eforge mcp`)** | Exposes 7 deterministic `eforge_*` tools over JSON-RPC 2.0 stdio with `UntrustedEnvelope<T>` isolation, prompt-injection signal scanning, and dynamic rule querying (`eforge_get_rules`). |
 | **Explainable 8-Dimension Health Score** | Computes weighted scores (`0..=100`) across *Architecture (20%)*, *Security (20%)*, *Maintainability (15%)*, *Testing (15%)*, *Dependencies (10%)*, *Documentation (10%)*, *Performance (5%)*, and *CI/CD (5%)* with explicit human-readable deduction reasons. |
 
@@ -57,20 +57,20 @@ Every architectural boundary, CLI contract, and CI/CD workflow in `elcode-forge`
 ### 1. Zero-Install Execution via npx (Node.js)
 No installation required—execute directly in any Node.js / JavaScript / TypeScript project:
 ```bash
-npx @elcode-forge/cli doctor
-npx @elcode-forge/cli scan
-npx @elcode-forge/cli review --fast
+npx elcode-forge doctor
+npx elcode-forge scan
+npx elcode-forge review --fast
 ```
 
 ### 2. Standalone Installers (Linux, macOS & Windows)
 **POSIX (Linux & macOS):**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/elcode-id/elcode-forge/develop/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/elcode-id/elcode-forge/main/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/elcode-id/elcode-forge/develop/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/elcode-id/elcode-forge/main/scripts/install.ps1 | iex
 ```
 
 ### 3. Package Managers & Binary Installers
@@ -220,7 +220,7 @@ eforge ai usage
 | `eforge rules check` | `[PATH]`, `--path <DIR>`, `--format <FMT>` | Validates rule syntax against schema with zero panics. |
 | `eforge rules init` | `--path <DIR>`, `--force` | Generates starter `.eforge/rules/custom-rules.yaml` template with examples for all 6 matchers. |
 | `eforge scan` | `--path <DIR>`, `--incremental`, `--full`, `--fail-on <SEV>`, `--format <FMT>`, `-o <FILE>` | Runs full or incremental architecture, dependency, rule, security, and 8-dimension health analysis. |
-| `eforge review` | `--path <DIR>`, `--fast`, `--changed`, `--fail-on <SEV>`, `--format <FMT>` | Computes change risk (`Low\|Medium\|High\|Critical`), blast radius, and findings for modified files. |
+| `eforge review` | `--path <DIR>`, `--fast`, `--changed`, `--fail-on <SEV>`, `--format <FMT>` | Computes change risk (`Low|Medium|High|Critical`), blast radius, and findings for modified files. |
 | `eforge diff` | `--path <DIR>`, `--format <FMT>` | Parses working-tree unified diff (`git diff HEAD`) and reports direct & transitive module impact. |
 | `eforge dependencies` | `--path <DIR>`, `--format <FMT>` | Inspects `package.json` / lockfile dependencies, unused packages, and version hygiene. |
 | `eforge security` | `--path <DIR>`, `--format <FMT>` | Runs focused secret detection and unsafe JS/TS/SFC pattern analysis with policy exit code evaluation. |
@@ -436,7 +436,7 @@ flowchart TD
 - **`crates/forge-security`** — Redacted secret scanner and unsafe JS/TS/SFC pattern detector.
 - **`crates/forge-ai`** — Provider abstraction (`openai`, `anthropic`, `gemini`, `openai-compatible`), context pack builder, secret redaction, token budgeting, and response caching.
 - **`crates/forge-mcp`** — Native Model Context Protocol (MCP) JSON-RPC 2.0 stdio server (`eforge_*` tool namespace) and `UntrustedEnvelope<T>` prompt-injection boundary.
-- **`crates/forge-cli`** — CLI entrypoint (`eforge` & `elcode-forge`), 17 subcommands, and report formatters (`terminal`, `json`, `markdown`, `sarif`, `github`).
+- **`crates/forge-cli`** — CLI entrypoint (`eforge` & `elcode-forge`), 18 subcommands, and report formatters (`terminal`, `json`, `markdown`, `sarif`, `github`).
 - **`integrations/github-action`** — Composite GitHub Action (`elcode-id/forge-action`).
 - **`fixtures/`** — Curated deterministic test repositories (`fixtures/next-app`, `fixtures/vulnerable-ts-app`, `fixtures/ai-eval`, `fixtures/custom-rules-app`).
 

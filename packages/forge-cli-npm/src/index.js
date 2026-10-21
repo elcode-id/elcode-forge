@@ -1,5 +1,5 @@
 /**
- * @elcode-forge/cli — Zero-install launcher and native binary manager for ELCODE Forge (`eforge`).
+ * elcode-forge — Zero-install launcher and native binary manager for ELCODE Forge (`eforge`).
  *
  * Implements deterministic binary downloading, local caching, SHA256 verification, and process spawning
  * with zero external npm runtime dependencies.
@@ -150,7 +150,7 @@ function downloadFile(url, destPath, maxRedirects = 5) {
         url,
         {
           headers: {
-            'User-Agent': '@elcode-forge/cli-launcher',
+            'User-Agent': 'elcode-forge-launcher',
           },
         },
         (res) => {
@@ -207,7 +207,7 @@ function fetchText(url, maxRedirects = 5) {
         url,
         {
           headers: {
-            'User-Agent': '@elcode-forge/cli-launcher',
+            'User-Agent': 'elcode-forge-launcher',
           },
         },
         (res) => {

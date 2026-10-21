@@ -116,4 +116,8 @@ jobs:
         working-directory: dist
         run: |
           set -euo pipefail
+          if ! gh release view "${{ github.ref_name }}" --repo "${{ github.repository }}" > /dev/null 2>&1; then
+            echo "GitHub release ${{ github.ref_name }} does not exist yet. Creating initial release..."
+            gh release create "${{ github.ref_name }}" --repo "${{ github.repository }}" --title "ELCODE Forge ${{ github.ref_name }}" --generate-notes
+          fi
           gh release upload "${{ github.ref_name }}" --repo "${{ github.repository }}" eforge-*.tar.gz eforge-*.zip SHA256SUMS.txt --clobber

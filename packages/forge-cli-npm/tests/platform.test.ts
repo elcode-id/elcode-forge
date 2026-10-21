@@ -14,7 +14,7 @@ const {
   runCli,
 } = require('../src/index.js');
 
-describe('@elcode-forge/cli — Platform & Resolution', () => {
+describe('elcode-forge — Platform & Resolution', () => {
   it('resolves supported platform and architecture targets', () => {
     expect(resolveTarget('win32', 'x64')).toEqual({
       target: 'x86_64-pc-windows-msvc',
@@ -55,29 +55,29 @@ describe('@elcode-forge/cli — Platform & Resolution', () => {
   it('resolves binary path and supports EFORGE_BINARY_PATH override', () => {
     const targetInfo = { binaryName: 'eforge.exe' };
     const customBin = '/opt/bin/eforge';
-    expect(getBinaryPath('0.5.0', targetInfo, { EFORGE_BINARY_PATH: customBin })).toBe(customBin);
+    expect(getBinaryPath('0.6.0', targetInfo, { EFORGE_BINARY_PATH: customBin })).toBe(customBin);
 
-    const normalPath = getBinaryPath('0.5.0', targetInfo, { EFORGE_CACHE_DIR: '/cache' });
-    expect(normalPath).toBe(path.join('/cache', 'v0.5.0', 'eforge.exe'));
+    const normalPath = getBinaryPath('0.6.0', targetInfo, { EFORGE_CACHE_DIR: '/cache' });
+    expect(normalPath).toBe(path.join('/cache', 'v0.6.0', 'eforge.exe'));
   });
 
   it('parses SHA256SUMS.txt format deterministically', () => {
     const sample = `
 # Release checksums
-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  eforge-v0.5.0-x86_64-pc-windows-msvc.zip
-f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2 *eforge-v0.5.0-x86_64-unknown-linux-gnu.tar.gz
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  eforge-v0.6.0-x86_64-pc-windows-msvc.zip
+f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2 *eforge-v0.6.0-x86_64-unknown-linux-gnu.tar.gz
 
-01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b  eforge-v0.5.0-aarch64-apple-darwin.tar.gz
+01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b  eforge-v0.6.0-aarch64-apple-darwin.tar.gz
 `;
     const map = parseSha256Sums(sample);
     expect(map.size).toBe(3);
-    expect(map.get('eforge-v0.5.0-x86_64-pc-windows-msvc.zip')).toBe(
+    expect(map.get('eforge-v0.6.0-x86_64-pc-windows-msvc.zip')).toBe(
       'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
     );
-    expect(map.get('eforge-v0.5.0-x86_64-unknown-linux-gnu.tar.gz')).toBe(
+    expect(map.get('eforge-v0.6.0-x86_64-unknown-linux-gnu.tar.gz')).toBe(
       'f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2'
     );
-    expect(map.get('eforge-v0.5.0-aarch64-apple-darwin.tar.gz')).toBe(
+    expect(map.get('eforge-v0.6.0-aarch64-apple-darwin.tar.gz')).toBe(
       '01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b'
     );
   });
