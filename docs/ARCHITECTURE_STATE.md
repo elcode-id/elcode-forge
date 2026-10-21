@@ -436,3 +436,14 @@
   - Zero-panic test discipline maintained across all integration suites.
   - Zero schema drift between `@elcode-forge/schema` and Rust IR types.
   - Complete Phase 6 Git Hooks, Terminal UX & Zero-Install Distribution milestone achieved.
+
+
+## Release v0.6.0 — Git Hooks, Terminal UX Modernization & Zero-Install Distribution (OFFICIAL RELEASE)
+- **Tag:** `v0.6.0` (PR #146 merged into `main` and fast-forwarded to `develop`)
+- **Published Release Assets:**
+  - `eforge-v0.6.0-aarch64-apple-darwin.tar.gz`
+  - `eforge-v0.6.0-x86_64-pc-windows-msvc.zip`
+  - `eforge-v0.6.0-x86_64-unknown-linux-gnu.tar.gz`
+  - `SHA256SUMS.txt`
+- **Release Highlights:** Native Git Hooks Engine (`eforge hook`), TTY-aware ANSI Terminal UX & Health Score Meter, Zero-Install npm distribution (`npx @elcode-forge/cli`), Standalone POSIX & Windows Installers, and Homebrew formula.
+- **Invariants:** 100% green CI gate across all workflows; zero open issues in milestone.
