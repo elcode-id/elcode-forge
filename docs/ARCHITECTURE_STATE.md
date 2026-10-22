@@ -456,3 +456,218 @@
 - **Installers (`scripts/install.sh` & `scripts/install.ps1`):** Pointed installation references to `main` branch with `v0.6.0` fallback.
 
 - **Homebrew Tap Repository:** Created and initialized `github.com/elcode-id/homebrew-tap` with `Formula/eforge.rb` enabling immediate `brew install elcode-id/tap/eforge`.
+
+
+## Issue #150 — Python Manifest & Lockfile Dependency Parsers (COMPLETED)
+- **Crate:** `crates/forge-analyzer` (`src/python_manifest.rs`, `tests/python_manifest_test.rs`)
+- **Public Types & Functions:**
+  - `ParsedPythonManifest`: struct holding `dependencies: Vec<Dependency>`, `duplicate_packages: Vec<String>`, `unpinned_packages: Vec<String>`.
+  - `normalize_python_package_name(raw: &str) -> String`: PEP 503 normalization (lowercased, extras stripped, underscores to hyphens).
+  - `is_python_unpinned(version_req: &str) -> bool`: flags missing versions, wildcards, or unbounded upper-only limits.
+  - `parse_requirement_line(line: &str) -> Option<(String, String)>`: parses requirements with comments, directives, and environment markers stripped.
+  - `parse_pyproject_toml_content(content: &str, lock_versions: &BTreeMap<String, String>) -> Result<ParsedPythonManifest, ForgeError>`: supports both PEP 621 (`[project.dependencies]`, `[project.optional-dependencies]`) and Poetry (`[tool.poetry.dependencies]`, `[tool.poetry.group.*.dependencies]`).
+  - `parse_requirements_txt_content(content: &str, lock_versions: &BTreeMap<String, String>) -> Result<ParsedPythonManifest, ForgeError>`.
+  - `read_python_lockfile_versions(repo_root: &Path) -> BTreeMap<String, String>`: resolves exact versions from `poetry.lock`, `uv.lock`, and `Pipfile.lock`.
+  - `parse_python_manifests(repo_root: &Path) -> Result<ParsedPythonManifest, ForgeError>`.
+- **Invariants:**
+  - Zero-panic: all parsing operations map errors to `ForgeError::Serialization` or `ForgeError::Io`.
+  - Dependencies are sorted deterministically by `(name, is_dev)` with `ecosystem: "pypi"`.
+
+
+## Issue #151 — Python Import Graph Extractor, Module Resolver & Cycle Detector (COMPLETED)
+- **Crate:** `crates/forge-analyzer` (`src/python_imports.rs`, `src/graph.rs`, `src/lib.rs`, `tests/python_imports_test.rs`)
+- **Public Types & Functions:**
+  - `PYTHON_STDLIB_MODULES: &[&str]`: Immutable catalog of 200+ Python standard library modules across Python 3.8–3.13.
+  - `is_python_stdlib(module_name: &str) -> bool`: Filters standard library imports vs local internal imports vs third-party PyPI packages.
+  - `strip_python_comments(source: &str) -> String`: Strips `#` line comments and `"""` / `'''` docstrings while preserving line breaks.
+  - `extract_python_imports_and_exports(source: &str) -> (Vec<String>, Vec<String>)`: Extracts `import`, `from ... import`, relative imports, multiline parenthesized imports, and top-level exports (`def`, `async def`, `class`, `__all__`).
+  - `resolve_python_import(importer_rel_path: &str, raw_import: &str, known_files: &BTreeSet<String>) -> Option<String>`: Resolves relative (`.`, `..`, `...`) and package imports (`app/...`, `src/...`) to internal repository `.py` files.
+  - `extract_pypi_package_name(raw_import: &str) -> Option<String>`: Extracts normalized PyPI package name for third-party imports.
+  - `build_python_architecture_graph(repo_root: &Path, files: &[FileNode]) -> Result<ArchitectureGraph, ForgeError>`: Infers logical module boundaries (`app/routers`, `app/services`, etc.), PyPI external dependencies, high-centrality modules, and Tarjan SCC circular import cycles.
+- **Invariants:**
+  - Zero-panic: all parsing and graph construction operations strictly propagate errors or handle empty/malformed lines safely.
+  - Standard library imports are filtered out from `external_imports` to avoid false-positive external dependencies.
+
+
+## Issue #152 — Python Unsafe Pattern Rules, Framework Detectors & fixtures/fastapi-app (COMPLETED)
+- **Crates:** `crates/forge-security`, `crates/forge-analyzer`, `crates/forge-cli`, `fixtures/fastapi-app/`
+- **Public Types & Functions:**
+  - `RULE_PYTHON_UNSAFE_EVAL: &str = "security/python-unsafe-eval"`: Flags dynamic evaluation via `eval(...)` and `exec(...)`.
+  - `RULE_PYTHON_INSECURE_SUBPROCESS: &str = "security/python-insecure-subprocess"`: Flags shell execution with `shell=True`, `os.system(...)`, or `os.popen(...)`.
+  - `RULE_PYTHON_PICKLE_DESERIALIZATION: &str = "security/python-pickle-deserialization"`: Flags untrusted deserialization via `pickle.loads(...)` and `_pickle.loads(...)`.
+  - `scan_python_unsafe_patterns(relative_path: &str, content: &str) -> Vec<Finding>`: Scans Python source while stripping comments and docstrings.
+  - `analyze_python_dependencies(repo_root: &Path, imported_packages: &BTreeSet<String>) -> Result<DependencyReport, ForgeError>`: Detects unpinned versions (`deps/unpinned-version`), duplicate requirements (`deps/duplicate-dependency`), and unused packages.
+  - Ecosystem detection: Added native detectors for `FastAPI`, `Flask`, `Django`, and `pytest`.
+  - `DEFAULT_IGNORED_DIRS`: Added Python bytecode and virtualenv directories (`__pycache__`, `.pytest_cache`, `.venv`, `venv`).
+  - Curated Fixture: `fixtures/fastapi-app/` with FastAPI routing, models, circular import between `app/routers` and `app/services`, unpinned dependency `requests = "*"`, and `pickle.loads` security violation.
+  - Golden Test: `crates/forge-cli/tests/fastapi_app_golden_test.rs` validating doctor diagnostics and full scan signal determinism.
+- **Invariants:**
+  - 100% adherence to zero-panic policy; test assertions return `Result<(), Box<dyn Error>>`.
+  - Completes **Epic #149** (Phase 7A: Python Ecosystem Intelligence).
+
+
+## Issue #154 — go.mod Manifest Parser, Go Import Extractor & Framework Detectors (COMPLETED)
+- **Crate:** `crates/forge-analyzer` (`src/go_manifest.rs`, `src/go_imports.rs`, `src/detector.rs`, `src/graph.rs`, `src/lib.rs`, `tests/go_manifest_test.rs`, `tests/go_imports_test.rs`)
+- **Public Types & Functions:**
+  - `ParsedGoManifest`: struct holding `module_path`, `go_version`, `dependencies: Vec<Dependency>`, and `has_go_sum: bool`.
+  - `parse_go_mod_content(content: &str, has_go_sum: bool) -> Result<ParsedGoManifest, ForgeError>`: Parses `module`, `go`, and direct/indirect `require` blocks into normalized `Dependency` structs (`ecosystem: "go"`).
+  - `parse_go_manifest(repo_root: &Path) -> Result<ParsedGoManifest, ForgeError>`.
+  - `GO_STDLIB_ROOT_PACKAGES`: Immutable catalog of 40+ official Go standard library root packages.
+  - `is_go_stdlib(import_path: &str) -> bool`: Filters standard library vs external vs internal Go imports.
+  - `strip_go_comments(source: &str) -> String`: Strips `//` line comments and `/* */` block comments while preserving newlines.
+  - `extract_go_imports(source: &str) -> Vec<String>`: Extracts single-line and multiline `import (...)` paths.
+  - `resolve_go_import(importer_rel_path: &str, raw_import: &str, module_path: Option<&str>, known_files: &BTreeSet<String>) -> Option<String>`: Resolves internal module and relative imports to repository Go files.
+  - `extract_go_external_module(raw_import: &str, module_path: Option<&str>) -> Option<String>`: Extracts normalized external module paths (e.g. `github.com/gin-gonic/gin`).
+  - `build_go_architecture_graph(repo_root: &Path, files: &[FileNode], module_path: Option<&str>) -> Result<ArchitectureGraph, ForgeError>`: Maps Go packages to logical `Module` boundaries and detects circular dependencies via Tarjan SCC.
+  - Ecosystem Detectors: Added Gin (`github.com/gin-gonic/gin`), Echo (`github.com/labstack/echo`), Fiber (`github.com/gofiber/fiber`), Chi (`github.com/go-chi/chi`), and Go package manager `go`.
+- **Invariants:**
+  - Zero-panic: all parsing operations strictly propagate `ForgeError`.
+  - Go standard library imports are filtered out from external dependency findings.
+
+## Issue #155 — Cargo.toml Workspace Dependency Parser & Rust Module Graph Extractor (COMPLETED)
+- **Crate:** `crates/forge-analyzer` (`src/rust_manifest.rs`, `src/rust_imports.rs`, `src/graph.rs`, `src/detector.rs`, `src/lib.rs`, `tests/rust_manifest_test.rs`, `tests/rust_imports_test.rs`)
+- **Public Types & Functions:**
+  - `ParsedRustWorkspace`: Struct holding `is_workspace: bool`, `workspace_members: Vec<String>`, `dependencies: Vec<Dependency>`, `wildcard_dependencies: Vec<String>`, `path_dependencies: Vec<String>`, and `has_cargo_lock: bool`.
+  - `ParsedCargoDeps`: Type alias for `(Vec<Dependency>, Vec<String>, Vec<String>)`.
+  - `parse_cargo_dependencies(table: &TomlValue, section: &str, is_dev: bool, lock_versions: &BTreeMap<String, String>) -> ParsedCargoDeps`: Parses dependencies under `[dependencies]`, `[dev-dependencies]`, `[build-dependencies]`, and `[workspace.dependencies]`, flagging wildcards (`*`) and path dependencies.
+  - `parse_cargo_toml_content(content: &str, lock_versions: &BTreeMap<String, String>) -> Result<ParsedCargoDeps, ForgeError>`.
+  - `parse_rust_workspace(repo_root: &Path) -> Result<ParsedRustWorkspace, ForgeError>`: Deeply parses single-crate projects and multi-member workspaces (`[workspace.members]`), expanding glob patterns (`crates/*`), and merging crate dependencies.
+  - `read_cargo_lock_versions(repo_root: &Path) -> BTreeMap<String, String>`: Resolves exact installed versions from root `Cargo.lock`.
+  - `RUST_STD_CRATES`: Catalog of Rust standard library crates (`std`, `core`, `alloc`, `proc_macro`, `test`).
+  - `is_rust_std(crate_name: &str) -> bool`: Filters standard library crates.
+  - `strip_rust_comments(source: &str) -> String`: Strips `//` line comments, doc comments, and nested `/* ... */` block comments while preserving string and raw string literals.
+  - `expand_use_tree(prefix: &str, tree: &str) -> Vec<String>`: Recursively expands nested Rust `use` trees, braces, and aliases.
+  - `extract_rust_mods_and_uses(source: &str) -> (Vec<String>, Vec<String>)`: Extracts `mod <name>;` declarations and `use` import statements.
+  - `resolve_rust_import(importer_rel_path: &str, raw_use: &str, known_files: &BTreeSet<String>) -> Option<String>`: Resolves `crate::...`, `super::...`, `self::...`, declared submodules `mod::<name>`, and workspace crate references.
+  - `extract_rust_external_crate(raw_use: &str) -> Option<String>`: Extracts third-party external crates while filtering stdlib and internal modules.
+  - `infer_rust_module_boundary(relative_path: &str) -> (String, String)`: Normalizes workspace crate and submodule boundaries.
+  - `build_rust_architecture_graph(repo_root: &Path, files: &[FileNode]) -> Result<ArchitectureGraph, ForgeError>`: Builds Rust architecture graph and runs Tarjan SCC cycle detection.
+  - Ecosystem detection: Added detection for `axum`, `actix-web`, `tokio`, and `rocket`.
+- **Invariants:**
+  - 100% adherence to zero-panic policy; test assertions return `Result<(), Box<dyn Error>>`.
+  - Self-dogfooding test verified against `elcode-forge` workspace itself.
+
+## Issue #156 — Curated Go (fixtures/go-service) and Rust (fixtures/rust-cli) Fixtures & Golden Integration Tests (COMPLETED)
+- **Crates & Fixtures:** `fixtures/go-service/`, `fixtures/rust-cli/`, `crates/forge-cli` (`src/commands/doctor.rs`, `src/commands/scan.rs`, `src/commands/graph.rs`, `tests/go_rust_fixtures_golden_test.rs`), `crates/forge-core` (`src/cache.rs`)
+- **Deliverables & Capabilities:**
+  - `fixtures/go-service/`: Idiomatic Go microservice with `go.mod` (module `example.com/goservice`), `go.sum`, `cmd/api/main.go`, `internal/handlers/`, `internal/services/`, `internal/storage/`, and `internal/services/user_test.go`. Features an intentional circular package dependency between `internal/handlers` and `internal/services`.
+  - `fixtures/rust-cli/`: Modular Rust CLI crate with `Cargo.toml`, `Cargo.lock`, `src/main.rs`, `src/config.rs`, `src/commands/`, `src/utils/`, and `tests/cli_test.rs`. Features an intentional wildcard dependency (`log = "*"`).
+  - Multi-language pipeline wiring in `crates/forge-cli`: `eforge doctor` checks `Go manifest & lockfile hygiene` and `Rust manifest & lockfile hygiene`; `eforge scan` maps Go and Rust architecture graphs and parses dependencies; `eforge graph` supports language-aware Mermaid exports.
+  - Race-condition hardening in `crates/forge-core/src/cache.rs`: `save_metadata` ensures parent directories exist prior to atomic writes.
+  - Golden integration tests in `crates/forge-cli/tests/go_rust_fixtures_golden_test.rs` validating doctor diagnostics and full scan determinism across Go and Rust fixtures.
+- **Invariants:**
+  - Strict zero-panic test discipline (`Result<(), Box<dyn Error>>` everywhere).
+  - Completes **Epic #153** (Phase 7B: Go & Rust Ecosystems Intelligence).
+
+## Issue #158 — Polyglot Repository Scanner & Unified Architecture Graph Builder (COMPLETED)
+- **Crates:** `crates/forge-analyzer` (`src/graph.rs`, `src/dep_health.rs`, `src/lib.rs`, `tests/polyglot_scanner_test.rs`), `crates/forge-cli` (`src/commands/{scan.rs, graph.rs, diff.rs, report.rs, dependencies.rs, doctor.rs}`, `tests/polyglot_golden_test.rs`), `crates/forge-mcp` (`src/tools.rs`)
+- **Public Functions Exposed:**
+  - `build_polyglot_architecture_graph(repo_root: &Path, files: &[FileNode]) -> Result<ArchitectureGraph, ForgeError>`: Unifies TypeScript, JavaScript, Python, Go, and Rust AST/import graphs into a single namespaced architecture graph, re-evaluating global circular dependencies via Tarjan's SCC and computing high-centrality modules.
+  - `analyze_polyglot_dependencies(repo_root: &Path, files: &[FileNode], external_imports: &BTreeSet<String>) -> Result<DependencyReport, ForgeError>`: Recursively discovers and analyzes manifests across npm (`package.json`), PyPI (`pyproject.toml`, `requirements.txt`), Go (`go.mod`), and Cargo (`Cargo.toml`), returning aggregated dependencies and hygiene findings.
+- **CLI Commands Parity:**
+  - `eforge scan`: Migrated to unified polyglot pipeline, automatically analyzing all detected ecosystems in a single scan pass.
+  - `eforge graph`: Generates unified polyglot Mermaid and JSON graphs across all repository languages.
+  - `eforge diff` & `eforge report`: Unified graph enables cross-language blast-radius and impact analysis.
+  - `eforge dependencies`: Formats ecosystem-labeled dependencies across npm, PyPI, Go, and Cargo.
+  - `eforge doctor`: Evaluates hygiene for all present manifests (Node, Python, Rust, Go) in parallel without short-circuiting.
+  - `crates/forge-mcp`: `build_analyzed_repo` exposes full polyglot architecture and dependencies to MCP tools.
+- **Invariants:**
+  - Preserves module namespace isolation across polyglot subprojects (e.g. `frontend/src/components` vs `backend/app/routers`).
+  - Zero-panic: all operations propagate `ForgeError`.
+
+## Issue #159 — Web Intelligence Dashboard Multi-Ecosystem Dependency Viewer & Language Badges (COMPLETED)
+- **App & Tests:** `apps/dashboard/src/` (`lib/filters.ts`, `routes/dependencies/+page.svelte`, `routes/findings/+page.svelte`, `routes/architecture/+page.svelte`), `apps/dashboard/tests/` (`filters.test.ts`, `dependencies.test.ts`)
+- **Capabilities & UI Surfaces:**
+  - `apps/dashboard/src/lib/filters.ts`:
+    - Added `language?: string` to `FindingFilter` interface and query serialization (`?language=...`).
+    - Added `detectFileLanguage(filePath?: string | null): string | null` supporting Python, Go, Rust, TypeScript, JavaScript, Svelte, Vue, and manifests (`Cargo.toml`, `go.mod`, `requirements.txt`, `pyproject.toml`, `package.json`).
+  - `apps/dashboard/src/routes/dependencies/+page.svelte`:
+    - Multi-ecosystem filter pills (`All`, `npm`, `PyPI`, `Go`, `Cargo`) with package counts and distinct ecosystem badge colors.
+    - Dependency type classification badges (`DIRECT`, `DEV`, `INDIRECT`).
+    - Search by package name combined with ecosystem and dependency type filtering.
+  - `apps/dashboard/src/routes/findings/+page.svelte`:
+    - Dynamic language filter pills based on findings present in report.
+    - Inline language badges in finding cards next to file locations.
+    - Full URL query state synchronization (`?language=...`).
+  - `apps/dashboard/src/routes/architecture/+page.svelte`:
+    - Primary language inference per architectural module from member files.
+    - Language filter toolbar in accessible module table view.
+    - Language badges in table rows and module inspector pane.
+  - Tests in `apps/dashboard/tests/filters.test.ts` and `apps/dashboard/tests/dependencies.test.ts` validating language detection, query serialization, and multi-ecosystem filtering.
+- **Invariants:**
+  - Reactive runes adhere to Svelte 5 standards; clean lint and test execution with zero warnings.
+
+## Issue #160 — Multi-Language E2E Integration Suite, Documentation & Workspace v0.7.0 Bump (COMPLETED)
+- **Crates & Packages:** `crates/forge-cli/tests/multi_language_e2e.rs`, `README.md`, `docs/MULTI_LANGUAGE.md`, `Cargo.toml`, `package.json`, `apps/dashboard/package.json`, `packages/forge-schema/package.json`, `packages/forge-ui/package.json`, `packages/forge-cli-npm/package.json`
+- **Deliverables & Capabilities:**
+  - Multi-Language E2E Integration Test Suite (`crates/forge-cli/tests/multi_language_e2e.rs`):
+    - Full pipeline execution across all 4 curated fixtures (`fixtures/next-app/`, `fixtures/fastapi-app/`, `fixtures/go-service/`, `fixtures/rust-cli/`).
+    - Validates CLI command matrix: `doctor` (manifest hygiene & framework detection), `scan` (polyglot architecture graph, 8 health dimensions, SARIF/terminal/markdown rendering), `review` (blast radius & change risk with synthetic diffs), `explain` (repo & module level structural inspection), and `dependencies` (multi-ecosystem manifest parsing).
+    - Cross-language determinism test verifying byte-identical JSON output across successive scans and ensuring dimension score weights sum to 100%.
+  - Comprehensive documentation updates:
+    - Updated `README.md` with multi-language and ecosystem capability descriptions, version bump to `v0.7.0`, and added the Multi-Language & Ecosystem Support Matrix table.
+    - Added [`docs/MULTI_LANGUAGE.md`](./MULTI_LANGUAGE.md) detailing language parsers, import resolution strategies, cycle detection algorithms (Tarjan's SCC), and CLI command parity.
+  - Synchronized monorepo workspace version to `v0.7.0` across Rust crates and TypeScript packages.
+- **Invariants:**
+  - Strict zero-panic policy enforced in all tests (`Result<(), Box<dyn Error>>`).
+  - Completes **Epic #157** (Phase 7C) and concludes **Phase 7: Multi-Language Expansion**.
+
+## Issue #171 — Composer Manifest Parser, Lockfile Hygiene & Dependency Health for PHP (COMPLETED)
+- **Crates:** `crates/forge-analyzer` (`src/composer_manifest.rs`, `src/detector.rs`, `src/dep_health.rs`, `tests/composer_manifest_test.rs`), `crates/forge-cli` (`src/commands/doctor.rs`)
+- **Public Types & Functions (`forge_analyzer::composer_manifest`):**
+  - `ParsedComposerManifest`: `name`, `dependencies`, `psr4_mappings`, `unpinned_packages`, `duplicate_packages`, `has_composer_lock`.
+  - `parse_composer_manifest(repo_root: &Path) -> Result<ParsedComposerManifest, ForgeError>`.
+  - `parse_composer_json_content(content: &str, has_lock: bool, lock_versions: &BTreeMap<String, String>) -> Result<ParsedComposerManifest, ForgeError>`.
+  - `read_composer_lock_versions(repo_root: &Path) -> BTreeMap<String, String>`.
+  - `is_composer_unpinned(version_req: &str) -> bool`.
+  - `analyze_composer_dependencies(repo_root: &Path, external_imports: &BTreeSet<String>) -> Result<DependencyReport, ForgeError>`.
+  - `PHP_IMPLICIT_RUNNERS`: runtime catalog for `phpunit`, `pest`, `phpstan`, `psalm`, `rector`, `pint`, `sail`, `faker`, `mockery`, `collision`, `ignition`.
+- **Ecosystem & CLI Doctor Integration:**
+  - `detect_ecosystem`: Detects package manager `"composer"`, frameworks (`"laravel"`, `"symfony"`, `"wordpress"`), and test runners (`"phpunit"`, `"pest"`).
+  - `eforge doctor`: Evaluates `PHP manifest & lockfile hygiene`, flagging missing `composer.lock`, unpinned packages, and duplicate declarations.
+  - `analyze_polyglot_dependencies`: Integrates `composer.json` discovery and evaluation across repository subdirectories.
+- **Invariants:**
+  - Zero panics; all operations propagate `ForgeError`.
+
+
+## Issue #172 — PHP Namespace & Use Import Graph, Cycle Detection & Security Pattern Scanner (COMPLETED)
+- **Crates:** `crates/forge-analyzer` (`src/php_imports.rs`, `src/graph.rs`, `tests/php_imports_test.rs`), `crates/forge-security` (`src/php_patterns.rs`, `src/lib.rs`, `tests/php_security_test.rs`)
+- **Public Types & Functions (`forge_analyzer::php_imports`):**
+  - `build_php_architecture_graph(repo_root: &Path, files: &[FileNode]) -> Result<ArchitectureGraph, ForgeError>`.
+  - `extract_php_namespace_and_uses(source: &str) -> (Option<String>, Vec<String>)`: Extracts namespace declaration and use statements (including aliases and group use statements), filtering out PHP built-in classes (`stdClass`, `DateTime`, `Exception`, `PDO`, etc.).
+  - `strip_php_comments(source: &str) -> String`: Strips single-line (`//`, `#`) and multi-line (`/* ... */`) comments while preserving string literals.
+  - `infer_php_module_boundary(relative_path: &str) -> String`: Infers architecture module boundaries for Laravel structures (`app/Http/Controllers`, `app/Models`, `app/Services`, `app/Providers`, `tests/Feature`, `tests/Unit`) and PSR-4 directory layouts.
+  - `resolve_php_import(target_class: &str, psr4_mappings: &[(String, String)], repo_root: &Path) -> Option<String>`: Resolves PHP class names to file paths using PSR-4 mappings or default `App\` conventions.
+  - `extract_composer_package_name(import: &str) -> Option<String>`: Identifies external Composer vendor packages (`Illuminate\` -> `laravel/framework`, `GuzzleHttp\` -> `guzzlehttp/guzzle`, `Symfony\Component\<Name>` -> `symfony/<kebab-name>`).
+  - Integrated into `build_polyglot_architecture_graph` in `crates/forge-analyzer/src/graph.rs` with Tarjan's SCC cycle detection.
+- **PHP Security Pattern Scanner (`forge_security::php_patterns`):**
+  - `scan_php_unsafe_patterns(relative_path: &str, content: &str) -> Vec<Finding>`.
+  - Built-in rules:
+    - `RULE_PHP_UNSAFE_EVAL` (`security/php-unsafe-eval`, Critical): Flags dynamic code execution via `eval(...)`.
+    - `RULE_PHP_INSECURE_UNSERIALIZE` (`security/php-insecure-unserialize`, High): Flags PHP object injection via untrusted `unserialize(...)`.
+    - `RULE_PHP_COMMAND_INJECTION` (`security/php-command-injection`, High): Flags arbitrary shell execution via `exec`, `passthru`, `shell_exec`, `system`, `popen`, or `proc_open`.
+    - `RULE_PHP_CREATE_FUNCTION` (`security/php-create-function`, High): Flags deprecated runtime code generation via `create_function(...)`.
+  - Wired into `SecurityScanner::scan_file_content` for `.php` files with comment filtering.
+- **Invariants:**
+  - Zero panics across library crates (`unsafe_code = "forbid"`, strict `ForgeError` propagation).
+
+
+## Issue #173 — Curated Laravel Fixture, Polyglot Integration & Dashboard PHP Badge (COMPLETED)
+- **Paths & Crates:** `fixtures/laravel-app/`, `crates/forge-cli/tests/laravel_app_golden_test.rs`, `crates/forge-cli/tests/multi_language_e2e.rs`, `apps/dashboard/src/lib/filters.ts`, `apps/dashboard/src/routes/dependencies/+page.svelte`, `apps/dashboard/src/routes/findings/+page.svelte`, `apps/dashboard/src/routes/architecture/+page.svelte`, `README.md`, `docs/MULTI_LANGUAGE.md`.
+- **Deliverables & Capabilities:**
+  - Curated Laravel 10 Fixture (`fixtures/laravel-app/`):
+    - Idiomatic structure: `composer.json`, `composer.lock`, `artisan`, `phpunit.xml`.
+    - Controllers (`app/Http/Controllers/UserController.php`), Services (`app/Services/UserService.php`), Models (`app/Models/User.php`), Feature Tests (`tests/Feature/UserTest.php`).
+    - Intentional architectural cycle (`app/Http/Controllers` <-> `app/Services`) and unpinned dependency (`guzzlehttp/guzzle: *`) for deterministic regression testing.
+  - Golden E2E Test Suite (`crates/forge-cli/tests/laravel_app_golden_test.rs` & `multi_language_e2e.rs`):
+    - Validates full CLI lifecycle: `doctor` (manifest hygiene & framework detection), `scan` (8 health dimensions, circular dependency, unpinned versions, SARIF/MD/terminal output), `review` (synthetic diff impact & risk score), `explain` (module inbound/outbound edges), and `dependencies` (Composer dependencies & lockfile versions).
+    - Added `"laravel-app"` to `test_polyglot_cross_language_parity_and_determinism` verifying byte-identical scan output and 100% health score weight invariant across all 5 test repositories.
+  - Web Intelligence Dashboard Multi-Ecosystem Experience:
+    - Updated `detectFileLanguage` to support `.php`, `composer.json`, and `composer.lock`.
+    - Added `Composer` ecosystem filter pill and purple/indigo badges to `/dependencies`.
+    - Added `php` badge styling to `/findings` and `/architecture`.
+    - Unit tests in `apps/dashboard/tests/filters.test.ts` and `apps/dashboard/tests/dependencies.test.ts`.
+  - Comprehensive documentation updates in `README.md` and `docs/MULTI_LANGUAGE.md` reflecting PHP, Composer, and Laravel ecosystem support.
+- **Invariants:**
+  - Zero panics; strict error propagation (`Result<(), Box<dyn Error>>` in tests).
+  - Completes **Epic #170** (Phase 7D: PHP & Laravel Ecosystem Intelligence).

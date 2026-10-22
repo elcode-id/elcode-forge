@@ -39,6 +39,7 @@ pub fn is_test_file(relative_path: &str) -> bool {
     lower.contains(".test.")
         || lower.contains(".spec.")
         || lower.contains("_test.")
+        || lower.contains("test_")
         || lower.starts_with("tests/")
         || lower.contains("/tests/")
         || lower.contains("/__tests__/")
@@ -87,6 +88,16 @@ pub fn detect_ecosystem(repo_root: &Path, files: &[FileNode]) -> EcosystemSignal
             frameworks.insert("nuxt".to_string());
         } else if file_name.starts_with("svelte.config.") {
             frameworks.insert("sveltekit".to_string());
+        } else if file_name == "pytest.ini" || file_name == "conftest.py" {
+            frameworks.insert("pytest".to_string());
+            has_tests = true;
+        } else if file_name == "artisan" {
+            frameworks.insert("laravel".to_string());
+        } else if file_name == "phpunit.xml" || file_name == "phpunit.xml.dist" {
+            frameworks.insert("phpunit".to_string());
+            has_tests = true;
+        } else if file_name == "wp-config.php" {
+            frameworks.insert("wordpress".to_string());
         }
     }
 
@@ -123,6 +134,12 @@ pub fn detect_ecosystem(repo_root: &Path, files: &[FileNode]) -> EcosystemSignal
     }
     if repo_root.join("requirements.txt").is_file() {
         package_managers.insert("pip".to_string());
+    }
+    if repo_root.join("go.mod").is_file() {
+        package_managers.insert("go".to_string());
+    }
+    if repo_root.join("composer.json").is_file() || repo_root.join("composer.lock").is_file() {
+        package_managers.insert("composer".to_string());
     }
 
     // Inspect package.json dependencies for JS/TS frameworks and test runners
@@ -169,6 +186,163 @@ pub fn detect_ecosystem(repo_root: &Path, files: &[FileNode]) -> EcosystemSignal
         }
     }
 
+    // Inspect Python manifests and lockfiles for frameworks (FastAPI, Flask, Django) and pytest
+    if repo_root.join("pyproject.toml").is_file()
+        || repo_root.join("requirements.txt").is_file()
+        || repo_root.join("poetry.lock").is_file()
+        || repo_root.join("uv.lock").is_file()
+    {
+        if let Ok(manifest) = crate::python_manifest::parse_python_manifests(repo_root) {
+            for dep in &manifest.dependencies {
+                match dep.name.as_str() {
+                    "fastapi" => {
+                        frameworks.insert("fastapi".to_string());
+                    }
+                    "flask" => {
+                        frameworks.insert("flask".to_string());
+                    }
+                    "django" => {
+                        frameworks.insert("django".to_string());
+                    }
+                    "pytest" => {
+                        frameworks.insert("pytest".to_string());
+                        has_tests = true;
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    // Inspect Go manifest for frameworks (Gin, Echo, Fiber, Chi)
+    if repo_root.join("go.mod").is_file() {
+        if let Ok(manifest) = crate::go_manifest::parse_go_manifest(repo_root) {
+            for dep in &manifest.dependencies {
+                if dep.name.contains("gin-gonic/gin") {
+                    frameworks.insert("gin".to_string());
+                } else if dep.name.contains("labstack/echo") {
+                    frameworks.insert("echo".to_string());
+                } else if dep.name.contains("gofiber/fiber") {
+                    frameworks.insert("fiber".to_string());
+                } else if dep.name.contains("go-chi/chi") {
+                    frameworks.insert("chi".to_string());
+                }
+            }
+        }
+    }
+
+    // Inspect Rust manifest for frameworks (axum, actix-web, tokio, rocket)
+    if repo_root.join("Cargo.toml").is_file() {
+        if let Ok(workspace) = crate::rust_manifest::parse_rust_workspace(repo_root) {
+            for dep in &workspace.dependencies {
+                match dep.name.as_str() {
+                    "axum" => {
+                        frameworks.insert("axum".to_string());
+                    }
+                    "actix-web" => {
+                        frameworks.insert("actix-web".to_string());
+                    }
+                    "tokio" => {
+                        frameworks.insert("tokio".to_string());
+                    }
+                    "rocket" => {
+                        frameworks.insert("rocket".to_string());
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    // Inspect Composer manifest for PHP frameworks (Laravel, Symfony, WordPress) and test runners
+    if repo_root.join("composer.json").is_file() {
+        if let Ok(manifest) = crate::composer_manifest::parse_composer_manifest(repo_root) {
+            for dep in &manifest.dependencies {
+                let name = dep.name.to_lowercase();
+                if name == "laravel/framework" {
+                    frameworks.insert("laravel".to_string());
+                } else if name.starts_with("symfony/") {
+                    frameworks.insert("symfony".to_string());
+                } else if name == "johnpbloch/wordpress" || name == "roots/bedrock" {
+                    frameworks.insert("wordpress".to_string());
+                } else if name == "phpunit/phpunit" {
+                    frameworks.insert("phpunit".to_string());
+                    has_tests = true;
+                } else if name == "pestphp/pest" {
+                    frameworks.insert("pest".to_string());
+                    has_tests = true;
+                }
+            }
+        }
+    }
+
+    // Inspect source imports if frameworks not yet found
+    let need_python_fw = !frameworks.contains("fastapi")
+        || !frameworks.contains("flask")
+        || !frameworks.contains("django");
+    let need_go_fw = !frameworks.contains("gin")
+        && !frameworks.contains("echo")
+        && !frameworks.contains("fiber")
+        && !frameworks.contains("chi");
+
+    if need_python_fw || need_go_fw {
+        for file in files {
+            let is_py =
+                file.language.as_deref() == Some("python") || file.relative_path.ends_with(".py");
+            let is_go =
+                file.language.as_deref() == Some("go") || file.relative_path.ends_with(".go");
+
+            if !is_py && !is_go {
+                continue;
+            }
+
+            let full_path = repo_root.join(&file.relative_path);
+            let Ok(content) = fs::read_to_string(&full_path) else {
+                continue;
+            };
+
+            if is_py && need_python_fw {
+                if content.contains("fastapi")
+                    && (content.contains("import fastapi")
+                        || content.contains("from fastapi import"))
+                {
+                    frameworks.insert("fastapi".to_string());
+                }
+                if content.contains("flask")
+                    && (content.contains("import flask") || content.contains("from flask import"))
+                {
+                    frameworks.insert("flask".to_string());
+                }
+                if content.contains("django")
+                    && (content.contains("import django") || content.contains("from django import"))
+                {
+                    frameworks.insert("django".to_string());
+                }
+                if content.contains("pytest")
+                    && (content.contains("import pytest") || content.contains("from pytest import"))
+                {
+                    frameworks.insert("pytest".to_string());
+                    has_tests = true;
+                }
+            }
+
+            if is_go && need_go_fw {
+                if content.contains("gin-gonic/gin") {
+                    frameworks.insert("gin".to_string());
+                }
+                if content.contains("labstack/echo") {
+                    frameworks.insert("echo".to_string());
+                }
+                if content.contains("gofiber/fiber") {
+                    frameworks.insert("fiber".to_string());
+                }
+                if content.contains("go-chi/chi") {
+                    frameworks.insert("chi".to_string());
+                }
+            }
+        }
+    }
+
     EcosystemSignals {
         languages: languages.into_iter().collect(),
         frameworks: frameworks.into_iter().collect(),
@@ -197,11 +371,16 @@ mod tests {
         );
         assert_eq!(detect_language("app/main.py").as_deref(), Some("python"));
         assert_eq!(detect_language("src/lib.rs").as_deref(), Some("rust"));
+        assert_eq!(detect_language("cmd/server/main.go").as_deref(), Some("go"));
         assert_eq!(detect_language("README.md"), None);
 
         assert!(is_test_file("src/services/userService.test.ts"));
         assert!(is_test_file("src/__tests__/auth.ts"));
+        assert!(is_test_file("tests/test_api.py"));
+        assert!(is_test_file("app/routers/test_items.py"));
+        assert!(is_test_file("internal/services/user_test.go"));
         assert!(!is_test_file("src/services/userService.ts"));
+        assert!(!is_test_file("internal/services/user.go"));
     }
 
     #[test]

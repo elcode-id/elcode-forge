@@ -92,6 +92,12 @@ impl ForgeCache {
     /// Saves [`CacheMetadata`] deterministically to `.eforge/metadata.json`.
     pub fn save_metadata(&self, meta: &CacheMetadata) -> Result<(), ForgeError> {
         let path = self.metadata_path();
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|source| ForgeError::Io {
+                path: parent.to_path_buf(),
+                source,
+            })?;
+        }
         let serialized =
             serde_json::to_string_pretty(meta).map_err(|err| ForgeError::Serialization {
                 message: format!("failed to serialize cache metadata: {err}"),

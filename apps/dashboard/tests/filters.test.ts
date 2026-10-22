@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseFilter, serializeFilter, applyFilter } from "../src/lib/filters.js";
+import { parseFilter, serializeFilter, applyFilter, detectFileLanguage } from "../src/lib/filters.js";
 import type { Finding } from "@elcode-forge/schema";
 
 describe("Finding filters helper", () => {
@@ -86,5 +86,67 @@ describe("Finding filters helper", () => {
       rulePrefix: "arch/",
     });
     expect(combined.map((f: Finding) => f.id)).toEqual(["f-1"]);
+  });
+
+  it("detects programming language accurately from file paths and manifests", () => {
+    expect(detectFileLanguage("src/components/Card.tsx")).toBe("typescript");
+    expect(detectFileLanguage("app/routers/items.py")).toBe("python");
+    expect(detectFileLanguage("cmd/server/main.go")).toBe("go");
+    expect(detectFileLanguage("crates/engine/src/lib.rs")).toBe("rust");
+    expect(detectFileLanguage("app/Http/Controllers/UserController.php")).toBe("php");
+    expect(detectFileLanguage("src/index.js")).toBe("javascript");
+    expect(detectFileLanguage("src/routes/+page.svelte")).toBe("svelte");
+    expect(detectFileLanguage("src/App.vue")).toBe("vue");
+    expect(detectFileLanguage("Cargo.toml")).toBe("rust");
+    expect(detectFileLanguage("go.mod")).toBe("go");
+    expect(detectFileLanguage("requirements.txt")).toBe("python");
+    expect(detectFileLanguage("composer.json")).toBe("php");
+    expect(detectFileLanguage("package.json")).toBe("javascript");
+    expect(detectFileLanguage("README.md")).toBe(null);
+  });
+
+  it("parses, serializes, and filters findings by language accurately", () => {
+    const params = new URLSearchParams("language=python");
+    const filter = parseFilter(params);
+    expect(filter.language).toBe("python");
+
+    const serialized = serializeFilter(filter);
+    expect(serialized.get("language")).toBe("python");
+
+    const findings: Finding[] = [
+      {
+        id: "py-1",
+        rule_id: "security/python-unsafe-eval",
+        severity: "critical",
+        confidence: "certain",
+        title: "Unsafe execution",
+        description: "Unsafe dynamic execution detected in Python",
+        evidence: "execute_dynamic(input)",
+        recommendation: "Avoid eval",
+        category: "security",
+        location: { file_path: "app/main.py", start_line: 10 },
+      },
+      {
+        id: "go-1",
+        rule_id: "arch/no-circular-dependencies",
+        severity: "high",
+        confidence: "certain",
+        title: "Go cycle",
+        description: "Circular package import",
+        evidence: "a <-> b",
+        recommendation: "Break cycle",
+        category: "architecture",
+        location: { file_path: "internal/pkg/a.go", start_line: 1 },
+      },
+    ];
+
+    const pyFiltered = applyFilter(findings, { severity: [], confidence: [], language: "python" });
+    expect(pyFiltered.map((f: Finding) => f.id)).toEqual(["py-1"]);
+
+    const goFiltered = applyFilter(findings, { severity: [], confidence: [], language: "go" });
+    expect(goFiltered.map((f: Finding) => f.id)).toEqual(["go-1"]);
+
+    const rsFiltered = applyFilter(findings, { severity: [], confidence: [], language: "rust" });
+    expect(rsFiltered).toEqual([]);
   });
 });

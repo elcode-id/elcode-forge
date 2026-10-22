@@ -4,8 +4,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use forge_analyzer::{
-    dep_health::analyze_npm_dependencies, graph::build_ts_architecture_graph,
-    scanner::scan_repository,
+    analyze_polyglot_dependencies, build_polyglot_architecture_graph, scan_repository,
 };
 use forge_core::{
     cache::{CacheMetadata, ForgeCache, EFORGE_DIR},
@@ -35,8 +34,16 @@ pub struct ScanOptions {
 pub fn execute_scan(opts: &ScanOptions) -> Result<(Repository, ExitCode), ForgeError> {
     let config = load_config(&opts.repo_root)?;
     let discovery = scan_repository(&opts.repo_root, &config.ignore_patterns)?;
-    let arch_graph = build_ts_architecture_graph(&opts.repo_root, &discovery.files)?;
-    let dep_report = analyze_npm_dependencies(&opts.repo_root, &arch_graph.external_imports)?;
+    let arch_graph = build_polyglot_architecture_graph(&opts.repo_root, &discovery.files)?;
+    let dep_report = analyze_polyglot_dependencies(
+        &opts.repo_root,
+        &discovery.files,
+        &arch_graph.external_imports,
+    )?;
+
+    let modules = arch_graph.modules;
+    let dependencies = dep_report.dependencies;
+    let dep_findings = dep_report.findings;
 
     let current_hashes: BTreeMap<String, String> = discovery
         .files
@@ -69,13 +76,14 @@ pub fn execute_scan(opts: &ScanOptions) -> Result<(Repository, ExitCode), ForgeE
         }
     } else {
         if opts.repo_root.join(EFORGE_DIR).is_dir() {
-            let cache = ForgeCache::init(&opts.repo_root)?;
-            let meta = CacheMetadata {
-                analyzer_version: env!("CARGO_PKG_VERSION").to_string(),
-                config_hash,
-                file_hashes: current_hashes,
-            };
-            cache.save_metadata(&meta)?;
+            if let Ok(cache) = ForgeCache::init(&opts.repo_root) {
+                let meta = CacheMetadata {
+                    analyzer_version: env!("CARGO_PKG_VERSION").to_string(),
+                    config_hash,
+                    file_hashes: current_hashes,
+                };
+                let _ = cache.save_metadata(&meta);
+            }
         }
         discovery.files.clone()
     };
@@ -95,15 +103,15 @@ pub fn execute_scan(opts: &ScanOptions) -> Result<(Repository, ExitCode), ForgeE
         detected_frameworks: discovery.frameworks,
         package_managers: discovery.package_managers,
         files: discovery.files,
-        modules: arch_graph.modules,
-        dependencies: dep_report.dependencies,
+        modules,
+        dependencies,
         findings: Vec::new(),
         health: None,
     };
 
     let rule_engine = RuleEngine::from_config(&opts.repo_root, &config)?;
     let mut findings: Vec<Finding> = Vec::new();
-    findings.extend(dep_report.findings);
+    findings.extend(dep_findings);
     findings.extend(rule_engine.evaluate(&repo)?);
     findings.extend(SecurityScanner::scan_repository_files(
         &opts.repo_root,

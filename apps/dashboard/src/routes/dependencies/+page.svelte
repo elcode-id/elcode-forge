@@ -15,7 +15,6 @@
   const depFindingMap = $derived.by<Record<string, Finding[]>>(() => {
     const map: Record<string, Finding[]> = {};
     for (const f of depFindings) {
-      // Finding titles/descriptions or evidence usually mention the dependency name
       for (const d of dependencies) {
         if (
           f.evidence?.includes(d.name) ||
@@ -33,6 +32,55 @@
 
   let searchQuery = $state("");
   let filterType: "all" | "direct" | "dev" | "flagged" = $state("all");
+  let selectedEcosystem: string = $state("all");
+
+  const presentEcosystems = $derived<string[]>(
+    Array.from(
+      new Set(
+        dependencies
+          .map((d) => d.ecosystem?.toLowerCase())
+          .filter((e): e is string => Boolean(e))
+      )
+    ).sort()
+  );
+
+  function getEcosystemCount(eco: string): number {
+    return dependencies.filter((d) => d.ecosystem?.toLowerCase() === eco.toLowerCase()).length;
+  }
+
+  function formatEcosystem(eco: string): string {
+    switch (eco.toLowerCase()) {
+      case "npm":
+        return "npm";
+      case "pypi":
+        return "PyPI";
+      case "go":
+        return "Go";
+      case "cargo":
+        return "Cargo";
+      case "composer":
+        return "Composer";
+      default:
+        return eco;
+    }
+  }
+
+  function ecosystemBadgeClass(eco?: string): string {
+    switch (eco?.toLowerCase()) {
+      case "npm":
+        return "bg-rose-950/70 text-rose-300 border-rose-800/80";
+      case "pypi":
+        return "bg-sky-950/70 text-sky-300 border-sky-800/80";
+      case "go":
+        return "bg-teal-950/70 text-teal-300 border-teal-800/80";
+      case "cargo":
+        return "bg-amber-950/70 text-amber-300 border-amber-800/80";
+      case "composer":
+        return "bg-indigo-950/70 text-indigo-300 border-indigo-800/80";
+      default:
+        return "bg-slate-800 text-slate-300 border-slate-700";
+    }
+  }
 
   const directCount = $derived<number>(dependencies.filter((d) => d.is_direct && !d.is_dev).length);
   const devCount = $derived<number>(dependencies.filter((d) => d.is_dev).length);
@@ -42,6 +90,9 @@
 
   const filteredDependencies = $derived<Dependency[]>(
     dependencies.filter((d) => {
+      if (selectedEcosystem !== "all" && d.ecosystem?.toLowerCase() !== selectedEcosystem.toLowerCase()) {
+        return false;
+      }
       if (searchQuery && !d.name.toLowerCase().includes(searchQuery.toLowerCase())) {
         return false;
       }
@@ -70,11 +121,11 @@
         </span>
       </h1>
       <p class="text-xs text-slate-400 mt-1">
-        Supply chain inventory, unpinned dependencies, unused packages, and duplication diagnostics.
+        Multi-ecosystem supply chain inventory across npm, PyPI, Go, and Cargo.
       </p>
     </div>
 
-    <!-- Filter Buttons -->
+    <!-- Filter Buttons: Type (Direct/Dev/Flagged) -->
     <div class="inline-flex rounded-md border border-[#262c3f] bg-[#12151f] p-0.5 text-xs">
       <button
         onclick={() => (filterType = "all")}
@@ -103,14 +154,42 @@
     </div>
   </div>
 
-  <!-- Search Box -->
-  <div class="max-w-md">
-    <input
-      type="text"
-      bind:value={searchQuery}
-      placeholder="Search package name..."
-      class="w-full px-3 py-1.5 bg-[#12151f] border border-[#262c3f] rounded text-slate-200 font-mono text-xs focus:outline-none focus:border-blue-500"
-    />
+  <!-- Search & Ecosystem Filter Toolbar -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <!-- Search Box -->
+    <div class="w-full sm:max-w-xs">
+      <input
+        type="text"
+        bind:value={searchQuery}
+        placeholder="Search package name..."
+        class="w-full px-3 py-1.5 bg-[#12151f] border border-[#262c3f] rounded text-slate-200 font-mono text-xs focus:outline-none focus:border-blue-500"
+      />
+    </div>
+
+    <!-- Ecosystem Filter Badges -->
+    {#if presentEcosystems.length > 1}
+      <div class="flex flex-wrap items-center gap-1.5 text-xs">
+        <span class="text-slate-400 font-mono text-[11px] mr-1">Ecosystem:</span>
+        <button
+          onclick={() => (selectedEcosystem = "all")}
+          class="px-2 py-0.5 rounded font-mono text-[11px] border transition-colors {selectedEcosystem === 'all'
+            ? 'bg-blue-600 text-white border-blue-500 font-medium'
+            : 'bg-[#12151f] text-slate-400 border-[#262c3f] hover:border-slate-600'}"
+        >
+          All ({dependencies.length})
+        </button>
+        {#each presentEcosystems as eco (eco)}
+          <button
+            onclick={() => (selectedEcosystem = eco)}
+            class="px-2 py-0.5 rounded font-mono text-[11px] border transition-colors {selectedEcosystem === eco
+              ? ecosystemBadgeClass(eco) + ' font-medium'
+              : 'bg-[#12151f] text-slate-400 border-[#262c3f] hover:border-slate-600'}"
+          >
+            {formatEcosystem(eco)} ({getEcosystemCount(eco)})
+          </button>
+        {/each}
+      </div>
+    {/if}
   </div>
 
   {#if !bundle}
@@ -139,16 +218,20 @@
             {@const findings = depFindingMap[dep.name] || []}
             <tr class="hover:bg-[#1a1e2e]/40">
               <td class="py-2.5 px-4 font-mono font-medium text-slate-100">{dep.name}</td>
-              <td class="py-2.5 px-3 font-mono text-slate-400">{dep.ecosystem}</td>
+              <td class="py-2.5 px-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono border {ecosystemBadgeClass(dep.ecosystem)}">
+                  {formatEcosystem(dep.ecosystem)}
+                </span>
+              </td>
               <td class="py-2.5 px-3 font-mono text-slate-300">{dep.version_req}</td>
               <td class="py-2.5 px-3 font-mono text-slate-400">{dep.resolved_version || "—"}</td>
               <td class="py-2.5 px-3">
                 {#if dep.is_dev}
-                  <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-400">DEV</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-purple-950 text-purple-300 border border-purple-900">DEV</span>
                 {:else if dep.is_direct}
                   <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-blue-950 text-blue-300 border border-blue-900">DIRECT</span>
                 {:else}
-                  <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-500">TRANSITIVE</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-400 border border-slate-700">INDIRECT</span>
                 {/if}
               </td>
               <td class="py-2.5 px-3">

@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use forge_analyzer::{graph::build_ts_architecture_graph, scanner::scan_repository};
+use forge_analyzer::{build_polyglot_architecture_graph, scanner::scan_repository};
 use forge_core::{config::load_config, ForgeError};
 
 use crate::cli::OutputFormat;
@@ -11,7 +11,7 @@ use crate::cli::OutputFormat;
 pub fn run_graph(repo_root: &Path, format: OutputFormat) -> Result<String, ForgeError> {
     let config = load_config(repo_root)?;
     let discovery = scan_repository(repo_root, &config.ignore_patterns)?;
-    let graph = build_ts_architecture_graph(repo_root, &discovery.files)?;
+    let graph = build_polyglot_architecture_graph(repo_root, &discovery.files)?;
 
     match format {
         OutputFormat::Json | OutputFormat::Sarif => {

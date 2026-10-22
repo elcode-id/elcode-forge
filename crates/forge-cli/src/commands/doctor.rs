@@ -67,8 +67,11 @@ pub fn run_doctor(repo_root: &Path) -> Result<DoctorReport, ForgeError> {
     });
 
     // Check 3: Package Manager & Manifest Hygiene
+    let mut manifest_found = false;
+
     let pkg_json_path = repo_root.join("package.json");
     if pkg_json_path.exists() {
+        manifest_found = true;
         let manifest = parse_package_json(repo_root)?;
         let has_lockfile = !discovery.package_managers.is_empty()
             && (repo_root.join("pnpm-lock.yaml").exists()
@@ -87,20 +90,117 @@ pub fn run_doctor(repo_root: &Path) -> Result<DoctorReport, ForgeError> {
                 manifest.duplicate_packages.len()
             ),
         });
-    } else if repo_root.join("Cargo.toml").exists() {
-        let has_cargo_lock = repo_root.join("Cargo.lock").exists();
+    }
+
+    if repo_root.join("pyproject.toml").exists() || repo_root.join("requirements.txt").exists() {
+        manifest_found = true;
+        let manifest = forge_analyzer::parse_python_manifests(repo_root)?;
+        let has_lockfile = repo_root.join("poetry.lock").exists()
+            || repo_root.join("uv.lock").exists()
+            || repo_root.join("Pipfile.lock").exists();
+        let unpinned_warn = !manifest.unpinned_packages.is_empty();
+        let dup_warn = !manifest.duplicate_packages.is_empty();
         checks.push(DoctorCheck {
-            label: "Cargo manifest & lockfile hygiene".to_string(),
+            label: "Python manifest & lockfile hygiene".to_string(),
             passed: true,
-            warning: !has_cargo_lock,
-            detail: format!("Cargo.toml present, Cargo.lock present: {has_cargo_lock}"),
+            warning: !has_lockfile || dup_warn || unpinned_warn,
+            detail: format!(
+                "{} dependency(ies) declared, lockfile present: {}, unpinned: {}, duplicates: {}",
+                manifest.dependencies.len(),
+                has_lockfile,
+                manifest.unpinned_packages.len(),
+                manifest.duplicate_packages.len()
+            ),
         });
-    } else {
+    }
+
+    if repo_root.join("Cargo.toml").exists() {
+        manifest_found = true;
+        if let Ok(manifest) = forge_analyzer::parse_rust_workspace(repo_root) {
+            let wild_warn = !manifest.wildcard_dependencies.is_empty();
+            let lock_warn = !manifest.has_cargo_lock;
+            checks.push(DoctorCheck {
+                label: "Rust manifest & lockfile hygiene".to_string(),
+                passed: true,
+                warning: lock_warn || wild_warn,
+                detail: format!(
+                    "{} dependency(ies) declared, lockfile present: {}, wildcards: {}",
+                    manifest.dependencies.len(),
+                    manifest.has_cargo_lock,
+                    manifest.wildcard_dependencies.len()
+                ),
+            });
+        } else {
+            let has_cargo_lock = repo_root.join("Cargo.lock").exists();
+            checks.push(DoctorCheck {
+                label: "Rust manifest & lockfile hygiene".to_string(),
+                passed: true,
+                warning: !has_cargo_lock,
+                detail: format!("Cargo.toml present, Cargo.lock present: {has_cargo_lock}"),
+            });
+        }
+    }
+
+    if repo_root.join("go.mod").exists() {
+        manifest_found = true;
+        if let Ok(manifest) = forge_analyzer::parse_go_manifest(repo_root) {
+            let has_sum = manifest.has_go_sum;
+            checks.push(DoctorCheck {
+                label: "Go manifest & lockfile hygiene".to_string(),
+                passed: true,
+                warning: !has_sum,
+                detail: format!(
+                    "{} dependency(ies) declared, go.sum present: {}",
+                    manifest.dependencies.len(),
+                    has_sum
+                ),
+            });
+        } else {
+            let has_go_sum = repo_root.join("go.sum").exists();
+            checks.push(DoctorCheck {
+                label: "Go manifest & lockfile hygiene".to_string(),
+                passed: true,
+                warning: !has_go_sum,
+                detail: format!("go.mod present, go.sum present: {has_go_sum}"),
+            });
+        }
+    }
+
+    if repo_root.join("composer.json").exists() {
+        manifest_found = true;
+        if let Ok(manifest) = forge_analyzer::parse_composer_manifest(repo_root) {
+            let has_lock = manifest.has_composer_lock;
+            let unpinned_warn = !manifest.unpinned_packages.is_empty();
+            let dup_warn = !manifest.duplicate_packages.is_empty();
+            checks.push(DoctorCheck {
+                label: "PHP manifest & lockfile hygiene".to_string(),
+                passed: true,
+                warning: !has_lock || unpinned_warn || dup_warn,
+                detail: format!(
+                    "{} dependency(ies) declared, lockfile present: {}, unpinned: {}, duplicates: {}",
+                    manifest.dependencies.len(),
+                    has_lock,
+                    manifest.unpinned_packages.len(),
+                    manifest.duplicate_packages.len()
+                ),
+            });
+        } else {
+            let has_lock = repo_root.join("composer.lock").exists();
+            checks.push(DoctorCheck {
+                label: "PHP manifest & lockfile hygiene".to_string(),
+                passed: true,
+                warning: !has_lock,
+                detail: format!("composer.json present, composer.lock present: {has_lock}"),
+            });
+        }
+    }
+
+    if !manifest_found {
         checks.push(DoctorCheck {
             label: "Package manifest".to_string(),
             passed: true,
             warning: true,
-            detail: "No package.json found at repository root".to_string(),
+            detail: "No manifest (package.json, pyproject.toml, Cargo.toml, go.mod, composer.json) found at repository root".to_string(),
         });
     }
 

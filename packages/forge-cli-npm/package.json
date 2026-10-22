@@ -1,6 +1,6 @@
 {
   "name": "elcode-forge",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Zero-install npm wrapper and binary runner for ELCODE Forge (eforge)",
   "keywords": [
     "elcode",

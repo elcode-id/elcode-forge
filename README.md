@@ -37,10 +37,10 @@ Every architectural boundary, CLI contract, and CI/CD workflow in `elcode-forge`
 
 | Capability | Description |
 | :--- | :--- |
-| **Fast Project Diagnosis (`eforge doctor`)** | Diagnoses repository inventory, languages, frameworks (`nextjs`, `nuxt`, `sveltekit`, `react`, `vue`, `svelte`), lockfile hygiene (`package-lock.json`, `pnpm-lock.yaml`, `Cargo.lock`), test suite presence, and secret exposure in **< 5 seconds** (~4–18ms on small/medium repos). |
+| **Fast Project Diagnosis (`eforge doctor`)** | Diagnoses repository inventory, languages, frameworks (Node/TS/JS, Python, Go, Rust), lockfile hygiene (`package-lock.json`, `pnpm-lock.yaml`, `Cargo.lock`, `go.sum`, `poetry.lock`), test suite presence, and secret exposure in **< 5 seconds** (~4-18ms on small/medium repos). |
 | **Declarative Rules & Rule Packs (`eforge rules`)** | Enforces custom architectural, quality, security, and dependency boundaries using 6 deterministic matchers (`forbidden_imports`, `required_companion`, `file_naming`, `file_size`, `regex_pattern`, `dependency_restriction`) and 4 pre-built packs (`recommended`, `strict`, `security`, `clean-architecture`). See [docs/RULES_GUIDE.md](./docs/RULES_GUIDE.md). |
-| **Architecture Graph & Cycle Detection (`eforge graph`)** | Infers logical module boundaries from TypeScript/JavaScript and `.vue`/`.svelte` Single-File Component (SFC) imports (relative, index resolution, `@/` and `~/` aliases) and detects circular dependencies via **Tarjan's Strongly Connected Components (SCC)** algorithm. |
-| **Dependency Health Intelligence (`eforge dependencies`)** | Parses `package.json`, `package-lock.json`, and `pnpm-lock.yaml` to flag unused production dependencies (`deps/unused-dependency`), wildcard/unpinned versions (`deps/unpinned-version`), and duplicate declarations (`deps/duplicate-dependency`). |
+| **Architecture Graph & Cycle Detection (`eforge graph`)** | Infers logical module boundaries across TypeScript, JavaScript, Python, Go, and Rust (including `.vue`/`.svelte` SFCs and path aliases) and detects circular dependencies via **Tarjan's Strongly Connected Components (SCC)** algorithm. |
+| **Dependency Health Intelligence (`eforge dependencies`)** | Analyzes multi-ecosystem package manifests across **npm**, **PyPI**, **Go**, and **Cargo** to flag unused production dependencies (`deps/unused-dependency`), wildcard/unpinned versions (`deps/unpinned-version`), and duplicate declarations (`deps/duplicate-dependency`). |
 | **Security & Secret Hygiene (`eforge security`)** | Detects hardcoded API keys, tokens, and PEM private keys (`security/hardcoded-secret`, `security/private-key`) with automatic redaction, plus unsafe JS/TS/SFC patterns (`eval`, `new Function`, `dangerouslySetInnerHTML`, `child_process.exec`, permissive CORS). |
 | **Git Diff & Blast-Radius Impact (`eforge review`, `eforge diff`)** | Parses unified Git diffs, traverses reverse module dependencies via BFS to separate **directly affected** vs. **transitively affected** modules, flags modified files lacking tests, and computes an explainable **Change Risk Level** (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`). |
 | **Automated Onboarding & Living Docs (`eforge onboard`, `eforge docs`)** | Generates a 5-file deterministic documentation bundle (`architecture.md`, `modules.md`, `dependencies.md`, `onboarding.md`, `risks.md`) with Mermaid `flowchart TD` diagrams in `docs/forge/`. |
@@ -49,6 +49,22 @@ Every architectural boundary, CLI contract, and CI/CD workflow in `elcode-forge`
 | **AI Governance & Privacy (`eforge ai status|usage`)** | Supports local-only AI execution (Ollama, LM Studio), prompt-injection defense envelopes, in-flight secret redaction, daily USD spend ceilings, and SHA-256 caching. |
 | **Native MCP Server (`eforge mcp`)** | Exposes 7 deterministic `eforge_*` tools over JSON-RPC 2.0 stdio with `UntrustedEnvelope<T>` isolation, prompt-injection signal scanning, and dynamic rule querying (`eforge_get_rules`). |
 | **Explainable 8-Dimension Health Score** | Computes weighted scores (`0..=100`) across *Architecture (20%)*, *Security (20%)*, *Maintainability (15%)*, *Testing (15%)*, *Dependencies (10%)*, *Documentation (10%)*, *Performance (5%)*, and *CI/CD (5%)* with explicit human-readable deduction reasons. |
+
+---
+
+## Multi-Language & Ecosystem Support Matrix
+
+ELCODE Forge provides unified polyglot scanning across 6 core languages with native AST/import analysis, circular dependency detection, and dependency hygiene:
+
+| Ecosystem / Language | File Extensions | Manifest & Lockfiles | Frameworks & Detectors | Import Resolution |
+| :--- | :--- | :--- | :--- | :--- |
+| **TypeScript / JavaScript** | `.ts`, `.tsx`, `.js`, `.jsx`, `.svelte`, `.vue` | `package.json`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lockb` | Next.js, Nuxt, SvelteKit, React, Vue, Svelte, Express, NestJS | Relative, index, `@/` and `~/` aliases, SFC script tags |
+| **Python** | `.py`, `.pyi` | `pyproject.toml`, `requirements.txt`, `poetry.lock`, `Pipfile.lock` | FastAPI, Flask, Django, Pytest, Celery, SQLAlchemy | Absolute, intra-package relative (`.`, `..`), stdlib filtering |
+| **Go** | `.go` | `go.mod`, `go.sum` | Gin, Echo, Fiber, Chi, Go testing | Go module root resolution, intra-module package imports, stdlib filtering |
+| **Rust** | `.rs` | `Cargo.toml`, `Cargo.lock` | Axum, Actix-web, Tokio, Rocket, Cargo test | Workspace crate resolution, inline `mod`, `crate::`, `super::`, `self::` |
+| **PHP** | `.php` | `composer.json`, `composer.lock` | Laravel, Symfony, WordPress, PHPUnit, Pest | PSR-4 namespace mappings (`App\` -> `app/`), single/aliased/group `use` statements, stdlib filtering |
+
+For detailed architectural and resolution documentation, see [docs/MULTI_LANGUAGE.md](./docs/MULTI_LANGUAGE.md).
 
 ---
 
@@ -92,7 +108,7 @@ cargo install --path crates/forge-cli
 Verify installation:
 ```bash
 eforge --version
-# ELCODE Forge (eforge) v0.6.0
+# ELCODE Forge (eforge) v0.7.0
 ```
 
 ---
