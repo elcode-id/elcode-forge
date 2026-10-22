@@ -6,6 +6,7 @@ pub mod sarif;
 pub mod terminal;
 
 pub use crate::cli::OutputFormat;
+pub use sarif::render_sarif;
 
 use forge_core::{ForgeError, Repository};
 

@@ -12,6 +12,42 @@ pub fn render_sarif(repo: &Repository) -> Result<String, ForgeError> {
 
     for finding in &repo.findings {
         rules_map.entry(finding.rule_id.clone()).or_insert_with(|| {
+            let mut tags = vec!["security".to_string()];
+            if finding.rule_id.contains("vulnerab") || finding.id.contains("vulnerab") {
+                tags.push("vulnerability".to_string());
+                tags.push("supply-chain".to_string());
+            }
+
+            let security_severity = match finding.severity {
+                Severity::Critical => "9.0",
+                Severity::High => "7.0",
+                Severity::Medium => "4.0",
+                Severity::Low => "2.0",
+                Severity::Info => "0.0",
+            };
+
+            let help_uri = if finding.id.starts_with("security/vulnerability/") {
+                if let Some(adv_id) = finding.id.strip_prefix("security/vulnerability/") {
+                    if adv_id.starts_with("cve-") {
+                        format!(
+                            "https://nvd.nist.gov/vuln/detail/{}",
+                            adv_id.to_ascii_uppercase()
+                        )
+                    } else if adv_id.starts_with("ghsa-") {
+                        format!(
+                            "https://github.com/advisories/{}",
+                            adv_id.to_ascii_uppercase()
+                        )
+                    } else {
+                        "https://github.com/elcode-id/elcode-forge".to_string()
+                    }
+                } else {
+                    "https://github.com/elcode-id/elcode-forge".to_string()
+                }
+            } else {
+                "https://github.com/elcode-id/elcode-forge".to_string()
+            };
+
             json!({
                 "id": finding.rule_id,
                 "name": finding.title,
@@ -24,8 +60,11 @@ pub fn render_sarif(repo: &Repository) -> Result<String, ForgeError> {
                 "help": {
                     "text": finding.recommendation
                 },
+                "helpUri": help_uri,
                 "properties": {
-                    "category": finding.category
+                    "category": finding.category,
+                    "tags": tags,
+                    "security-severity": security_severity
                 }
             })
         });

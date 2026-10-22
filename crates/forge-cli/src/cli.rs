@@ -147,7 +147,7 @@ pub enum Commands {
         #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
         format: OutputFormat,
     },
-    /// Run focused secret detection and unsafe code pattern security analysis.
+    /// Run focused secret detection, unsafe code pattern analysis, and OSV dependency vulnerability audit.
     Security {
         /// Target repository directory.
         #[arg(long, short = 'p', default_value = ".")]
@@ -155,6 +155,15 @@ pub enum Commands {
         /// Output format (`terminal`, `json`, `markdown`, `sarif`, `github`).
         #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
         format: OutputFormat,
+        /// Run deep dependency vulnerability audit against OSV advisories.
+        #[arg(long)]
+        audit: bool,
+        /// Run in offline mode without remote network queries.
+        #[arg(long)]
+        offline: bool,
+        /// Minimum finding severity to return non-zero exit code (`critical|high|medium|low|info`).
+        #[arg(long)]
+        fail_on: Option<String>,
     },
     /// Export the inferred module architecture graph (Terminal, JSON, or Mermaid Markdown).
     Graph {

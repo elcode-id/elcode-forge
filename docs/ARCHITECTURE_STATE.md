@@ -691,3 +691,16 @@
   - Zero-panic: `unsafe_code = "forbid"`, all I/O and serialization errors map to `ForgeError::Io` and `ForgeError::Serialization`.
   - Deterministic finding sorting by `(Severity::desc, id::asc)`.
   - Contributes to **Epic #182** (Phase 8A: Vulnerability Intelligence & OSV/Advisory Engine).
+
+
+## Issue #184 — `forge-cli` `eforge security --audit`, SARIF Vulnerability Rules & CI Gate (COMPLETED)
+- **Crates:** `crates/forge-cli` (`src/cli.rs`, `src/commands/security.rs`, `src/commands/scan.rs`, `src/formatters/sarif.rs`, `src/formatters/mod.rs`, `src/lib.rs`, `tests/security_command_test.rs`)
+- **Public CLI & Functions Exposed:**
+  - `eforge security [--audit] [--offline] [--fail-on <severity>]`: Enhanced security subcommand auditing polyglot package dependencies against OSV advisories.
+  - `commands::security::run_security(repo_root: &Path, format: OutputFormat, audit: bool, offline: bool, fail_on: Option<&str>) -> Result<(String, ExitCode), ForgeError>`.
+  - `render_sarif`: Re-exported in `forge_cli::formatters::render_sarif` and updated with CVSS v3 `security-severity` scores (9.0/7.0/4.0/2.0), vulnerability tags (`["security", "vulnerability", "supply-chain"]`), and CVE/GHSA reference `helpUri` links.
+  - `execute_scan`: Automatically includes `SecurityScanner::scan_dependencies` findings in repository findings and 8-dimension health score calculations.
+- **Invariants:**
+  - Zero-panic: all arguments and thresholds propagate structured errors and deterministic `ExitCode` values (`ExitCode::SecurityPolicyFailure` = 4 on security threshold breach).
+  - Terminal format for `eforge security --audit` renders structured severity breakdown (`Critical`, `High`, `Medium`, `Low`) and actionable remediation guidance.
+  - Contributes to **Epic #182** (Phase 8A: Vulnerability Intelligence & OSV/Advisory Engine).
