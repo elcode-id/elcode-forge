@@ -751,3 +751,15 @@
   - Zero-panic: `unsafe_code = "forbid"`, denies `unwrap_used`, `expect_used`, `panic`, `todo`, `unimplemented`.
   - Weak copyleft licenses (LGPL, MPL, etc.) evaluated before strong copyleft to prevent false positive copyleft contamination.
   - Contributes to **Epic #189** (Phase 8B: SBOM & License Compliance Engine).
+
+
+## Issue #192 — Web Dashboard Vulnerability Inspector, SBOM Visualizer & License Compliance (COMPLETED)
+- **Apps:** `apps/dashboard` (`src/routes/security/+page.svelte`, `src/routes/dependencies/+page.svelte`, `src/lib/data/license.ts`, `src/lib/data/sbom.ts`, `tests/license_sbom.test.ts`, `tests/security.test.ts`).
+- **Features & Capabilities:**
+  - Security & Vulnerability Screen: KPI cards, CVE/GHSA advisory inspector with external NVD/GHSA links, actionable upgrade command generator with 1-click copy, and multi-tier filters (severity, category, ecosystem, search).
+  - Open-Source License Distribution Bar & Summary: Visual ratio of Permissive, Weak Copyleft, Strong Copyleft, Proprietary, and Unknown licenses.
+  - License-Aware Dependencies Table: Inline category badges and filter by license tier.
+  - One-Click SBOM Exporter: Direct browser download for CycloneDX v1.5 JSON and SPDX v2.3 JSON generated from loaded `ReportBundle`.
+- **Invariants:**
+  - Pure client-side generation without external runtime network calls.
+  - Completes **Epic #189** (Phase 8B: SBOM & License Compliance Engine).
