@@ -241,7 +241,7 @@ checksum = "aedcfb3409746eddb02b9e19ebda1c3394f759a152e48ee875a0844d1b955484"
 
 [[package]]
 name = "forge-ai"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "blake3",
  "forge-core",
@@ -253,7 +253,7 @@ dependencies = [
 
 [[package]]
 name = "forge-analyzer"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "blake3",
  "forge-core",
@@ -265,7 +265,7 @@ dependencies = [
 
 [[package]]
 name = "forge-cli"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "clap",
  "forge-ai",
@@ -284,7 +284,7 @@ dependencies = [
 
 [[package]]
 name = "forge-core"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "blake3",
  "schemars",
@@ -295,7 +295,7 @@ dependencies = [
 
 [[package]]
 name = "forge-git"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "forge-core",
  "schemars",
@@ -305,7 +305,7 @@ dependencies = [
 
 [[package]]
 name = "forge-mcp"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "forge-analyzer",
  "forge-core",
@@ -318,7 +318,7 @@ dependencies = [
 
 [[package]]
 name = "forge-rules"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "forge-core",
  "regex",
@@ -328,7 +328,7 @@ dependencies = [
 
 [[package]]
 name = "forge-security"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "blake3",
  "forge-core",
