@@ -113,9 +113,10 @@ pub fn execute_scan(opts: &ScanOptions) -> Result<(Repository, ExitCode), ForgeE
     let mut findings: Vec<Finding> = Vec::new();
     findings.extend(dep_findings);
     findings.extend(rule_engine.evaluate(&repo)?);
-    findings.extend(SecurityScanner::scan_repository_files(
+    findings.extend(SecurityScanner::scan_repository_files_with_config(
         &opts.repo_root,
         &files_for_security,
+        config.security.as_ref(),
     )?);
     findings.extend(SecurityScanner::scan_dependencies(
         &opts.repo_root,

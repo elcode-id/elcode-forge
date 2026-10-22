@@ -17,7 +17,7 @@ pub mod untrusted;
 pub use cache::{CacheMetadata, ForgeCache, EFORGE_DIR};
 pub use config::{
     load_config, parse_config_yaml, AiConfig, AiProviderKind, ForgeConfig, LicenseConfig,
-    RuleOverrideConfig, FALLBACK_CONFIG_FILE, PRIMARY_CONFIG_FILE,
+    RuleOverrideConfig, SecurityConfig, FALLBACK_CONFIG_FILE, PRIMARY_CONFIG_FILE,
 };
 pub use error::ForgeError;
 pub use ir::{

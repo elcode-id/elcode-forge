@@ -25,7 +25,11 @@ pub fn run_security(
     let discovery = scan_repository(repo_root, &config.ignore_patterns)?;
 
     // 1. Scan source files for secrets and unsafe language patterns
-    let mut findings = SecurityScanner::scan_repository_files(repo_root, &discovery.files)?;
+    let mut findings = SecurityScanner::scan_repository_files_with_config(
+        repo_root,
+        &discovery.files,
+        config.security.as_ref(),
+    )?;
 
     // 2. If audit mode is enabled, analyze dependencies and match against OSV advisories
     let mut dependencies = Vec::new();

@@ -1,11 +1,13 @@
-//! `forge-security` — Secret detection (with mandatory redaction), unsafe code pattern analysis,
-//! and polyglot OSV dependency vulnerability intelligence.
+//! `forge-security` — Secret detection (with mandatory redaction & Shannon entropy analysis),
+//! unsafe code pattern analysis, and polyglot OSV dependency vulnerability intelligence.
 
 use std::fs;
 use std::path::Path;
 
+use forge_core::config::SecurityConfig;
 use forge_core::{Dependency, FileNode, Finding, ForgeError};
 
+pub mod entropy;
 pub mod license;
 pub mod osv;
 pub mod patterns;
@@ -14,6 +16,10 @@ pub mod python_patterns;
 pub mod sbom;
 pub mod secrets;
 
+pub use entropy::{
+    calculate_shannon_entropy, find_high_entropy_tokens, is_hex, is_high_entropy,
+    tokenize_candidate_secrets, DEFAULT_ENTROPY_THRESHOLD, DEFAULT_MIN_TOKEN_LEN,
+};
 pub use forge_core::Analyzer;
 pub use license::{
     categorize_license, detect_dependency_license, detect_project_license,
@@ -39,17 +45,29 @@ pub use python_patterns::{
 pub use sbom::{
     generate_cyclonedx_sbom, generate_purl, generate_sbom, generate_spdx_sbom, SbomFormat,
 };
-pub use secrets::{redact_secrets, scan_secrets, RULE_HARDCODED_SECRET, RULE_PRIVATE_KEY};
+pub use secrets::{
+    is_lockfile, is_path_allowlisted, redact_secrets, scan_secrets, scan_secrets_with_config,
+    RULE_HARDCODED_SECRET, RULE_HIGH_ENTROPY_SECRET, RULE_PRIVATE_KEY,
+};
 
-/// Deterministic security scanner combining redacted secret detection, unsafe pattern checks,
-/// and OSV dependency vulnerability intelligence.
+/// Deterministic security scanner combining redacted secret detection, Shannon entropy scanning,
+/// unsafe pattern checks, and OSV dependency vulnerability intelligence.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SecurityScanner;
 
 impl SecurityScanner {
-    /// Scans an individual file's `content` for secrets and unsafe patterns (JS/TS and Python).
+    /// Scans an individual file's `content` for secrets and unsafe patterns using default configuration.
     pub fn scan_file_content(relative_path: &str, content: &str) -> Vec<Finding> {
-        let mut findings = scan_secrets(relative_path, content);
+        Self::scan_file_content_with_config(relative_path, content, None)
+    }
+
+    /// Scans an individual file's `content` for secrets and unsafe patterns with configurable settings.
+    pub fn scan_file_content_with_config(
+        relative_path: &str,
+        content: &str,
+        config: Option<&SecurityConfig>,
+    ) -> Vec<Finding> {
+        let mut findings = scan_secrets_with_config(relative_path, content, config);
         findings.extend(scan_unsafe_patterns(relative_path, content));
         findings.extend(scan_python_unsafe_patterns(relative_path, content));
         findings.extend(scan_php_unsafe_patterns(relative_path, content));
@@ -57,20 +75,43 @@ impl SecurityScanner {
         findings
     }
 
-    /// Scans all text source files in `files` within `repo_root` and returns deterministically
+    /// Scans all text source files in `files` within `repo_root` using default configuration and returns deterministically
     /// sorted security [`Finding`]s.
     pub fn scan_repository_files(
         repo_root: &Path,
         files: &[FileNode],
     ) -> Result<Vec<Finding>, ForgeError> {
+        Self::scan_repository_files_with_config(repo_root, files, None)
+    }
+
+    /// Scans all text source files in `files` within `repo_root` with configurable security policy and returns deterministically
+    /// sorted security [`Finding`]s.
+    pub fn scan_repository_files_with_config(
+        repo_root: &Path,
+        files: &[FileNode],
+        config: Option<&SecurityConfig>,
+    ) -> Result<Vec<Finding>, ForgeError> {
         let mut all_findings = Vec::new();
 
         for file in files {
+            if is_lockfile(&file.relative_path) {
+                continue;
+            }
+            if let Some(cfg) = config {
+                if is_path_allowlisted(&file.relative_path, &cfg.allowlist) {
+                    continue;
+                }
+            }
+
             let full_path = repo_root.join(&file.relative_path);
             let Ok(content) = fs::read_to_string(&full_path) else {
                 continue;
             };
-            all_findings.extend(Self::scan_file_content(&file.relative_path, &content));
+            all_findings.extend(Self::scan_file_content_with_config(
+                &file.relative_path,
+                &content,
+                config,
+            ));
         }
 
         all_findings.sort_by(|a, b| b.severity.cmp(&a.severity).then_with(|| a.id.cmp(&b.id)));
@@ -123,7 +164,7 @@ mod tests {
 
             // Verify that raw secret strings are NEVER exposed in finding evidence
             for f in &findings {
-                if f.rule_id == RULE_HARDCODED_SECRET {
+                if f.rule_id == RULE_HARDCODED_SECRET || f.rule_id == RULE_HIGH_ENTROPY_SECRET {
                     assert!(f.evidence.contains("****REDACTED****"));
                     assert!(!f.evidence.contains("1234567890abcdefghijklmnop"));
                 }
