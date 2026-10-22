@@ -725,3 +725,16 @@
 - **Invariants:**
   - Zero-panic test discipline (`Result<(), Box<dyn Error>>` with `?` operator).
   - Completes **Epic #182** (Phase 8A: Vulnerability Intelligence & OSV/Advisory Engine).
+
+
+## Issue #190 — CycloneDX v1.5 & SPDX v2.3 JSON SBOM Generators (`eforge sbom`) (COMPLETED)
+- **Crates:** `crates/forge-security` (`src/sbom/mod.rs`, `src/sbom/purl.rs`, `src/sbom/cyclonedx.rs`, `src/sbom/spdx.rs`, `src/lib.rs`), `crates/forge-cli` (`src/cli.rs`, `src/commands/sbom.rs`, `src/commands/mod.rs`, `src/lib.rs`, `tests/sbom_command_test.rs`).
+- **Public Types & Functions Exposed:**
+  - `forge_security::sbom::{generate_sbom, generate_cyclonedx_sbom, generate_spdx_sbom, generate_purl, SbomFormat}`: Multi-ecosystem SBOM generators exporting CycloneDX v1.5 JSON and SPDX v2.3 JSON.
+  - Canonical Package URL (PURL) generation for npm, PyPI, Go, Cargo, and Composer (`pkg:<eco>/...`).
+  - Deterministic BLAKE3 serial numbers for CycloneDX documents (`urn:uuid:...`) and document namespaces for SPDX.
+  - `eforge sbom [--format cyclonedx|spdx] [-o <path>]`: CLI subcommand generating standard SBOMs for polyglot repositories with automatic project identity and version discovery from `package.json`, `Cargo.toml`, and `composer.json`.
+- **Invariants:**
+  - Zero-panic: `unsafe_code = "forbid"`, denies `unwrap_used`, `expect_used`, `panic`, `todo`, `unimplemented`.
+  - Deterministic sorting by ecosystem, package name, and version requirement across all components.
+  - Contributes to **Epic #189** (Phase 8B: SBOM & License Compliance Engine).

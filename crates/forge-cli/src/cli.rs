@@ -21,6 +21,27 @@ pub enum OutputFormat {
     Github,
 }
 
+/// Supported Software Bill of Materials (SBOM) formats for `eforge sbom`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CliSbomFormat {
+    /// OASIS / OWASP CycloneDX v1.5 JSON
+    #[value(name = "cyclonedx")]
+    CycloneDx,
+    /// ISO/IEC 5962:2021 SPDX v2.3 JSON
+    #[value(name = "spdx")]
+    Spdx,
+}
+
+impl From<CliSbomFormat> for forge_security::SbomFormat {
+    fn from(format: CliSbomFormat) -> Self {
+        match format {
+            CliSbomFormat::CycloneDx => forge_security::SbomFormat::CycloneDx,
+            CliSbomFormat::Spdx => forge_security::SbomFormat::Spdx,
+        }
+    }
+}
+
 /// Primary CLI parser for `eforge` / `elcode-forge`.
 #[derive(Debug, Parser)]
 #[command(
@@ -146,6 +167,18 @@ pub enum Commands {
         /// Output format (`terminal`, `json`, `markdown`, `sarif`, `github`).
         #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
         format: OutputFormat,
+    },
+    /// Export Software Bill of Materials (SBOM) in CycloneDX v1.5 or SPDX v2.3 JSON format.
+    Sbom {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// SBOM format (`cyclonedx`, `spdx`).
+        #[arg(long, value_enum, default_value_t = CliSbomFormat::CycloneDx)]
+        format: CliSbomFormat,
+        /// Optional file path to write the rendered SBOM JSON.
+        #[arg(long, short = 'o')]
+        output: Option<PathBuf>,
     },
     /// Run focused secret detection, unsafe code pattern analysis, and OSV dependency vulnerability audit.
     Security {
