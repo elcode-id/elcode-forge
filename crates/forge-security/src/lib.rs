@@ -1,16 +1,22 @@
-//! `forge-security` — Secret detection (with mandatory redaction) and unsafe code pattern analysis.
+//! `forge-security` — Secret detection (with mandatory redaction), unsafe code pattern analysis,
+//! and polyglot OSV dependency vulnerability intelligence.
 
 use std::fs;
 use std::path::Path;
 
-use forge_core::{FileNode, Finding, ForgeError};
+use forge_core::{Dependency, FileNode, Finding, ForgeError};
 
+pub mod osv;
 pub mod patterns;
 pub mod php_patterns;
 pub mod python_patterns;
 pub mod secrets;
 
 pub use forge_core::Analyzer;
+pub use osv::{
+    normalize_ecosystem, normalize_package_name, LocalAdvisoryCache, OsvAdvisory, Version,
+    VulnerabilityMatcher, RULE_VULNERABLE_DEPENDENCY,
+};
 pub use patterns::{
     scan_unsafe_patterns, RULE_NO_DANGEROUS_INNER_HTML, RULE_NO_EVAL, RULE_NO_IMPLIED_EVAL,
     RULE_PERMISSIVE_CORS, RULE_UNSAFE_SHELL_EXEC,
@@ -25,7 +31,8 @@ pub use python_patterns::{
 };
 pub use secrets::{redact_secrets, scan_secrets, RULE_HARDCODED_SECRET, RULE_PRIVATE_KEY};
 
-/// Deterministic security scanner combining redacted secret detection and unsafe pattern checks.
+/// Deterministic security scanner combining redacted secret detection, unsafe pattern checks,
+/// and OSV dependency vulnerability intelligence.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SecurityScanner;
 
@@ -58,6 +65,13 @@ impl SecurityScanner {
 
         all_findings.sort_by(|a, b| b.severity.cmp(&a.severity).then_with(|| a.id.cmp(&b.id)));
         Ok(all_findings)
+    }
+
+    /// Evaluates resolved repository dependencies against OSV advisories and returns
+    /// deterministically sorted vulnerability [`Finding`]s.
+    pub fn scan_dependencies(repo_root: &Path, dependencies: &[Dependency]) -> Vec<Finding> {
+        let matcher = VulnerabilityMatcher::load(repo_root);
+        matcher.match_dependencies(dependencies)
     }
 }
 

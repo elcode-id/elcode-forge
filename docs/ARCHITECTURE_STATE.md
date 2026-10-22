@@ -671,3 +671,23 @@
 - **Invariants:**
   - Zero panics; strict error propagation (`Result<(), Box<dyn Error>>` in tests).
   - Completes **Epic #170** (Phase 7D: PHP & Laravel Ecosystem Intelligence).
+
+
+## Issue #183 — `forge-security` OSV Advisory Client, Offline Cache & Polyglot Vulnerability Matcher (COMPLETED)
+- **Crate:** `crates/forge-security` (`src/osv/{mod.rs, version.rs, cache.rs, matcher.rs}`, `src/lib.rs`, `tests/osv_test.rs`)
+- **Public Types & Functions (`forge_security::osv`):**
+  - `OsvAdvisory`, `OsvPackage`, `OsvRange`, `OsvEvent`, `OsvSeverity`, `LocalAdvisoryCache`, `Version`, `VulnerabilityMatcher`, `RULE_VULNERABLE_DEPENDENCY` (`"security/vulnerable-dependency"`).
+  - `SecurityScanner::scan_dependencies(repo_root: &Path, dependencies: &[Dependency]) -> Vec<Finding>`.
+  - `VulnerabilityMatcher::load(repo_root: &Path) -> Self`.
+  - `VulnerabilityMatcher::match_dependency(&self, dep: &Dependency) -> Vec<Finding>`.
+  - `VulnerabilityMatcher::match_dependencies(&self, deps: &[Dependency]) -> Vec<Finding>`.
+  - `normalize_ecosystem(ecosystem: &str) -> &'static str`, `normalize_package_name(ecosystem: &str, name: &str) -> String`.
+- **Capabilities & Deliverables:**
+  - Robust zero-panic semver & ecosystem version parser (`Version`) supporting standard SemVer 2.0.0, CalVer, and non-strict release strings without external crate dependencies.
+  - OSV v1 schema deserializer and CVSS v3 score / label mapping to normalized `Severity` (`Critical`, `High`, `Medium`, `Low`).
+  - Offline local cache in `.eforge/cache/osv/<ecosystem>.json` combined with an embedded offline catalog of vetted CVEs covering npm (`lodash`, `minimist`), PyPI (`requests`, `urllib3`), Go (`gin`), Cargo (`log`), and Composer (`guzzlehttp/guzzle`).
+  - In-memory indexed vulnerability matcher evaluating package version intervals (`introduced`..`fixed`/`last_affected`), generating deterministic `Finding` records with actionable upgrade recommendations.
+- **Invariants:**
+  - Zero-panic: `unsafe_code = "forbid"`, all I/O and serialization errors map to `ForgeError::Io` and `ForgeError::Serialization`.
+  - Deterministic finding sorting by `(Severity::desc, id::asc)`.
+  - Contributes to **Epic #182** (Phase 8A: Vulnerability Intelligence & OSV/Advisory Engine).
