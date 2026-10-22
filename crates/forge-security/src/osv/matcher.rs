@@ -163,16 +163,12 @@ fn extract_fixed_version(affected: &super::OsvAffected) -> Option<&str> {
     None
 }
 
-/// Strips version requirement prefixes like `^`, `~`, `>=`, `=`, etc.
+/// Strips version requirement prefixes like `==`, `=`, `^`, `~`, `>=`, `<=`, etc.
 fn clean_version_requirement(raw: &str) -> &str {
     let trimmed = raw.trim();
-    let cleaned = trimmed
-        .strip_prefix('^')
-        .or_else(|| trimmed.strip_prefix('~'))
-        .or_else(|| trimmed.strip_prefix('='))
-        .or_else(|| trimmed.strip_prefix(">="))
-        .or_else(|| trimmed.strip_prefix("<="))
-        .unwrap_or(trimmed);
+    let cleaned = trimmed.trim_start_matches(|c: char| {
+        c == '=' || c == '^' || c == '~' || c == '>' || c == '<' || c == ' '
+    });
     cleaned.trim()
 }
 

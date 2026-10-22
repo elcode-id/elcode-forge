@@ -1,0 +1,10 @@
+{
+  "name": "vulnerable-dependencies-fixture",
+  "version": "1.0.0",
+  "description": "Curated multi-ecosystem repository with pinned vulnerable dependencies for golden testing",
+  "main": "src/index.js",
+  "dependencies": {
+    "lodash": "4.17.15",
+    "minimist": "1.2.5"
+  }
+}

@@ -704,3 +704,24 @@
   - Zero-panic: all arguments and thresholds propagate structured errors and deterministic `ExitCode` values (`ExitCode::SecurityPolicyFailure` = 4 on security threshold breach).
   - Terminal format for `eforge security --audit` renders structured severity breakdown (`Critical`, `High`, `Medium`, `Low`) and actionable remediation guidance.
   - Contributes to **Epic #182** (Phase 8A: Vulnerability Intelligence & OSV/Advisory Engine).
+
+
+## Issue #185 — Curated Vulnerable Dependencies Fixture & Golden Test Suite (COMPLETED)
+- **Paths & Crates:** `fixtures/vulnerable-dependencies/`, `crates/forge-security/src/osv/matcher.rs`, `crates/forge-cli/tests/security_vulnerability_golden_test.rs`
+- **Deliverables & Capabilities:**
+  - `fixtures/vulnerable-dependencies/`: Multi-ecosystem test fixture containing pinned vulnerable dependencies with public CVEs:
+    - npm: `package.json` & `package-lock.json` with `lodash@4.17.15` (CVE-2020-8203, High) and `minimist@1.2.5` (CVE-2021-44906, Critical).
+    - PyPI: `requirements.txt` with `requests==2.19.1` (CVE-2018-18074, High).
+    - Go: `go.mod` & `go.sum` with `github.com/gin-gonic/gin@v1.6.0` (CVE-2020-28483, High).
+    - Composer: `composer.json` & `composer.lock` with `guzzlehttp/guzzle@7.4.0` (CVE-2022-29248, High).
+    - Polyglot source files: `src/index.js`, `app.py`, `cmd/main.go`, `index.php`, and `README.md`.
+  - Prefix-stripping resilience in `crates/forge-security/src/osv/matcher.rs`: Enhanced `clean_version_requirement` to strip multiple operator characters (e.g. `==2.19.1` -> `2.19.1`).
+  - Golden integration test suite (`crates/forge-cli/tests/security_vulnerability_golden_test.rs`):
+    - Validates full vulnerability audit lifecycle across all 5 pinned CVEs.
+    - Asserts deterministic byte-for-byte JSON output across successive scans.
+    - Validates policy gate exit codes (`ExitCode::SecurityPolicyFailure` = 4 on `--fail-on high` and `--fail-on critical`).
+    - Validates OASIS SARIF v2.1.0 output formatting with CVSS `security-severity` scores.
+    - Confirms `execute_scan` automatically integrates vulnerability findings and depresses the `Security` dimension score (< 50).
+- **Invariants:**
+  - Zero-panic test discipline (`Result<(), Box<dyn Error>>` with `?` operator).
+  - Completes **Epic #182** (Phase 8A: Vulnerability Intelligence & OSV/Advisory Engine).
