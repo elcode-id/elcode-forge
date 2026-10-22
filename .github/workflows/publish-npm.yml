@@ -20,7 +20,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: 'https://registry.npmjs.org'
+
+      - name: Upgrade npm CLI to latest (npm v11+ required for OIDC Trusted Publishing)
+        run: npm install -g npm@latest
 
       - name: Install dependencies & run tests
         working-directory: packages/forge-cli-npm
@@ -32,4 +34,5 @@ jobs:
       - name: Publish to npm (Trusted Publishing / OIDC)
         working-directory: packages/forge-cli-npm
         run: |
+          npm --version
           npm publish --access public --provenance
