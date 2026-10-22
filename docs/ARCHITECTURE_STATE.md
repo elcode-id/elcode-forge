@@ -738,3 +738,16 @@
   - Zero-panic: `unsafe_code = "forbid"`, denies `unwrap_used`, `expect_used`, `panic`, `todo`, `unimplemented`.
   - Deterministic sorting by ecosystem, package name, and version requirement across all components.
   - Contributes to **Epic #189** (Phase 8B: SBOM & License Compliance Engine).
+
+
+## Issue #191 — Open-Source License Detector & License Compatibility Policy Checker (COMPLETED)
+- **Crates:** `crates/forge-core` (`src/config.rs`, `src/lib.rs`), `crates/forge-security` (`src/license/category.rs`, `src/license/detector.rs`, `src/license/checker.rs`, `src/license/mod.rs`, `src/lib.rs`, `tests/license_test.rs`), `crates/forge-cli` (`src/commands/dependencies.rs`, `src/commands/scan.rs`, `tests/license_cli_test.rs`).
+- **Public Types & Functions Exposed:**
+  - `forge_core::config::LicenseConfig`: Declares `disallow_copyleft`, `allowlist`, and `denylist` in `eforge.config.yaml`.
+  - `forge_security::license::{LicenseCategory, categorize_license, detect_project_license, detect_dependency_license, evaluate_license_compliance}`: Polyglot license classifier (`Permissive`, `WeakCopyleft`, `StrongCopyleft`, `Proprietary`, `Unknown`), manifest and license text detector, and policy evaluator.
+  - License Rules: `license/disallowed-copyleft` (High), `license/denied-license` (High), `license/unapproved-license` (Medium), `license/missing-project-license` (Low).
+  - CLI Integration: `eforge dependencies` displays project and package license information across terminal, markdown, and JSON outputs; `eforge scan` includes license policy violations in repository health calculation and gate enforcement.
+- **Invariants:**
+  - Zero-panic: `unsafe_code = "forbid"`, denies `unwrap_used`, `expect_used`, `panic`, `todo`, `unimplemented`.
+  - Weak copyleft licenses (LGPL, MPL, etc.) evaluated before strong copyleft to prevent false positive copyleft contamination.
+  - Contributes to **Epic #189** (Phase 8B: SBOM & License Compliance Engine).

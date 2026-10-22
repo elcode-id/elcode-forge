@@ -334,6 +334,7 @@ dependencies = [
  "forge-core",
  "serde",
  "serde_json",
+ "toml",
 ]
 
 [[package]]

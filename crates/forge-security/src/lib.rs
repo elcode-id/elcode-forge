@@ -6,6 +6,7 @@ use std::path::Path;
 
 use forge_core::{Dependency, FileNode, Finding, ForgeError};
 
+pub mod license;
 pub mod osv;
 pub mod patterns;
 pub mod php_patterns;
@@ -14,6 +15,11 @@ pub mod sbom;
 pub mod secrets;
 
 pub use forge_core::Analyzer;
+pub use license::{
+    categorize_license, detect_dependency_license, detect_project_license,
+    evaluate_license_compliance, LicenseCategory, ProjectLicenseInfo, RULE_DENIED_LICENSE,
+    RULE_DISALLOWED_COPYLEFT, RULE_MISSING_PROJECT_LICENSE, RULE_UNAPPROVED_LICENSE,
+};
 pub use osv::{
     normalize_ecosystem, normalize_package_name, LocalAdvisoryCache, OsvAdvisory, Version,
     VulnerabilityMatcher, RULE_VULNERABLE_DEPENDENCY,
@@ -76,6 +82,15 @@ impl SecurityScanner {
     pub fn scan_dependencies(repo_root: &Path, dependencies: &[Dependency]) -> Vec<Finding> {
         let matcher = VulnerabilityMatcher::load(repo_root);
         matcher.match_dependencies(dependencies)
+    }
+
+    /// Evaluates project and dependency license compliance against policies.
+    pub fn scan_license_compliance(
+        repo_root: &Path,
+        policy: Option<&forge_core::config::LicenseConfig>,
+        dependencies: &[Dependency],
+    ) -> Vec<Finding> {
+        evaluate_license_compliance(repo_root, policy, dependencies)
     }
 }
 
