@@ -117,6 +117,10 @@ pub fn execute_scan(opts: &ScanOptions) -> Result<(Repository, ExitCode), ForgeE
         &opts.repo_root,
         &files_for_security,
     )?);
+    findings.extend(SecurityScanner::scan_dependencies(
+        &opts.repo_root,
+        &repo.dependencies,
+    ));
 
     // Deterministic sort: highest severity first, then lexical ID ascending
     findings.sort_by(|a, b| b.severity.cmp(&a.severity).then_with(|| a.id.cmp(&b.id)));

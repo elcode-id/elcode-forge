@@ -475,8 +475,20 @@ pub fn run_cli_from_env() -> ExitCode {
                 }
             }
         }
-        Some(Commands::Security { path, format }) => {
-            match commands::security::run_security(&path, format) {
+        Some(Commands::Security {
+            path,
+            format,
+            audit,
+            offline,
+            fail_on,
+        }) => {
+            match commands::security::run_security(
+                &path,
+                format,
+                audit,
+                offline,
+                fail_on.as_deref(),
+            ) {
                 Ok((rendered, exit_code)) => {
                     println!("{rendered}");
                     exit_code
