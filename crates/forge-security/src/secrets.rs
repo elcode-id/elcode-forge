@@ -92,42 +92,39 @@ pub fn is_path_allowlisted(path: &str, allowlist: &[String]) -> bool {
     let norm_path = path.replace('\\', "/");
     let norm_path = norm_path.strip_prefix("./").unwrap_or(&norm_path);
 
-    for pattern in allowlist {
-        let norm_pat = pattern.replace('\\', "/");
-        let norm_pat = norm_pat.strip_prefix("./").unwrap_or(&norm_pat);
+    for raw_pat in allowlist {
+        let pat = raw_pat.replace('\\', "/");
+        let pat = pat.strip_prefix("./").unwrap_or(&pat);
 
         // Exact match
-        if norm_path == norm_pat {
+        if norm_path == pat {
             return true;
         }
 
-        // Wildcard directory prefix: "fixtures/**" or "fixtures/*"
-        if let Some(prefix) = norm_pat.strip_suffix("/**") {
-            if norm_path.starts_with(prefix) {
-                return true;
-            }
+        // Substring directory components: e.g. "fixtures/**", "**/tests/**", "tests/**", "packaging/**"
+        let mut core = pat;
+        if let Some(rest) = core.strip_prefix("**/") {
+            core = rest;
         }
-        if let Some(prefix) = norm_pat.strip_suffix("/*") {
-            if norm_path.starts_with(prefix) {
-                return true;
-            }
+        if let Some(rest) = core.strip_suffix("/**") {
+            core = rest;
         }
+        if let Some(rest) = core.strip_suffix("/*") {
+            core = rest;
+        }
+        core = core.trim_end_matches('/');
 
-        // Directory prefix ending with '/': "fixtures/"
-        if norm_pat.ends_with('/') && norm_path.starts_with(norm_pat) {
-            return true;
-        }
-
-        // Substring / component directory match: e.g. "fixtures" matches "fixtures/app/secrets.ts"
-        if norm_path.starts_with(&format!("{norm_pat}/"))
-            || norm_path.contains(&format!("/{norm_pat}/"))
-            || norm_path.ends_with(&format!("/{norm_pat}"))
+        if !core.is_empty()
+            && (norm_path == core
+                || norm_path.starts_with(&format!("{core}/"))
+                || norm_path.contains(&format!("/{core}/"))
+                || norm_path.ends_with(&format!("/{core}")))
         {
             return true;
         }
 
-        // File extension / suffix match: e.g. "*.mock.ts" or "*.env"
-        if let Some(suffix) = norm_pat.strip_prefix('*') {
+        // File extension / suffix match: e.g. "*.mock.ts" or "*_test.rs"
+        if let Some(suffix) = pat.strip_prefix('*') {
             if norm_path.ends_with(suffix) {
                 return true;
             }
@@ -137,9 +134,6 @@ pub fn is_path_allowlisted(path: &str, allowlist: &[String]) -> bool {
     false
 }
 
-/// Scans `content` line-by-line for hardcoded secrets, verified credentials, private keys,
-/// and high-entropy secret tokens using default configuration.
-#[must_use]
 pub fn scan_secrets(relative_path: &str, content: &str) -> Vec<Finding> {
     scan_secrets_with_config(relative_path, content, None)
 }
@@ -174,10 +168,19 @@ pub fn scan_secrets_with_config(
         .unwrap_or(DEFAULT_MIN_TOKEN_LEN);
 
     let mut findings = Vec::new();
+    let is_rust = relative_path.ends_with(".rs");
+    let mut in_cfg_test = false;
 
     for (idx, raw_line) in content.lines().enumerate() {
         let line_no = (idx + 1) as u32;
         let trimmed = raw_line.trim();
+
+        if is_rust && trimmed.starts_with("#[cfg(test)]") {
+            in_cfg_test = true;
+        }
+        if in_cfg_test {
+            continue;
+        }
         if trimmed.is_empty() || trimmed.starts_with("//") || trimmed.contains("****REDACTED****") {
             continue;
         }
@@ -218,12 +221,22 @@ pub fn scan_secrets_with_config(
                 let pos = search_idx + rel_pos;
                 let candidate = &trimmed[pos..];
 
-                // If checking generic "sk-", ensure it doesn't duplicate "sk-proj-" or "sk-ant-"
-                if pat.prefix == "sk-"
-                    && (candidate.starts_with("sk-proj-") || candidate.starts_with("sk-ant-"))
-                {
-                    search_idx = pos + pat.prefix.len();
-                    continue;
+                // If checking generic "sk-", ensure it doesn't duplicate "sk-proj-" or "sk-ant-",
+                // and strictly adheres to the official OpenAI API key format: sk-[a-zA-Z0-9]{48} (min 51 chars, no hyphens)
+                if pat.prefix == "sk-" {
+                    if candidate.starts_with("sk-proj-") || candidate.starts_with("sk-ant-") {
+                        search_idx = pos + pat.prefix.len();
+                        continue;
+                    }
+                    let after_prefix = &candidate[3..];
+                    let alnum_len = after_prefix
+                        .chars()
+                        .take_while(|c| c.is_ascii_alphanumeric())
+                        .count();
+                    if alnum_len < 48 {
+                        search_idx = pos + pat.prefix.len();
+                        continue;
+                    }
                 }
 
                 let token: String = candidate

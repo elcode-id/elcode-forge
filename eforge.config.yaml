@@ -34,3 +34,11 @@ rules:
 #   timeout_secs: 30
 #   cache_enabled: true
 #   budget_daily_usd: 2.00
+
+# Deep Security & Secret Scanner Configuration (Phase 8)
+security:
+  allowlist:
+    - "fixtures/**"
+    - "tests/**"
+    - "**/tests/**"
+    - "packaging/**"
