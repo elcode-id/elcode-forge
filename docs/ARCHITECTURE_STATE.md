@@ -777,3 +777,18 @@
   - Redaction is strictly enforced before findings are persisted or logged.
   - Contributes to **Epic #196** (Phase 8C: Advanced Entropy Secret Detection & v0.8.0 Release Prep).
 
+## Issue #198 — Multi-Ecosystem Security E2E Test Suite, Documentation & Workspace v0.8.0 Bump (COMPLETED)
+- **Files & Crates:** `crates/forge-cli` (`tests/security_e2e_test.rs`), `docs/SECURITY_GUIDE.md`, `README.md`, `Cargo.toml`, `package.json`, `apps/dashboard/package.json`, `packages/*/package.json`.
+- **E2E Test Suite:**
+  - `test_security_e2e_vulnerability_and_sarif_pipeline`: Full end-to-end OSV vulnerability auditing across multi-ecosystem manifests (npm, PyPI) with OASIS SARIF v2.1.0 JSON exports and policy gate enforcement.
+  - `test_security_e2e_sbom_cyclonedx_and_spdx`: Software Bill of Materials generation validating CycloneDX v1.5 JSON and SPDX v2.3 JSON structure, canonical PURLs (`pkg:<eco>/...`), and deterministic output across runs.
+  - `test_security_e2e_entropy_secret_and_allowlist`: Shannon entropy candidate token analysis, verified cloud credential patterns (AWS, GitHub, Slack, OpenAI, Anthropic), path allowlist bypass, and mandatory `****REDACTED****` evidence masking.
+  - `test_security_e2e_license_policy_compliance`: Evaluates copyleft and license allowlist policies during end-to-end scan pipeline.
+- **Documentation & Version Bump:**
+  - Authored authoritative `docs/SECURITY_GUIDE.md` covering local-first vulnerability audits, SBOM exports, license compliance, Shannon entropy tuning, path allowlists, and GitHub Actions SARIF integration.
+  - Updated `README.md` with deep security and supply-chain durability capabilities.
+  - Synchronized monorepo workspace version to `v0.8.0` across Rust workspace crates and TypeScript packages.
+- **Invariants:**
+  - Zero-panic test discipline (`Result<(), Box<dyn Error>>`).
+  - Completes **Epic #196** (Phase 8C: Advanced Entropy Secret Detection & v0.8.0 Release Prep) and marks **Phase 8 (Deep Security & Supply-Chain Durability)** 100% completed.
+

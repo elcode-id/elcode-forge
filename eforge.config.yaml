@@ -42,3 +42,4 @@ security:
     - "tests/**"
     - "**/tests/**"
     - "packaging/**"
+    - "docs/**"
