@@ -108,7 +108,7 @@ ELCODE Forge protects proprietary codebases from unintentional open-source licen
 - **Slack Tokens:** Bot `xoxb-...` and User `xoxp-...` (Severity: `Critical`)
 - **OpenAI API Keys:** Standard `sk-[a-zA-Z0-9]{48}` and Project `sk-proj-[a-zA-Z0-9_-]{48,}` (Severity: `Critical`)
 - **Anthropic API Keys:** `sk-ant-[a-zA-Z0-9_-]{40,}` (Severity: `Critical`)
-- **PEM Private Key Material:** `-----BEGIN ... PRIVATE KEY-----` (Severity: `Critical`)
+- **PEM Private Key Material:** RSA, EC, and PKCS#8 private key headers (Severity: `Critical`)
 
 ### Shannon Entropy Engine
 For custom or unclassified secret strings (e.g. database credentials, JWT secrets, encryption keys), `eforge` calculates mathematical Shannon entropy:
