@@ -75,6 +75,20 @@ impl Default for AiConfig {
     }
 }
 
+/// Configuration for open-source license compliance policies (`license:` in `eforge.config.yaml`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct LicenseConfig {
+    /// Disallow strong copyleft licenses (e.g. GPL-2.0, GPL-3.0, AGPL-3.0).
+    #[serde(default)]
+    pub disallow_copyleft: bool,
+    /// Explicit allowlist of permissible SPDX license identifiers or categories.
+    #[serde(default)]
+    pub allowlist: Vec<String>,
+    /// Explicit denylist of prohibited SPDX license identifiers.
+    #[serde(default)]
+    pub denylist: Vec<String>,
+}
+
 /// Configuration for native Git hooks automation (`eforge hook`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct HooksConfig {
@@ -132,6 +146,8 @@ pub struct ForgeConfig {
     pub custom_rule_paths: Vec<String>,
     #[serde(default)]
     pub hooks: Option<HooksConfig>,
+    #[serde(default)]
+    pub license: Option<LicenseConfig>,
 }
 
 impl Default for ForgeConfig {
@@ -154,6 +170,7 @@ impl Default for ForgeConfig {
             rule_packs: Vec::new(),
             custom_rule_paths: Vec::new(),
             hooks: None,
+            license: None,
         }
     }
 }
@@ -231,6 +248,16 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                 }
                 Some("rules_extends") => config.rule_packs.push(value.to_string()),
                 Some("rules_custom_packs") => config.custom_rule_paths.push(value.to_string()),
+                Some("license_allowlist") => config
+                    .license
+                    .get_or_insert_with(LicenseConfig::default)
+                    .allowlist
+                    .push(value.to_string()),
+                Some("license_denylist") => config
+                    .license
+                    .get_or_insert_with(LicenseConfig::default)
+                    .denylist
+                    .push(value.to_string()),
                 Some(_) => {}
                 None => {
                     return Err(ForgeError::Config {
@@ -334,6 +361,12 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                     current_section = Some("hooks");
                     if config.hooks.is_none() {
                         config.hooks = Some(HooksConfig::default());
+                    }
+                }
+                "license" => {
+                    current_section = Some("license");
+                    if config.license.is_none() {
+                        config.license = Some(LicenseConfig::default());
                     }
                 }
                 _ => {
@@ -561,6 +594,28 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                     }
                 }
                 (Some("scoring"), _) => {}
+                (Some("license"), license_key) => match license_key {
+                    "disallow_copyleft" => {
+                        let b = parse_bool(val, line_no)?;
+                        config
+                            .license
+                            .get_or_insert_with(LicenseConfig::default)
+                            .disallow_copyleft = b;
+                    }
+                    "allowlist" => {
+                        active_list = Some("license_allowlist");
+                    }
+                    "denylist" => {
+                        active_list = Some("license_denylist");
+                    }
+                    _ => {
+                        return Err(ForgeError::Config {
+                            message: format!(
+                                "line {line_no}: unsupported key '{license_key}' in 'license' section"
+                            ),
+                        });
+                    }
+                },
                 (Some("hooks"), hook_key) => match hook_key {
                     "pre_commit" | "pre-commit" | "pre_push" | "pre-push" => {
                         active_hook_sub = Some((hook_key.to_string(), indent));
