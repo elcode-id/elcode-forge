@@ -214,7 +214,11 @@ pub fn run_doctor(repo_root: &Path) -> Result<DoctorReport, ForgeError> {
     });
 
     // Check 5: Security & Secret Hygiene
-    let security_findings = SecurityScanner::scan_repository_files(repo_root, &discovery.files)?;
+    let security_findings = SecurityScanner::scan_repository_files_with_config(
+        repo_root,
+        &discovery.files,
+        config.security.as_ref(),
+    )?;
     let has_sec_issues = !security_findings.is_empty();
     checks.push(DoctorCheck {
         label: "Security & secret hygiene".to_string(),

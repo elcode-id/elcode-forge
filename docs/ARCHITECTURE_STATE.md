@@ -763,3 +763,17 @@
 - **Invariants:**
   - Pure client-side generation without external runtime network calls.
   - Completes **Epic #189** (Phase 8B: SBOM & License Compliance Engine).
+
+## Issue #197 — Shannon Entropy Scanner, Verified Credential Patterns & Path Allowlist (COMPLETED)
+- **Crates:** `crates/forge-core` (`src/config.rs`, `src/lib.rs`), `crates/forge-security` (`src/entropy.rs`, `src/secrets.rs`, `src/lib.rs`, `tests/entropy_test.rs`), `crates/forge-cli` (`src/commands/security.rs`, `src/commands/scan.rs`, `src/commands/doctor.rs`), `crates/forge-mcp` (`src/tools.rs`).
+- **Public Types & Functions Exposed:**
+  - `forge_core::config::SecurityConfig`: Declares `allowlist`, `entropy_threshold`, and `entropy_min_len` under `security:` in `eforge.config.yaml`.
+  - `forge_security::entropy::{calculate_shannon_entropy, is_high_entropy, is_hex, tokenize_candidate_secrets, find_high_entropy_tokens}`: Shannon entropy calculation engine ($H(X) = -\sum P(x)\log_2 P(x)$) with proportional hex threshold scaling.
+  - `forge_security::secrets::{scan_secrets_with_config, is_lockfile, is_path_allowlisted, RULE_HIGH_ENTROPY_SECRET}`: Verified credential patterns (AWS, GitHub classic and fine-grained, Slack bot and user tokens, OpenAI, Anthropic) and generic high-entropy secret detection (`security/high-entropy-secret`).
+  - Mandatory `****REDACTED****` masking in finding evidence and prompt preparation (`redact_secrets`).
+  - Security path allowlist & automatic lockfile filtering to eliminate false positives in package manifests and test fixtures.
+- **Invariants:**
+  - Zero-panic: `unsafe_code = "forbid"`, denies `unwrap_used`, `expect_used`, `panic`, `todo`, `unimplemented`.
+  - Redaction is strictly enforced before findings are persisted or logged.
+  - Contributes to **Epic #196** (Phase 8C: Advanced Entropy Secret Detection & v0.8.0 Release Prep).
+

@@ -75,6 +75,39 @@ impl Default for AiConfig {
     }
 }
 
+/// Configuration for security and secret scanning (`security:` in `eforge.config.yaml`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SecurityConfig {
+    /// File paths, directories, or globs to exclude from secret & security scanning
+    /// (e.g. test fixtures, mocks, documentation examples).
+    #[serde(default)]
+    pub allowlist: Vec<String>,
+    /// Minimum Shannon entropy threshold for candidate secret tokens (default: 4.5).
+    #[serde(default = "default_entropy_threshold")]
+    pub entropy_threshold: f64,
+    /// Minimum token character length to consider for high-entropy secret evaluation (default: 20).
+    #[serde(default = "default_entropy_min_len")]
+    pub entropy_min_len: usize,
+}
+
+fn default_entropy_threshold() -> f64 {
+    4.5
+}
+
+fn default_entropy_min_len() -> usize {
+    20
+}
+
+impl Default for SecurityConfig {
+    fn default() -> Self {
+        Self {
+            allowlist: Vec::new(),
+            entropy_threshold: default_entropy_threshold(),
+            entropy_min_len: default_entropy_min_len(),
+        }
+    }
+}
+
 /// Configuration for open-source license compliance policies (`license:` in `eforge.config.yaml`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct LicenseConfig {
@@ -148,6 +181,8 @@ pub struct ForgeConfig {
     pub hooks: Option<HooksConfig>,
     #[serde(default)]
     pub license: Option<LicenseConfig>,
+    #[serde(default)]
+    pub security: Option<SecurityConfig>,
 }
 
 impl Default for ForgeConfig {
@@ -171,6 +206,7 @@ impl Default for ForgeConfig {
             custom_rule_paths: Vec::new(),
             hooks: None,
             license: None,
+            security: None,
         }
     }
 }
@@ -257,6 +293,11 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                     .license
                     .get_or_insert_with(LicenseConfig::default)
                     .denylist
+                    .push(value.to_string()),
+                Some("security_allowlist") => config
+                    .security
+                    .get_or_insert_with(SecurityConfig::default)
+                    .allowlist
                     .push(value.to_string()),
                 Some(_) => {}
                 None => {
@@ -367,6 +408,12 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                     current_section = Some("license");
                     if config.license.is_none() {
                         config.license = Some(LicenseConfig::default());
+                    }
+                }
+                "security" => {
+                    current_section = Some("security");
+                    if config.security.is_none() {
+                        config.security = Some(SecurityConfig::default());
                     }
                 }
                 _ => {
@@ -612,6 +659,48 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                         return Err(ForgeError::Config {
                             message: format!(
                                 "line {line_no}: unsupported key '{license_key}' in 'license' section"
+                            ),
+                        });
+                    }
+                },
+                (Some("security"), sec_key) => match sec_key {
+                    "allowlist" => {
+                        if let Some(items) = parse_inline_array(val) {
+                            config
+                                .security
+                                .get_or_insert_with(SecurityConfig::default)
+                                .allowlist
+                                .extend(items);
+                        } else {
+                            active_list = Some("security_allowlist");
+                        }
+                    }
+                    "entropy_threshold" => {
+                        let parsed = val.parse::<f64>().map_err(|_| ForgeError::Config {
+                            message: format!(
+                                "line {line_no}: invalid float for entropy_threshold '{val}'"
+                            ),
+                        })?;
+                        config
+                            .security
+                            .get_or_insert_with(SecurityConfig::default)
+                            .entropy_threshold = parsed;
+                    }
+                    "entropy_min_len" => {
+                        let parsed = val.parse::<usize>().map_err(|_| ForgeError::Config {
+                            message: format!(
+                                "line {line_no}: invalid integer for entropy_min_len '{val}'"
+                            ),
+                        })?;
+                        config
+                            .security
+                            .get_or_insert_with(SecurityConfig::default)
+                            .entropy_min_len = parsed;
+                    }
+                    _ => {
+                        return Err(ForgeError::Config {
+                            message: format!(
+                                "line {line_no}: unsupported key '{sec_key}' in 'security' section"
                             ),
                         });
                     }

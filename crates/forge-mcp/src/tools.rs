@@ -149,9 +149,10 @@ fn build_analyzed_repo(repo_root: &Path) -> Result<AnalyzedContext, ForgeError> 
     let engine = RuleEngine::from_config(repo_root, &config)?;
     let mut findings = engine.evaluate(&repo)?;
     findings.extend(dep_report.findings);
-    findings.extend(SecurityScanner::scan_repository_files(
+    findings.extend(SecurityScanner::scan_repository_files_with_config(
         repo_root,
         &repo.files,
+        config.security.as_ref(),
     )?);
     findings.sort_by(|a, b| b.severity.cmp(&a.severity).then_with(|| a.id.cmp(&b.id)));
     repo.findings = findings;
