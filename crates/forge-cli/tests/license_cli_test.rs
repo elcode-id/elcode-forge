@@ -46,7 +46,8 @@ license:
 
     // 2. Run eforge dependencies (Markdown format)
     let md_deps = run_dependencies(&temp_dir, OutputFormat::Markdown)?;
-    assert!(md_deps.contains("| Package | Ecosystem | Version Req | Resolved | License | Type |"));
+    assert!(md_deps.contains("| Package | Ecosystem | Version Req | Resolved | Type |"));
+    assert!(md_deps.contains("### Open-Source License Inventory"));
     assert!(md_deps.contains("`copyleft-dep`"));
     assert!(md_deps.contains("`GPL-3.0`"));
 

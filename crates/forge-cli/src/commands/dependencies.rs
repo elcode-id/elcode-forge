@@ -6,7 +6,9 @@ use forge_analyzer::{
     analyze_polyglot_dependencies, build_polyglot_architecture_graph, scanner::scan_repository,
 };
 use forge_core::{config::load_config, ForgeError};
-use forge_security::{detect_dependency_license, detect_project_license, SecurityScanner};
+use forge_security::{
+    categorize_license, detect_dependency_license, detect_project_license, SecurityScanner,
+};
 
 use crate::cli::OutputFormat;
 
@@ -39,7 +41,7 @@ pub fn run_dependencies(repo_root: &Path, format: OutputFormat) -> Result<String
         }
         OutputFormat::Markdown | OutputFormat::Github => {
             let mut md = String::new();
-            md.push_str("# ELCODE Forge Dependency Health & License Compliance\n\n");
+            md.push_str("# ELCODE Forge Dependency Health\n\n");
             let project_lic_str = project_lic_info
                 .map(|p| format!("`{}` ({})", p.spdx_id, p.source))
                 .unwrap_or_else(|| "None / Unspecified".to_string());
@@ -53,18 +55,29 @@ pub fn run_dependencies(repo_root: &Path, format: OutputFormat) -> Result<String
             ));
             if !report.dependencies.is_empty() {
                 md.push_str(
-                    "| Package | Ecosystem | Version Req | Resolved | License | Type |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n",
+                    "| Package | Ecosystem | Version Req | Resolved | Type |\n| :--- | :--- | :--- | :--- | :--- |\n",
                 );
                 for dep in &report.dependencies {
-                    let lic = detect_dependency_license(repo_root, dep);
                     md.push_str(&format!(
-                        "| `{}` | `{}` | `{}` | `{}` | `{}` | {} |\n",
+                        "| `{}` | `{}` | `{}` | `{}` | {} |\n",
                         dep.name,
                         dep.ecosystem,
                         dep.version_req,
                         dep.resolved_version.as_deref().unwrap_or("-"),
-                        lic,
                         if dep.is_dev { "dev" } else { "prod" }
+                    ));
+                }
+
+                md.push_str("\n### Open-Source License Inventory\n\n");
+                md.push_str(
+                    "| Package | Ecosystem | License | Category |\n| :--- | :--- | :--- | :--- |\n",
+                );
+                for dep in &report.dependencies {
+                    let lic = detect_dependency_license(repo_root, dep);
+                    let cat = categorize_license(&lic);
+                    md.push_str(&format!(
+                        "| `{}` | `{}` | `{}` | `{}` |\n",
+                        dep.name, dep.ecosystem, lic, cat
                     ));
                 }
             }
