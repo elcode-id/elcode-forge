@@ -475,6 +475,28 @@ pub fn run_cli_from_env() -> ExitCode {
                 }
             }
         }
+        Some(Commands::Sbom {
+            path,
+            format,
+            output,
+        }) => match commands::sbom::run_sbom(&path, format.into()) {
+            Ok(rendered) => {
+                if let Some(out_path) = output {
+                    if let Err(err) = fs::write(&out_path, &rendered) {
+                        eprintln!("Error writing SBOM to '{}': {err}", out_path.display());
+                        return ExitCode::ExecutionError;
+                    }
+                    println!("Wrote SBOM to {}", out_path.display());
+                } else {
+                    println!("{rendered}");
+                }
+                ExitCode::Success
+            }
+            Err(err) => {
+                eprintln!("Error generating SBOM: {err}");
+                ExitCode::ExecutionError
+            }
+        },
         Some(Commands::Security {
             path,
             format,

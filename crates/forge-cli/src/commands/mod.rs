@@ -15,6 +15,7 @@ pub mod onboard;
 pub mod report;
 pub mod review;
 pub mod rules;
+pub mod sbom;
 pub mod scan;
 pub mod schema;
 pub mod security;

@@ -10,6 +10,7 @@ pub mod osv;
 pub mod patterns;
 pub mod php_patterns;
 pub mod python_patterns;
+pub mod sbom;
 pub mod secrets;
 
 pub use forge_core::Analyzer;
@@ -28,6 +29,9 @@ pub use php_patterns::{
 pub use python_patterns::{
     scan_python_unsafe_patterns, RULE_PYTHON_INSECURE_SUBPROCESS,
     RULE_PYTHON_PICKLE_DESERIALIZATION, RULE_PYTHON_UNSAFE_EVAL,
+};
+pub use sbom::{
+    generate_cyclonedx_sbom, generate_purl, generate_sbom, generate_spdx_sbom, SbomFormat,
 };
 pub use secrets::{redact_secrets, scan_secrets, RULE_HARDCODED_SECRET, RULE_PRIVATE_KEY};
 
