@@ -43,4 +43,8 @@ pub enum ForgeError {
     /// Daily AI spending limit exceeded.
     #[error("AI daily budget exceeded: spent ${spent_usd:.4}, limit ${limit_usd:.4}")]
     AiBudgetExceeded { spent_usd: f64, limit_usd: f64 },
+
+    /// Remote synchronization or network protocol error.
+    #[error("remote sync error: {message}")]
+    Sync { message: String },
 }

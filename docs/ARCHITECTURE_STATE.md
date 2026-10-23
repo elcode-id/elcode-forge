@@ -792,3 +792,18 @@
   - Zero-panic test discipline (`Result<(), Box<dyn Error>>`).
   - Completes **Epic #196** (Phase 8C: Advanced Entropy Secret Detection & v0.8.0 Release Prep) and marks **Phase 8 (Deep Security & Supply-Chain Durability)** 100% completed.
 
+
+
+## Issue #202 — Remote Sync Schema, Credential Manager & Content-Addressed Sync Protocol (COMPLETED)
+- **Crate:** `crates/forge-core` (`src/error.rs`, `src/sync/mod.rs`, `src/sync/protocol.rs`, `src/sync/credentials.rs`, `src/lib.rs`, `tests/sync_test.rs`).
+- **Public Types & Functions Exposed:**
+  - `forge_core::sync::protocol::{SyncStatus, SyncManifest, SyncPushPayload, SyncPullResponse, DeltaSummary}`: Serializable, schema-derived synchronization protocol structures.
+  - `forge_core::sync::credentials::{ServerCredential, CredentialsConfig, load_credentials, load_credentials_from_path, save_credentials, save_credentials_to_path, resolve_token, home_dir, default_credentials_path}`: Secure credential manager supporting `~/.eforge/credentials.yaml`, `EFORGE_CREDENTIALS_PATH`, and precedence-driven token resolution (`EFORGE_API_TOKEN` > specific server > default server > single configured server).
+  - `forge_core::sync::compute_sync_content_hash(files, findings) -> String`: Content-addressed BLAKE3 hashing engine ensuring byte-for-byte reproducibility regardless of collection traversal order.
+  - `forge_core::sync::DeltaSummary::compute`: Differential summary engine calculating added, resolved, and unchanged findings, health delta, and change risk shift between local state and remote baseline.
+  - `forge_core::error::ForgeError::Sync`: Semantic error variant for remote sync operations.
+- **Invariants:**
+  - `forge-core` remains a leaf crate with zero internal `forge-*` dependencies.
+  - Zero-panic: all file I/O and parsing operations propagate `ForgeError::Io`, `ForgeError::Config`, or `ForgeError::Serialization`.
+  - Credentials file permissions on Unix set to `0o600`.
+  - Contributes to **Epic #201** (Phase 9A: Remote Sync Protocol & CLI Client).
