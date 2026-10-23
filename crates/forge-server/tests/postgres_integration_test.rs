@@ -124,7 +124,7 @@ async fn test_postgres_backend_lifecycle() -> Result<(), Box<dyn Error>> {
     assert_eq!(projects_res.status(), StatusCode::OK);
     let projects_bytes = to_bytes(projects_res.into_body(), usize::MAX).await?;
     let projects: Vec<serde_json::Value> = serde_json::from_slice(&projects_bytes)?;
-    assert!(projects.iter().any(|p| p["id"] == project_id));
+    assert!(projects.iter().any(|p| p["repo_id"] == project_id));
 
     // 3. Query branches
     let branches_req = Request::builder()
