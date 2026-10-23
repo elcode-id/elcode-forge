@@ -323,6 +323,124 @@ pub enum Commands {
         #[command(subcommand)]
         action: AiAction,
     },
+    /// Authenticate with a remote ELCODE Forge Server.
+    Login {
+        /// Remote server URL (defaults to https://forge.elcode.id).
+        #[arg(long, default_value = "https://forge.elcode.id")]
+        server: String,
+        /// Personal Access Token or Service Account Key.
+        #[arg(long)]
+        token: Option<String>,
+        /// Optional username or service account identifier.
+        #[arg(long)]
+        username: Option<String>,
+        /// Skip server health validation check.
+        #[arg(long)]
+        no_validate: bool,
+    },
+    /// Remove stored credentials for a remote ELCODE Forge Server.
+    Logout {
+        /// Remote server URL to log out from (or default server if omitted).
+        #[arg(long)]
+        server: Option<String>,
+    },
+    /// Manage remote authentication and credentials.
+    Auth {
+        #[command(subcommand)]
+        action: AuthAction,
+    },
+    /// Upload local analysis snapshot to remote Forge Server.
+    Push {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Remote server URL override (defaults to configured server).
+        #[arg(long)]
+        server: Option<String>,
+        /// API token override (defaults to EFORGE_API_TOKEN or stored credentials).
+        #[arg(long)]
+        token: Option<String>,
+        /// Target Git branch name (defaults to active branch or "main").
+        #[arg(long)]
+        branch: Option<String>,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Fetch remote baseline snapshot from Forge Server and cache locally.
+    Pull {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Remote server URL override (defaults to configured server).
+        #[arg(long)]
+        server: Option<String>,
+        /// API token override (defaults to EFORGE_API_TOKEN or stored credentials).
+        #[arg(long)]
+        token: Option<String>,
+        /// Target Git branch name (defaults to active branch or "main").
+        #[arg(long)]
+        branch: Option<String>,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Synchronize repository state with remote Forge Server (evaluate, compare baseline, push).
+    Sync {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Remote server URL override (defaults to configured server).
+        #[arg(long)]
+        server: Option<String>,
+        /// API token override (defaults to EFORGE_API_TOKEN or stored credentials).
+        #[arg(long)]
+        token: Option<String>,
+        /// Target Git branch name (defaults to active branch or "main").
+        #[arg(long)]
+        branch: Option<String>,
+        /// Minimum finding severity to fail on (`critical|high|medium|low|info`).
+        #[arg(long)]
+        fail_on: Option<String>,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+}
+
+/// Actions available under `eforge auth`.
+#[derive(Debug, Subcommand)]
+pub enum AuthAction {
+    /// Authenticate with a remote ELCODE Forge Server.
+    Login {
+        /// Remote server URL (defaults to https://forge.elcode.id).
+        #[arg(long, default_value = "https://forge.elcode.id")]
+        server: String,
+        /// Personal Access Token or Service Account Key.
+        #[arg(long)]
+        token: Option<String>,
+        /// Optional username or service account identifier.
+        #[arg(long)]
+        username: Option<String>,
+        /// Skip server health validation check.
+        #[arg(long)]
+        no_validate: bool,
+    },
+    /// Remove stored credentials for a remote ELCODE Forge Server.
+    Logout {
+        /// Remote server URL to log out from (or default server if omitted).
+        #[arg(long)]
+        server: Option<String>,
+    },
+    /// Display current authentication and token status.
+    Status {
+        /// Remote server URL to inspect (or default server if omitted).
+        #[arg(long)]
+        server: Option<String>,
+        /// Output format (`terminal`, `json`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
 }
 
 /// Actions available under `eforge ai`.
