@@ -420,6 +420,34 @@ pub fn analyze_polyglot_dependencies(
     })
 }
 
+/// Analyzes polyglot dependencies across manifests with transparent local and remote caching.
+pub fn analyze_polyglot_dependencies_cached(
+    repo_root: &Path,
+    files: &[FileNode],
+    external_imports: &BTreeSet<String>,
+    cache: Option<&forge_core::ForgeCache>,
+    remote_adapter: Option<&dyn forge_core::RemoteCacheAdapter>,
+    config_hash: &str,
+) -> Result<DependencyReport, ForgeError> {
+    let cache_key = forge_core::compute_analysis_cache_key("dependency_report", config_hash, files);
+
+    if let Some(c) = cache {
+        if let Ok(Some(cached_report)) =
+            c.get_with_remote::<DependencyReport>(remote_adapter, "dependency_report", &cache_key)
+        {
+            return Ok(cached_report);
+        }
+    }
+
+    let report = analyze_polyglot_dependencies(repo_root, files, external_imports)?;
+
+    if let Some(c) = cache {
+        let _ = c.put_with_remote(remote_adapter, "dependency_report", &cache_key, &report);
+    }
+
+    Ok(report)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

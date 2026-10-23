@@ -447,22 +447,32 @@ pub fn run_cli_from_env() -> ExitCode {
                 }
             }
         }
-        Some(Commands::Diff { path, format }) => match commands::diff::execute_diff(&path, None) {
-            Ok(report) => match commands::diff::render_diff_report(&report, format) {
-                Ok(rendered) => {
-                    println!("{rendered}");
-                    ExitCode::Success
+        Some(Commands::Diff {
+            path,
+            remote,
+            format,
+        }) => {
+            if remote {
+                commands::diff::run_diff_remote(&path, format)
+            } else {
+                match commands::diff::execute_diff(&path, None) {
+                    Ok(report) => match commands::diff::render_diff_report(&report, format) {
+                        Ok(rendered) => {
+                            println!("{rendered}");
+                            ExitCode::Success
+                        }
+                        Err(err) => {
+                            eprintln!("Error formatting diff report: {err}");
+                            ExitCode::ExecutionError
+                        }
+                    },
+                    Err(err) => {
+                        eprintln!("Error running diff: {err}");
+                        ExitCode::ExecutionError
+                    }
                 }
-                Err(err) => {
-                    eprintln!("Error formatting diff report: {err}");
-                    ExitCode::ExecutionError
-                }
-            },
-            Err(err) => {
-                eprintln!("Error running diff: {err}");
-                ExitCode::ExecutionError
             }
-        },
+        }
         Some(Commands::Dependencies { path, format }) => {
             match commands::dependencies::run_dependencies(&path, format) {
                 Ok(rendered) => {
