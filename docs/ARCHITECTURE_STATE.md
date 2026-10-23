@@ -838,3 +838,17 @@
   - Zero-panic: non-test code propagates structured errors without unwraps.
   - Cache invalidation is deterministic: changes to source file digests, config hash, or engine version produce unique cache keys.
   - Completes **Epic #201** (Phase 9A: Remote Sync Protocol & CLI Client).
+
+
+## Issue #206 — Bootstrap crates/forge-server with Axum, SQLite/PostgreSQL & JWT Auth (COMPLETED)
+- **Crate:** `crates/forge-server` (`Cargo.toml`, `src/lib.rs`, `src/main.rs`, `src/error.rs`, `src/config.rs`, `src/db/mod.rs`, `src/db/models.rs`, `src/auth/mod.rs`, `src/auth/jwt.rs`, `src/routes/mod.rs`, `src/routes/health.rs`, `src/routes/auth.rs`, `src/routes/sync.rs`, `src/state.rs`, `src/app.rs`, `tests/server_api_test.rs`).
+- **Public Types & Functions Exposed:**
+  - `forge_server::ServerConfig`: Runtime configuration loader with environment variable fallbacks (`EFORGE_SERVER_HOST`, `EFORGE_SERVER_PORT`, `EFORGE_DATABASE_URL`, `EFORGE_JWT_SECRET`, `EFORGE_ADMIN_API_KEY`).
+  - `forge_server::Db`: Dual database connection pool supporting embedded SQLite (with in-memory `sqlite::memory:` mode) and external PostgreSQL with automatic migrations (`projects`, `snapshots`, `findings`, `api_keys`).
+  - `forge_server::auth`: Token management utilities (`issue_jwt`, `verify_jwt`, `hash_api_key`) and `AuthenticatedUser` Axum request extractor.
+  - `forge_server::create_app`: Configures Axum router with `/api/v1/health`, `/api/v1/auth/token`, `/api/v1/sync/push`, `/api/v1/sync/pull`, permissive CORS, and structured tracing.
+  - `forge_server::run_server`: Binds TCP listener and runs Axum server with graceful shutdown handling.
+- **Invariants:**
+  - Zero-panic: non-test code strictly avoids `unwrap()`, `expect()`, or `panic!()`, returning `ServerError` mapped to proper HTTP status codes (400, 401, 404, 500).
+  - In-memory SQLite execution enables zero-dependency integration tests without external database setup.
+  - Contributes to **Epic #205** (Phase 9B: Lightweight Self-Hostable Forge Server).
