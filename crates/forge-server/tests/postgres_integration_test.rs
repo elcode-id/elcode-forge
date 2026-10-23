@@ -150,7 +150,8 @@ async fn test_postgres_backend_lifecycle() -> Result<(), Box<dyn Error>> {
     assert_eq!(history_res.status(), StatusCode::OK);
     let history_bytes = to_bytes(history_res.into_body(), usize::MAX).await?;
     let history: serde_json::Value = serde_json::from_slice(&history_bytes)?;
-    assert_eq!(history["history"].as_array().map(|a| a.len()), Some(1));
+    assert_eq!(history["total_points"], 1);
+    assert_eq!(history["points"].as_array().map(|a| a.len()), Some(1));
 
     // 5. Pull snapshot
     let pull_req = Request::builder()
