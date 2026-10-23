@@ -155,6 +155,9 @@ pub enum Commands {
         /// Target repository directory.
         #[arg(long, short = 'p', default_value = ".")]
         path: PathBuf,
+        /// Compare findings and health against remote baseline snapshot.
+        #[arg(long)]
+        remote: bool,
         /// Output format (`terminal`, `json`, `markdown`, `sarif`, `github`).
         #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
         format: OutputFormat,

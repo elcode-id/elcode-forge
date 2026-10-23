@@ -822,3 +822,19 @@
   - Zero-panic: non-test code propagates structured errors without unwraps.
   - Local cached baseline always written to `<repo_root>/.eforge/baseline.json`.
   - Contributes to **Epic #201** (Phase 9A: Remote Sync Protocol & CLI Client).
+
+
+## Issue #204 — Remote AST & Dependency Cache Sharing & eforge diff --remote (COMPLETED)
+- **Crates:** `crates/forge-core` (`src/cache.rs`, `src/lib.rs`, `tests/remote_cache_test.rs`), `crates/forge-analyzer` (`src/graph.rs`, `src/dep_health.rs`, `src/lib.rs`, `tests/cached_analysis_test.rs`), `crates/forge-cli` (`src/cli.rs`, `src/commands/diff.rs`, `src/commands/scan.rs`, `src/lib.rs`, `src/main.rs`, `src/bin/elcode-forge.rs`, `tests/diff_remote_test.rs`).
+- **Public Types & Functions Exposed:**
+  - `forge_core::cache::RemoteCacheAdapter`: Trait for remote byte caching (`get_bytes`, `put_bytes`).
+  - `forge_core::cache::{InMemoryRemoteCacheAdapter, FileRemoteCacheAdapter, HttpRemoteCacheAdapter}`: Built-in local and remote cache storage adapters.
+  - `forge_core::cache::compute_analysis_cache_key(prefix, config_hash, files) -> String`: Content-addressed BLAKE3 hashing engine based on sorted file relative paths, content digests, configuration hash, and engine version.
+  - `forge_core::cache::ForgeCache::{get_cached, put_cached, get_with_remote, put_with_remote}`: Object caching methods with transparent fallback and local population.
+  - `forge_analyzer::{build_polyglot_architecture_graph_cached, analyze_polyglot_dependencies_cached}`: Cached polyglot graph construction and dependency health analysis with warm cache retrieval (< 500ms).
+  - `eforge diff --remote [--format <fmt>]`: Baseline differential comparison between current repository state and cached/pulled remote snapshot from `.eforge/baseline.json`.
+  - CLI binary main thread stack expansion (8 MiB) preventing Windows debug thread stack overflow.
+- **Invariants:**
+  - Zero-panic: non-test code propagates structured errors without unwraps.
+  - Cache invalidation is deterministic: changes to source file digests, config hash, or engine version produce unique cache keys.
+  - Completes **Epic #201** (Phase 9A: Remote Sync Protocol & CLI Client).

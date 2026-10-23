@@ -584,6 +584,38 @@ pub fn build_polyglot_architecture_graph(
     })
 }
 
+/// Builds the polyglot architecture graph with transparent local and remote caching.
+///
+/// Generates a deterministic content-addressed cache key from `files` and `config_hash`.
+/// If a warm cached entry is present locally or in `remote_adapter`, returns immediately
+/// without re-parsing any ASTs.
+pub fn build_polyglot_architecture_graph_cached(
+    repo_root: &Path,
+    files: &[FileNode],
+    cache: Option<&forge_core::ForgeCache>,
+    remote_adapter: Option<&dyn forge_core::RemoteCacheAdapter>,
+    config_hash: &str,
+) -> Result<ArchitectureGraph, ForgeError> {
+    let cache_key =
+        forge_core::compute_analysis_cache_key("architecture_graph", config_hash, files);
+
+    if let Some(c) = cache {
+        if let Ok(Some(cached_graph)) =
+            c.get_with_remote::<ArchitectureGraph>(remote_adapter, "architecture_graph", &cache_key)
+        {
+            return Ok(cached_graph);
+        }
+    }
+
+    let graph = build_polyglot_architecture_graph(repo_root, files)?;
+
+    if let Some(c) = cache {
+        let _ = c.put_with_remote(remote_adapter, "architecture_graph", &cache_key, &graph);
+    }
+
+    Ok(graph)
+}
+
 /// Infers a logical module `(id, name)` from a normalized relative file path for TS/JS projects.
 ///
 /// Examples:
