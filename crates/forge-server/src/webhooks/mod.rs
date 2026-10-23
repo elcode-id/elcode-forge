@@ -240,7 +240,10 @@ pub async fn dispatch_webhooks(db: Arc<Db>, payload: WebhookPayload) {
             let mut request = client
                 .post(&url)
                 .header("Content-Type", "application/json")
-                .header("User-Agent", "ELCODE-Forge-Webhook/0.8.0")
+                .header(
+                    "User-Agent",
+                    concat!("ELCODE-Forge-Webhook/", env!("CARGO_PKG_VERSION")),
+                )
                 .header("X-Forge-Event", payload.event.as_str());
 
             if let Some(sec) = secret {

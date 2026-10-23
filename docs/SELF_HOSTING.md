@@ -246,7 +246,7 @@ docker compose up -d
 ## 9. Observability & Troubleshooting
 
 - **Health Probe:** `curl -sS http://localhost:8080/api/v1/health`  
-  Returns `{ "status": "ok", "version": "0.8.0", "database": "sqlite"|"postgres" }`.
+  Returns `{ "status": "ok", "version": "0.9.0", "database": "sqlite"|"postgres" }`.
 - **Database Migrations:** Schema migrations run automatically upon startup. If a migration fails due to lock timeout, check `RUST_LOG=debug` logs.
 - **Log Inspection:**
   ```bash

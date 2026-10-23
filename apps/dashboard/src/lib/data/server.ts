@@ -394,7 +394,7 @@ export function snapshotToReportBundle(
 
   return {
     schema_version: 1,
-    tool_version: "0.8.0",
+    tool_version: "0.9.0",
     repository: {
       root_path: `/${snapshot.repo_id}`,
       name: repoName || snapshot.repo_id,

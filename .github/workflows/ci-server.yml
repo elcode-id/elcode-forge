@@ -1,0 +1,95 @@
+name: CI — Forge Server & Cloud Sync
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - "crates/forge-server/**"
+      - "crates/forge-cli/**"
+      - "crates/forge-core/**"
+      - "deploy/**"
+      - "Dockerfile.server"
+      - "docker-compose.yml"
+      - ".github/workflows/ci-server.yml"
+  pull_request:
+    paths:
+      - "crates/forge-server/**"
+      - "crates/forge-cli/**"
+      - "crates/forge-core/**"
+      - "deploy/**"
+      - "Dockerfile.server"
+      - "docker-compose.yml"
+      - ".github/workflows/ci-server.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  server-sqlite-and-e2e:
+    name: SQLite Backend & Sync E2E Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo registry and target directory
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check server formatting
+        run: cargo fmt --package forge-server --package forge-cli -- --check
+
+      - name: Clippy on forge-server & forge-cli
+        run: cargo clippy --package forge-server --package forge-cli --all-targets -- -D warnings
+
+      - name: Run forge-server unit and integration tests (SQLite)
+        run: cargo test --package forge-server
+
+      - name: Run forge-cli sync E2E integration test
+        run: cargo test --package forge-cli --test sync_e2e_test -- --nocapture
+
+  server-postgres:
+    name: PostgreSQL Backend Integration
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: forge
+          POSTGRES_PASSWORD: forgepassword
+          POSTGRES_DB: forgeserver_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo registry and target directory
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run forge-server integration tests against PostgreSQL
+        env:
+          FORGE_DATABASE_URL: postgres://forge:forgepassword@localhost:5432/forgeserver_test
+        run: cargo test --package forge-server --test postgres_integration_test -- --nocapture

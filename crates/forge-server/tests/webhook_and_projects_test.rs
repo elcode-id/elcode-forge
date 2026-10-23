@@ -45,7 +45,7 @@ fn sample_push(
         commit_hash: commit.to_string(),
         timestamp_secs: chrono::Utc::now().timestamp().max(0) as u64,
         content_hash: format!("hash_{commit}"),
-        tool_version: "0.8.0".to_string(),
+        tool_version: "0.9.0".to_string(),
     };
 
     let health_score = HealthScore {
