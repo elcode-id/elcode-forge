@@ -792,3 +792,115 @@
   - Zero-panic test discipline (`Result<(), Box<dyn Error>>`).
   - Completes **Epic #196** (Phase 8C: Advanced Entropy Secret Detection & v0.8.0 Release Prep) and marks **Phase 8 (Deep Security & Supply-Chain Durability)** 100% completed.
 
+
+
+## Issue #202 — Remote Sync Schema, Credential Manager & Content-Addressed Sync Protocol (COMPLETED)
+- **Crate:** `crates/forge-core` (`src/error.rs`, `src/sync/mod.rs`, `src/sync/protocol.rs`, `src/sync/credentials.rs`, `src/lib.rs`, `tests/sync_test.rs`).
+- **Public Types & Functions Exposed:**
+  - `forge_core::sync::protocol::{SyncStatus, SyncManifest, SyncPushPayload, SyncPullResponse, DeltaSummary}`: Serializable, schema-derived synchronization protocol structures.
+  - `forge_core::sync::credentials::{ServerCredential, CredentialsConfig, load_credentials, load_credentials_from_path, save_credentials, save_credentials_to_path, resolve_token, home_dir, default_credentials_path}`: Secure credential manager supporting `~/.eforge/credentials.yaml`, `EFORGE_CREDENTIALS_PATH`, and precedence-driven token resolution (`EFORGE_API_TOKEN` > specific server > default server > single configured server).
+  - `forge_core::sync::compute_sync_content_hash(files, findings) -> String`: Content-addressed BLAKE3 hashing engine ensuring byte-for-byte reproducibility regardless of collection traversal order.
+  - `forge_core::sync::DeltaSummary::compute`: Differential summary engine calculating added, resolved, and unchanged findings, health delta, and change risk shift between local state and remote baseline.
+  - `forge_core::error::ForgeError::Sync`: Semantic error variant for remote sync operations.
+- **Invariants:**
+  - `forge-core` remains a leaf crate with zero internal `forge-*` dependencies.
+  - Zero-panic: all file I/O and parsing operations propagate `ForgeError::Io`, `ForgeError::Config`, or `ForgeError::Serialization`.
+  - Credentials file permissions on Unix set to `0o600`.
+  - Contributes to **Epic #201** (Phase 9A: Remote Sync Protocol & CLI Client).
+
+
+## Issue #203 — CLI Remote Commands (login, logout, auth, push, pull, sync) (COMPLETED)
+- **Crate:** `crates/forge-cli` (`Cargo.toml`, `src/cli.rs`, `src/commands/auth.rs`, `src/commands/sync.rs`, `src/commands/mod.rs`, `src/lib.rs`, `tests/sync_cli_test.rs`).
+- **Commands & Capabilities:**
+  - `eforge login [--server <url>] [--token <tok>] [--username <user>] [--no-validate]`: Authenticates with remote server, validates against `/api/v1/health`, and stores credentials in `~/.eforge/credentials.yaml`.
+  - `eforge logout [--server <url>]`: Clears stored credentials for specified or default remote server.
+  - `eforge auth status [--server <url>] [--format <fmt>]`: Displays active server, masked token, credential store source, and all configured servers in Terminal or JSON.
+  - `eforge push [--server <url>] [--token <tok>] [--branch <branch>]`: Uploads complete repository snapshot (`SyncPushPayload`) to remote server (`POST /api/v1/sync/push`) and updates local cached baseline.
+  - `eforge pull [--server <url>] [--token <tok>] [--branch <branch>]`: Fetches remote baseline snapshot (`GET /api/v1/sync/pull`) and caches it in `<repo_root>/.eforge/baseline.json`.
+  - `eforge sync [--server <url>] [--token <tok>] [--branch <branch>] [--fail-on <sev>]`: CI/CD automation pipeline comparing local findings against remote baseline via `DeltaSummary`, pushing updated snapshot, and evaluating policy thresholds.
+- **Invariants:**
+  - Zero-panic: non-test code propagates structured errors without unwraps.
+  - Local cached baseline always written to `<repo_root>/.eforge/baseline.json`.
+  - Contributes to **Epic #201** (Phase 9A: Remote Sync Protocol & CLI Client).
+
+
+## Issue #204 — Remote AST & Dependency Cache Sharing & eforge diff --remote (COMPLETED)
+- **Crates:** `crates/forge-core` (`src/cache.rs`, `src/lib.rs`, `tests/remote_cache_test.rs`), `crates/forge-analyzer` (`src/graph.rs`, `src/dep_health.rs`, `src/lib.rs`, `tests/cached_analysis_test.rs`), `crates/forge-cli` (`src/cli.rs`, `src/commands/diff.rs`, `src/commands/scan.rs`, `src/lib.rs`, `src/main.rs`, `src/bin/elcode-forge.rs`, `tests/diff_remote_test.rs`).
+- **Public Types & Functions Exposed:**
+  - `forge_core::cache::RemoteCacheAdapter`: Trait for remote byte caching (`get_bytes`, `put_bytes`).
+  - `forge_core::cache::{InMemoryRemoteCacheAdapter, FileRemoteCacheAdapter, HttpRemoteCacheAdapter}`: Built-in local and remote cache storage adapters.
+  - `forge_core::cache::compute_analysis_cache_key(prefix, config_hash, files) -> String`: Content-addressed BLAKE3 hashing engine based on sorted file relative paths, content digests, configuration hash, and engine version.
+  - `forge_core::cache::ForgeCache::{get_cached, put_cached, get_with_remote, put_with_remote}`: Object caching methods with transparent fallback and local population.
+  - `forge_analyzer::{build_polyglot_architecture_graph_cached, analyze_polyglot_dependencies_cached}`: Cached polyglot graph construction and dependency health analysis with warm cache retrieval (< 500ms).
+  - `eforge diff --remote [--format <fmt>]`: Baseline differential comparison between current repository state and cached/pulled remote snapshot from `.eforge/baseline.json`.
+  - CLI binary main thread stack expansion (8 MiB) preventing Windows debug thread stack overflow.
+- **Invariants:**
+  - Zero-panic: non-test code propagates structured errors without unwraps.
+  - Cache invalidation is deterministic: changes to source file digests, config hash, or engine version produce unique cache keys.
+  - Completes **Epic #201** (Phase 9A: Remote Sync Protocol & CLI Client).
+
+
+## Issue #206 — Bootstrap crates/forge-server with Axum, SQLite/PostgreSQL & JWT Auth (COMPLETED)
+- **Crate:** `crates/forge-server` (`Cargo.toml`, `src/lib.rs`, `src/main.rs`, `src/error.rs`, `src/config.rs`, `src/db/mod.rs`, `src/db/models.rs`, `src/auth/mod.rs`, `src/auth/jwt.rs`, `src/routes/mod.rs`, `src/routes/health.rs`, `src/routes/auth.rs`, `src/routes/sync.rs`, `src/state.rs`, `src/app.rs`, `tests/server_api_test.rs`).
+- **Public Types & Functions Exposed:**
+  - `forge_server::ServerConfig`: Runtime configuration loader with environment variable fallbacks (`EFORGE_SERVER_HOST`, `EFORGE_SERVER_PORT`, `EFORGE_DATABASE_URL`, `EFORGE_JWT_SECRET`, `EFORGE_ADMIN_API_KEY`).
+  - `forge_server::Db`: Dual database connection pool supporting embedded SQLite (with in-memory `sqlite::memory:` mode) and external PostgreSQL with automatic migrations (`projects`, `snapshots`, `findings`, `api_keys`).
+  - `forge_server::auth`: Token management utilities (`issue_jwt`, `verify_jwt`, `hash_api_key`) and `AuthenticatedUser` Axum request extractor.
+  - `forge_server::create_app`: Configures Axum router with `/api/v1/health`, `/api/v1/auth/token`, `/api/v1/sync/push`, `/api/v1/sync/pull`, permissive CORS, and structured tracing.
+  - `forge_server::run_server`: Binds TCP listener and runs Axum server with graceful shutdown handling.
+- **Invariants:**
+  - Zero-panic: non-test code strictly avoids `unwrap()`, `expect()`, or `panic!()`, returning `ServerError` mapped to proper HTTP status codes (400, 401, 404, 500).
+  - In-memory SQLite execution enables zero-dependency integration tests without external database setup.
+  - Contributes to **Epic #205** (Phase 9B: Lightweight Self-Hostable Forge Server).
+
+
+## Issue #207 — Project Workspace Registry, Multi-Branch History Retention & Webhook Dispatcher (COMPLETED)
+- **Crate:** `crates/forge-server` (`src/db/mod.rs`, `src/db/models.rs`, `src/projects/mod.rs`, `src/history/mod.rs`, `src/webhooks/mod.rs`, `src/routes/projects.rs`, `src/routes/history.rs`, `src/routes/webhooks.rs`, `src/routes/sync.rs`, `src/app.rs`, `src/lib.rs`, `tests/webhook_and_projects_test.rs`).
+- **Public Types & Functions Exposed:**
+  - `forge_server::projects::{get_project_overview, ProjectOverview}`: Project workspace overview engine aggregating branch counts, latest health score, open/critical vulnerability counts, and chronological history.
+  - `forge_server::history::{calculate_history_trend, HistoryTrend, TrendDirection}`: Historical score retention and statistical trend calculator computing overall health deltas, directional trajectory (`Improving`, `Degrading`, `Stable`), and dimension averages (`architecture_avg`, `security_avg`, `maintainability_avg`).
+  - `forge_server::webhooks::{WebhookEvent, WebhookPayload, EventEvaluationContext, generate_hmac_signature, verify_hmac_signature, format_slack_payload, format_discord_payload, dispatch_webhooks, evaluate_and_dispatch_events}`: Outbound webhook notification dispatcher supporting Slack, Discord, and generic HTTP endpoints with HMAC-SHA256 signatures (`X-Forge-Signature: sha256=<hex>`), event triggers (`health_score_drop`, `critical_vulnerability`, `license_violation`, `snapshot_pushed`).
+  - API Endpoints: `GET /api/v1/projects`, `GET /api/v1/projects/:repo_id/overview`, `GET /api/v1/projects/:repo_id/branches`, `GET /api/v1/projects/:repo_id/history`, `POST /api/v1/webhooks`, `GET /api/v1/webhooks`, `DELETE /api/v1/webhooks/:id`.
+  - Automatic evaluation and asynchronous webhook dispatch wired directly into `POST /api/v1/sync/push`.
+- **Invariants:**
+  - Zero-panic: all database row mappings and endpoint handlers propagate structured `ServerError` without unwraps.
+  - HMAC-SHA256 signatures computed with standard hexadecimal encoding and timing-safe comparison.
+  - Contributes to **Epic #205** (Phase 9B: Lightweight Self-Hostable Forge Server).
+
+
+## Issue #208 — Dockerfile, Docker Compose, Kubernetes Manifests & Self-Hosting Guide (COMPLETED)
+- **Files:** `docker/Dockerfile.server`, `docker/Dockerfile.dashboard`, `docker/nginx-dashboard.conf`, `.dockerignore`, `docker-compose.yml`, `.env.example`, `deploy/k8s/{namespace,configmap,secret,deployment,service,ingress,kustomization}.yaml`, `docs/SELF_HOSTING.md`.
+- **Capabilities Delivered:**
+  - Production multi-stage `Dockerfile.server` producing static, unprivileged Alpine container (< 30 MB) running as `UID 10001` (`forge:forge`) with `/api/v1/health` healthcheck probe.
+  - Production `docker-compose.yml` multi-service orchestration (`forge-server`, `postgres`, `minio`, `dashboard`) with persistent volumes and healthcheck dependencies.
+  - Cloud-native Kubernetes manifests (`deploy/k8s/`) with HA rolling update deployment, non-root security context, read-only root filesystem, liveness/readiness probes, and ingress routing.
+  - Comprehensive operational runbook (`docs/SELF_HOSTING.md`): sizing guidelines, 1-command startup, PostgreSQL/SQLite backups, Nginx/Caddy SSL reverse proxy, and air-gapped installation.
+- **Invariants:**
+  - Container execution strictly enforces non-root unprivileged user (`UID 10001`).
+  - All healthchecks point to standard `/api/v1/health` endpoint.
+  - Completes **Epic #205** (Phase 9B: Lightweight Self-Hostable Forge Server).
+
+
+## Issue #210 — Team Cloud Mode, Project Switcher, Remote Trends & PR Baseline Diff Inspector (COMPLETED)
+- **App:** `apps/dashboard` (`src/lib/data/server.ts`, `src/lib/data/source.ts`, `src/lib/data/store.svelte.ts`, `src/routes/+layout.svelte`, `src/routes/projects/+page.svelte`, `src/routes/compare/+page.svelte`, `tests/server_sync.test.ts`).
+- **Capabilities Delivered:**
+  - `apps/dashboard/src/lib/data/server.ts`: Forge Server client library providing connection testing, project querying, project overview inspection, branch listing, historical score fetching, remote baseline snapshot pulling with transformation to `ReportBundle`, and `computeBaselineDiff` calculation.
+  - Mode Switcher & Navigation: Integrated toggle between `Local File` mode and `Team Cloud` mode in header with server status indicator, connection modal, and navigation links for `Projects` and `Compare`.
+  - Project Workspace Studio (`/projects`): Multi-repository grid displaying connected projects with real-time health score rings, open findings counters, branch/commit tracking, search filtering, and one-click "Open Dashboard" loading.
+  - PR Baseline Diff Inspector (`/compare`): Visual delta inspector calculating health score shifts, added findings, resolved findings, persistent baseline findings, and per-dimension delta bars with severity filtering.
+- **Invariants:**
+  - Sensitive server tokens are persisted only in local browser `localStorage` under `eforge_server_config`.
+  - Contributes to **Epic #209** (Phase 9C: Collaborative Team Intelligence, Dashboard Cloud Sync & v0.9.0 Release Prep).
+
+
+## Issue #211 — Forge Server CI Integration Test, docs/SELF_HOSTING.md & v0.9.0 Release Prep (COMPLETED)
+- **Files:** `.github/workflows/ci-server.yml`, `crates/forge-cli/tests/sync_e2e_test.rs`, `crates/forge-server/tests/postgres_integration_test.rs`, `Cargo.toml`, `package.json`, `packages/forge-schema/package.json`, `packages/forge-ui/package.json`, `packages/forge-cli-npm/package.json`, `apps/dashboard/package.json`, `README.md`, `docs/ARCHITECTURE_STATE.md`.
+- **Capabilities Delivered:**
+  - Automated CI Workflow (`.github/workflows/ci-server.yml`): Path-aware execution testing both SQLite embedded backend and live PostgreSQL 16 container service with container healthcheck probing.
+  - Sync E2E Test Suite (`crates/forge-cli/tests/sync_e2e_test.rs`): Full lifecycle integration test spawning `forge-server` in background on ephemeral port, executing `run_auth_login`, `run_auth_status`, `run_sync_push`, caching baseline, `run_sync_pull`, delta sync pipeline execution, and `run_auth_logout`.
+  - PostgreSQL Integration Test Suite (`crates/forge-server/tests/postgres_integration_test.rs`): Dedicated database migration and CRUD lifecycle tests connecting directly to PostgreSQL instances when `FORGE_DATABASE_URL` is set in CI.
+  - Workspace Monorepo Version Bump to `0.9.0`: Synchronized workspace version across Rust workspace crates (`Cargo.toml`, `Cargo.lock`) and TypeScript packages (`package.json`, `packages/forge-schema`, `packages/forge-ui`, `packages/forge-cli-npm`, `apps/dashboard`).
+  - Documentation Finalization: Updated `README.md` to `v0.9.0` with Team Cloud Sync (`eforge sync`, `eforge push`, `eforge pull`), Self-Hosting architecture links, 23 subcommands CLI table, and CI workflow badges.
+- **Invariants:**
+  - Synchronous `ureq` CLI invocations in Tokio runtime must execute inside `tokio::task::spawn_blocking` with multi-thread worker pools to prevent loopback socket deadlocks.
+  - Completes **Epic #209** (Phase 9C: Collaborative Team Intelligence, Dashboard Cloud Sync & v0.9.0 Release Prep) and marks **Phase 9 (Collaborative Team Intelligence, Remote Sync & Forge Server)** 100% completed.

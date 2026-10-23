@@ -2,7 +2,8 @@ import { parseReportBundle, type ReportBundle } from "@elcode-forge/schema";
 
 export type DataSource =
   | { kind: "file"; name: string }
-  | { kind: "live"; baseUrl: string };
+  | { kind: "live"; baseUrl: string }
+  | { kind: "server"; serverUrl: string; repoId: string; branch: string };
 
 export type LoadResult =
   | { ok: true; bundle: ReportBundle; source: DataSource }

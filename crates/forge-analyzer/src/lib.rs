@@ -21,8 +21,8 @@ pub use composer_manifest::{
     PHP_IMPLICIT_RUNNERS,
 };
 pub use dep_health::{
-    analyze_npm_dependencies, analyze_polyglot_dependencies, analyze_python_dependencies,
-    DependencyReport,
+    analyze_npm_dependencies, analyze_polyglot_dependencies, analyze_polyglot_dependencies_cached,
+    analyze_python_dependencies, DependencyReport,
 };
 pub use detector::{detect_ecosystem, detect_language, is_test_file, EcosystemSignals};
 pub use forge_core::Analyzer;
@@ -33,8 +33,9 @@ pub use go_imports::{
 pub use go_manifest::{parse_go_manifest, parse_go_mod_content, ParsedGoManifest};
 pub use graph::{
     build_go_architecture_graph, build_polyglot_architecture_graph,
-    build_python_architecture_graph, build_rust_architecture_graph, build_ts_architecture_graph,
-    infer_rust_module_boundary, ArchitectureGraph,
+    build_polyglot_architecture_graph_cached, build_python_architecture_graph,
+    build_rust_architecture_graph, build_ts_architecture_graph, infer_rust_module_boundary,
+    ArchitectureGraph,
 };
 pub use package_json::{parse_package_json, ParsedManifest};
 pub use php_imports::{
@@ -60,7 +61,3 @@ pub use rust_manifest::{
     read_cargo_lock_versions, ParsedCargoDeps, ParsedRustWorkspace,
 };
 pub use scanner::{scan_repository, DiscoverySummary};
-pub use ts_imports::{
-    extract_npm_package_name, extract_sfc_script_content, extract_ts_imports_and_exports,
-    resolve_import_specifier,
-};

@@ -1,10 +1,11 @@
-# ELCODE Forge (`eforge`) v0.8.0
+# ELCODE Forge (`eforge`) v0.9.0
 
 > **Know your code. Ship with confidence.**  
 > Deterministic Codebase Intelligence, Architecture Analysis, Change Blast-Radius, Release Readiness & Native MCP Engine — built in Rust by **[ELCODE](https://elcode.id/)**.
 
 [![CI — Rust Engine](https://github.com/elcode-id/elcode-forge/actions/workflows/ci-rust.yml/badge.svg)](https://github.com/elcode-id/elcode-forge/actions/workflows/ci-rust.yml)
 [![CI — Web, Dashboard & Schemas](https://github.com/elcode-id/elcode-forge/actions/workflows/ci-web.yml/badge.svg)](https://github.com/elcode-id/elcode-forge/actions/workflows/ci-web.yml)
+[![CI — Forge Server & Cloud Sync](https://github.com/elcode-id/elcode-forge/actions/workflows/ci-server.yml/badge.svg)](https://github.com/elcode-id/elcode-forge/actions/workflows/ci-server.yml)
 [![CI — Self-Dogfooding](https://github.com/elcode-id/elcode-forge/actions/workflows/eforge-dogfood.yml/badge.svg)](https://github.com/elcode-id/elcode-forge/actions/workflows/eforge-dogfood.yml)
 [![CI — Security & Supply-Chain Durability](https://github.com/elcode-id/elcode-forge/actions/workflows/security-durability.yml/badge.svg)](https://github.com/elcode-id/elcode-forge/actions/workflows/security-durability.yml)
 [![Release](https://img.shields.io/github/v/release/elcode-id/elcode-forge?label=release)](https://github.com/elcode-id/elcode-forge/releases)
@@ -52,6 +53,8 @@ Every architectural boundary, CLI contract, and CI/CD workflow in `elcode-forge`
 | **AI Governance & Privacy (`eforge ai status|usage`)** | Supports local-only AI execution (Ollama, LM Studio), prompt-injection defense envelopes, in-flight secret redaction, daily USD spend ceilings, and SHA-256 caching. |
 | **Native MCP Server (`eforge mcp`)** | Exposes 7 deterministic `eforge_*` tools over JSON-RPC 2.0 stdio with `UntrustedEnvelope<T>` isolation, prompt-injection signal scanning, and dynamic rule querying (`eforge_get_rules`). |
 | **Explainable 8-Dimension Health Score** | Computes weighted scores (`0..=100`) across *Architecture (20%)*, *Security (20%)*, *Maintainability (15%)*, *Testing (15%)*, *Dependencies (10%)*, *Documentation (10%)*, *Performance (5%)*, and *CI/CD (5%)* with explicit human-readable deduction reasons. |
+| **Self-Hosted Forge Server & Team Cloud Sync (`eforge sync`, `eforge push`, `eforge pull`)** | Synchronizes repository analysis baselines to a lightweight self-hostable backend (`forge-server`) with SQLite or PostgreSQL, historical branch retention, trend analytics, and real-time HMAC-SHA256 webhooks for Slack, Discord, and custom endpoints. See [docs/SELF_HOSTING.md](./docs/SELF_HOSTING.md). |
+| **Team Intelligence & Baseline Comparison** | Multi-project portfolio switcher (`/projects`), PR baseline diff inspector (`/compare`), and delta sync across team members without vendor lock-in. |
 
 ---
 
@@ -111,7 +114,7 @@ cargo install --path crates/forge-cli
 Verify installation:
 ```bash
 eforge --version
-# ELCODE Forge (eforge) v0.7.0
+# ELCODE Forge (eforge) v0.9.0
 ```
 
 ---
@@ -227,9 +230,27 @@ eforge ai status --ping
 eforge ai usage
 ```
 
+### 9. Team Cloud Synchronization (`eforge push`, `eforge pull`, `eforge sync`)
+```bash
+# Authenticate with team or self-hosted Forge Server
+eforge login --server http://forge.internal:8080 --token YOUR_API_KEY
+
+# Push current analysis snapshot as baseline
+eforge push
+
+# Pull remote baseline to local cache
+eforge pull
+
+# Run bidirectional sync pipeline and inspect delta diff
+eforge sync
+
+# Check active server session
+eforge auth status
+```
+
 ---
 
-## CLI Command Reference (18 Subcommands)
+## CLI Command Reference (23 Subcommands)
 
 | Command | Key Flags | Description |
 | :--- | :--- | :--- |
@@ -250,6 +271,11 @@ eforge ai usage
 | `eforge ai-review` | `--base <REF>`, `--fast`, `--fail-on <SEV>`, `--dry-run`, `--no-cache` | Grounded PR review combining blast radius with `Confirmed`, `Probable`, and `Suggestion` items. |
 | `eforge ai status` | `--ping`, `--path <DIR>` | Reports AI configuration, selected provider, model, and checks live endpoint latency with `--ping`. |
 | `eforge ai usage` | `--path <DIR>`, `--format <FMT>` | Reports daily token consumption, accumulated USD cost, and daily budget ceiling. |
+| `eforge login` | `--server <URL>`, `--token <KEY>` | Stores remote server endpoint and API token in `~/.eforge/credentials.yaml`. |
+| `eforge push` | `--path <DIR>`, `--server <URL>`, `--branch <NAME>`, `--format <FMT>` | Uploads local repository analysis snapshot to Forge Server. |
+| `eforge pull` | `--path <DIR>`, `--server <URL>`, `--branch <NAME>`, `--format <FMT>` | Fetches and caches remote baseline from Forge Server. |
+| `eforge sync` | `--path <DIR>`, `--server <URL>`, `--branch <NAME>`, `--format <FMT>` | Executes bidirectional delta sync against remote baseline and caches local state. |
+| `eforge auth` | `login`, `logout`, `status` | Manages authentication sessions and masked credentials. |
 | `eforge report` | `--path <DIR>`, `--output <FILE>`, `--save-history`, `--no-git` | Generates a deterministic `ReportBundle` JSON for dashboard consumption and history snapshots. |
 | `eforge serve` | `--port <PORT>`, `--path <DIR>`, `--static-dir <DIR>` | Serves a read-only, loopback-restricted HTTP API (`/api/v1/health`, `/api/v1/bundle`, `/api/v1/history`). |
 | `eforge schema` | `--out-dir <DIR>` | Exports canonical JSON Schemas for `ReportBundle` and IR types. |
@@ -291,6 +317,11 @@ Connect your dashboard to `http://127.0.0.1:7878` to view:
 - **Dependencies:** Direct vs dev packages, unpinned version warnings, and unused package flags.
 - **Changes & Blast Radius:** Git diff change risk, direct vs transitive module propagation, and churn hotspots.
 - **Trends & Evolution:** Historical health score trajectories, finding severity sparklines, and commit snapshot records.
+
+### 3. Team Cloud Mode
+Connect the dashboard directly to a central `forge-server` instance for team and studio intelligence:
+- **Project Switcher Portfolio Grid (`/projects`):** Monitor health trends, latest commits, finding distributions, and active branches across all repositories in your organization.
+- **Pull Request Baseline Diff Inspector (`/compare`):** Side-by-side architectural diff of candidate branches against production baselines, highlighting introduced/resolved findings and regression risks.
 
 ---
 
@@ -422,6 +453,23 @@ Designed for predictable CI/CD gates:
 
 ---
 
+## Self-Hosting & Team Collaboration (`crates/forge-server`)
+
+ELCODE Forge can be deployed on-premises, in air-gapped environments, or on private cloud infrastructure using `forge-server`, an ultra-lightweight Rust backend (< 30 MB container image) supporting SQLite (embedded) and PostgreSQL:
+
+```bash
+# Start full self-hosted stack via Docker Compose (Forge Server + Dashboard + PostgreSQL)
+docker compose up -d
+
+# Or deploy to Kubernetes
+kubectl apply -f deploy/k8s/
+```
+
+- **Features:** Multi-branch history retention, delta sync engine (`eforge sync`), project portfolio registry, and real-time HMAC-SHA256 webhooks for Slack, Discord, and custom endpoints.
+- **Documentation:** Complete setup instructions, environment variables, PostgreSQL tuning, and security practices are detailed in [docs/SELF_HOSTING.md](./docs/SELF_HOSTING.md).
+
+---
+
 ## Workspace Architecture
 
 `elcode-forge` is organized as a modular Rust workspace with a strict Directed Acyclic Graph (DAG) dependency boundary:
@@ -455,7 +503,8 @@ flowchart TD
 - **`crates/forge-security`** — Redacted secret scanner and unsafe JS/TS/SFC pattern detector.
 - **`crates/forge-ai`** — Provider abstraction (`openai`, `anthropic`, `gemini`, `openai-compatible`), context pack builder, secret redaction, token budgeting, and response caching.
 - **`crates/forge-mcp`** — Native Model Context Protocol (MCP) JSON-RPC 2.0 stdio server (`eforge_*` tool namespace) and `UntrustedEnvelope<T>` prompt-injection boundary.
-- **`crates/forge-cli`** — CLI entrypoint (`eforge` & `elcode-forge`), 18 subcommands, and report formatters (`terminal`, `json`, `markdown`, `sarif`, `github`).
+- **`crates/forge-cli`** — CLI entrypoint (`eforge` & `elcode-forge`), 23 subcommands, and report formatters (`terminal`, `json`, `markdown`, `sarif`, `github`).
+- **`crates/forge-server`** — Lightweight self-hostable synchronization backend with SQLite and PostgreSQL support, historical branch retention, trend analytics, and real-time HMAC-SHA256 webhooks.
 - **`integrations/github-action`** — Composite GitHub Action (`elcode-id/forge-action`).
 - **`fixtures/`** — Curated deterministic test repositories (`fixtures/next-app`, `fixtures/vulnerable-ts-app`, `fixtures/ai-eval`, `fixtures/custom-rules-app`).
 
@@ -471,6 +520,7 @@ In alignment with ELCODE Principle `02` (*"Code quality is visible in product be
 | :--- | :--- | :--- |
 | **CI — Rust Engine** | [`.github/workflows/ci-rust.yml`](./.github/workflows/ci-rust.yml) | Path-aware selective verification (`cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test` + CLI smoke test on `fixtures/`). |
 | **CI — Web, Dashboard & Schemas** | [`.github/workflows/ci-web.yml`](./.github/workflows/ci-web.yml) | Canonical JSON Schema drift check (`eforge schema` + `git diff --exit-code`), TypeScript strict check, ESLint, Vitest, and SvelteKit static build. |
+| **CI — Forge Server & Cloud Sync** | [`.github/workflows/ci-server.yml`](./.github/workflows/ci-server.yml) | Automated SQLite backend tests, PostgreSQL container service integration tests, and CLI end-to-end sync verification. |
 | **CI — Self-Dogfooding (`eforge`)** | [`.github/workflows/eforge-dogfood.yml`](./.github/workflows/eforge-dogfood.yml) | Runs `eforge doctor`, `eforge scan --fail-on high`, `eforge review --fast`, `eforge explain --ai --dry-run`, `eforge ai-review --dry-run`, and `eforge report` against this repository itself. |
 | **CI — Security & Supply-Chain Durability** | [`.github/workflows/security-durability.yml`](./.github/workflows/security-durability.yml) | Runs `cargo audit` against the RustSec Advisory Database on `Cargo.lock` and executes `eforge security --format sarif`. |
 | **Release — Cross-Platform Binaries** | [`.github/workflows/release-binaries.yml`](./.github/workflows/release-binaries.yml) | Builds `--locked` release binaries (`eforge` & `elcode-forge`) for Linux (`x86_64`), macOS (`aarch64`), and Windows (`x86_64`) with `SHA256SUMS.txt` verification. |

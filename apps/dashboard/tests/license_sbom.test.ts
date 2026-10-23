@@ -74,7 +74,7 @@ describe("Client-side SBOM generators", () => {
 
   const mockBundle: ReportBundle = {
     schema_version: 1,
-    tool_version: "0.8.0",
+    tool_version: "0.9.0",
     repository: {
       name: "test-dashboard-app",
       root_path: "/workspace/test-app",

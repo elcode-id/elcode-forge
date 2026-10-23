@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: forge
+  labels:
+    app.kubernetes.io/name: elcode-forge
+    app.kubernetes.io/part-of: elcode-forge

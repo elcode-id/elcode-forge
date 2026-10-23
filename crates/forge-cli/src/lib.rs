@@ -12,7 +12,7 @@ use std::fs;
 use std::path::Path;
 
 use clap::Parser;
-pub use cli::{Cli, Commands, OutputFormat};
+pub use cli::{AuthAction, Cli, Commands, OutputFormat};
 pub use exit_code::{parse_severity_threshold, ExitCode};
 pub use formatters::render_repository_report;
 pub use theme::{health_rating, render_score_meter, ColorMode, Theme};
@@ -447,22 +447,32 @@ pub fn run_cli_from_env() -> ExitCode {
                 }
             }
         }
-        Some(Commands::Diff { path, format }) => match commands::diff::execute_diff(&path, None) {
-            Ok(report) => match commands::diff::render_diff_report(&report, format) {
-                Ok(rendered) => {
-                    println!("{rendered}");
-                    ExitCode::Success
+        Some(Commands::Diff {
+            path,
+            remote,
+            format,
+        }) => {
+            if remote {
+                commands::diff::run_diff_remote(&path, format)
+            } else {
+                match commands::diff::execute_diff(&path, None) {
+                    Ok(report) => match commands::diff::render_diff_report(&report, format) {
+                        Ok(rendered) => {
+                            println!("{rendered}");
+                            ExitCode::Success
+                        }
+                        Err(err) => {
+                            eprintln!("Error formatting diff report: {err}");
+                            ExitCode::ExecutionError
+                        }
+                    },
+                    Err(err) => {
+                        eprintln!("Error running diff: {err}");
+                        ExitCode::ExecutionError
+                    }
                 }
-                Err(err) => {
-                    eprintln!("Error formatting diff report: {err}");
-                    ExitCode::ExecutionError
-                }
-            },
-            Err(err) => {
-                eprintln!("Error running diff: {err}");
-                ExitCode::ExecutionError
             }
-        },
+        }
         Some(Commands::Dependencies { path, format }) => {
             match commands::dependencies::run_dependencies(&path, format) {
                 Ok(rendered) => {
@@ -689,5 +699,77 @@ pub fn run_cli_from_env() -> ExitCode {
                 }
             }
         },
+        Some(Commands::Login {
+            server,
+            token,
+            username,
+            no_validate,
+        }) => commands::auth::run_auth_login(
+            &server,
+            token.as_deref(),
+            username.as_deref(),
+            no_validate,
+        ),
+        Some(Commands::Logout { server }) => commands::auth::run_auth_logout(server.as_deref()),
+        Some(Commands::Auth { action }) => match action {
+            cli::AuthAction::Login {
+                server,
+                token,
+                username,
+                no_validate,
+            } => commands::auth::run_auth_login(
+                &server,
+                token.as_deref(),
+                username.as_deref(),
+                no_validate,
+            ),
+            cli::AuthAction::Logout { server } => {
+                commands::auth::run_auth_logout(server.as_deref())
+            }
+            cli::AuthAction::Status { server, format } => {
+                commands::auth::run_auth_status(server.as_deref(), format)
+            }
+        },
+        Some(Commands::Push {
+            path,
+            server,
+            token,
+            branch,
+            format,
+        }) => commands::sync::run_sync_push(
+            &path,
+            server.as_deref(),
+            token.as_deref(),
+            branch.as_deref(),
+            format,
+        ),
+        Some(Commands::Pull {
+            path,
+            server,
+            token,
+            branch,
+            format,
+        }) => commands::sync::run_sync_pull(
+            &path,
+            server.as_deref(),
+            token.as_deref(),
+            branch.as_deref(),
+            format,
+        ),
+        Some(Commands::Sync {
+            path,
+            server,
+            token,
+            branch,
+            fail_on,
+            format,
+        }) => commands::sync::run_sync_pipeline(
+            &path,
+            server.as_deref(),
+            token.as_deref(),
+            branch.as_deref(),
+            fail_on.as_deref(),
+            format,
+        ),
     }
 }

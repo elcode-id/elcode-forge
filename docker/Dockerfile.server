@@ -1,0 +1,59 @@
+# ============================================================
+# ELCODE Forge Server — Production Multi-Stage Containerfile
+# Image: elcode/forge-server
+# Architecture: Multi-stage Rust builder -> Unprivileged Alpine (< 30 MB)
+# ============================================================
+
+# Stage 1: Builder
+FROM rust:1.85-alpine AS builder
+
+RUN apk add --no-cache musl-dev pkgconfig
+
+WORKDIR /app
+
+# Copy root workspace manifests
+COPY Cargo.toml Cargo.lock ./
+COPY crates/ ./crates/
+
+# Build locked release binary for forge-server
+RUN cargo build --release --locked --package forge-server
+
+# Strip binary to reduce container size
+RUN strip /app/target/release/forge-server
+
+# ============================================================
+# Stage 2: Minimal Unprivileged Runtime
+# ============================================================
+FROM alpine:3.21
+
+# Security: Create dedicated unprivileged system user & group (UID/GID 10001)
+RUN addgroup -g 10001 -S forge && \
+    adduser -u 10001 -S forge -G forge -h /home/forge -D
+
+# Install runtime dependencies (ca-certificates for HTTPS outbound webhooks, curl for health checks)
+RUN apk add --no-cache ca-certificates curl tzdata && \
+    mkdir -p /var/lib/eforge && \
+    chown -R forge:forge /var/lib/eforge /home/forge
+
+# Copy stripped binary from builder stage
+COPY --from=builder --chown=forge:forge /app/target/release/forge-server /usr/local/bin/forge-server
+
+# Enforce non-root execution
+USER forge:forge
+WORKDIR /home/forge
+
+# Default configuration variables (override via container env)
+ENV EFORGE_SERVER_HOST="0.0.0.0" \
+    EFORGE_SERVER_PORT="8080" \
+    EFORGE_DATABASE_URL="sqlite:///var/lib/eforge/forge.db" \
+    RUST_LOG="info,forge_server=debug"
+
+# Expose default HTTP synchronization and API port
+EXPOSE 8080
+
+# Healthcheck probe against standardized /api/v1/health endpoint
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://127.0.0.1:${EFORGE_SERVER_PORT}/api/v1/health || exit 1
+
+# Start ELCODE Forge server
+ENTRYPOINT ["/usr/local/bin/forge-server"]

@@ -4,6 +4,8 @@
 # RUSTSEC-2026-0381 flags webpki-roots < 1.0.10 (distrusted emSign intermediates).
 # In our Cargo.lock, webpki-roots is upgraded to 1.0.10.
 # webpki-roots 0.26.11 is a shim re-exporting webpki-roots 1.0.10, but falsely matched by semver < 1.0.10.
+# RUSTSEC-2023-0071 flags rsa 0.9.10 (Marvin timing sidechannel in legacy RSA decryption; no fixed upgrade available in 0.9.x).
 ignore = [
     "RUSTSEC-2026-0381",
+    "RUSTSEC-2023-0071",
 ]

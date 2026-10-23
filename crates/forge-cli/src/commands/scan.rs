@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use forge_analyzer::{
-    analyze_polyglot_dependencies, build_polyglot_architecture_graph, scan_repository,
+    analyze_polyglot_dependencies_cached, build_polyglot_architecture_graph_cached, scan_repository,
 };
 use forge_core::{
     cache::{CacheMetadata, ForgeCache, EFORGE_DIR},
@@ -34,16 +34,6 @@ pub struct ScanOptions {
 pub fn execute_scan(opts: &ScanOptions) -> Result<(Repository, ExitCode), ForgeError> {
     let config = load_config(&opts.repo_root)?;
     let discovery = scan_repository(&opts.repo_root, &config.ignore_patterns)?;
-    let arch_graph = build_polyglot_architecture_graph(&opts.repo_root, &discovery.files)?;
-    let dep_report = analyze_polyglot_dependencies(
-        &opts.repo_root,
-        &discovery.files,
-        &arch_graph.external_imports,
-    )?;
-
-    let modules = arch_graph.modules;
-    let dependencies = dep_report.dependencies;
-    let dep_findings = dep_report.findings;
 
     let current_hashes: BTreeMap<String, String> = discovery
         .files
@@ -53,6 +43,27 @@ pub fn execute_scan(opts: &ScanOptions) -> Result<(Repository, ExitCode), ForgeE
 
     let config_serialized = serde_json::to_vec(&config).unwrap_or_default();
     let config_hash = ForgeCache::hash_bytes(&config_serialized);
+    let cache_opt = ForgeCache::init(&opts.repo_root).ok();
+
+    let arch_graph = build_polyglot_architecture_graph_cached(
+        &opts.repo_root,
+        &discovery.files,
+        cache_opt.as_ref(),
+        None,
+        &config_hash,
+    )?;
+    let dep_report = analyze_polyglot_dependencies_cached(
+        &opts.repo_root,
+        &discovery.files,
+        &arch_graph.external_imports,
+        cache_opt.as_ref(),
+        None,
+        &config_hash,
+    )?;
+
+    let modules = arch_graph.modules;
+    let dependencies = dep_report.dependencies;
+    let dep_findings = dep_report.findings;
 
     let files_for_security: Vec<FileNode> = if opts.incremental {
         let cache = ForgeCache::init(&opts.repo_root)?;
