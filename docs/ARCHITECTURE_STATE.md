@@ -866,3 +866,16 @@
   - Zero-panic: all database row mappings and endpoint handlers propagate structured `ServerError` without unwraps.
   - HMAC-SHA256 signatures computed with standard hexadecimal encoding and timing-safe comparison.
   - Contributes to **Epic #205** (Phase 9B: Lightweight Self-Hostable Forge Server).
+
+
+## Issue #208 — Dockerfile, Docker Compose, Kubernetes Manifests & Self-Hosting Guide (COMPLETED)
+- **Files:** `docker/Dockerfile.server`, `docker/Dockerfile.dashboard`, `docker/nginx-dashboard.conf`, `.dockerignore`, `docker-compose.yml`, `.env.example`, `deploy/k8s/{namespace,configmap,secret,deployment,service,ingress,kustomization}.yaml`, `docs/SELF_HOSTING.md`.
+- **Capabilities Delivered:**
+  - Production multi-stage `Dockerfile.server` producing static, unprivileged Alpine container (< 30 MB) running as `UID 10001` (`forge:forge`) with `/api/v1/health` healthcheck probe.
+  - Production `docker-compose.yml` multi-service orchestration (`forge-server`, `postgres`, `minio`, `dashboard`) with persistent volumes and healthcheck dependencies.
+  - Cloud-native Kubernetes manifests (`deploy/k8s/`) with HA rolling update deployment, non-root security context, read-only root filesystem, liveness/readiness probes, and ingress routing.
+  - Comprehensive operational runbook (`docs/SELF_HOSTING.md`): sizing guidelines, 1-command startup, PostgreSQL/SQLite backups, Nginx/Caddy SSL reverse proxy, and air-gapped installation.
+- **Invariants:**
+  - Container execution strictly enforces non-root unprivileged user (`UID 10001`).
+  - All healthchecks point to standard `/api/v1/health` endpoint.
+  - Completes **Epic #205** (Phase 9B: Lightweight Self-Hostable Forge Server).

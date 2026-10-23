@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: forge-server-ingress
+  namespace: forge
+  labels:
+    app.kubernetes.io/name: forge-server
+    app.kubernetes.io/part-of: elcode-forge
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+spec:
+  tls:
+    - hosts:
+        - forge.example.com
+      secretName: forge-server-tls
+  rules:
+    - host: forge.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: forge-server
+                port:
+                  number: 8080
