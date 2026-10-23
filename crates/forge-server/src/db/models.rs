@@ -1,10 +1,9 @@
 //! Database row models.
 
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 
 /// Record representing a registered project repository.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProjectRow {
     pub id: String,
     pub name: String,
@@ -13,7 +12,7 @@ pub struct ProjectRow {
 }
 
 /// Record representing an ingested snapshot.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SnapshotRow {
     pub id: String,
     pub repo_id: String,
@@ -30,7 +29,7 @@ pub struct SnapshotRow {
 }
 
 /// Record representing an individual finding within a snapshot.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FindingRow {
     pub id: String,
     pub snapshot_id: String,
@@ -44,7 +43,7 @@ pub struct FindingRow {
 }
 
 /// Record representing an authorized API key.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ApiKeyRow {
     pub id: String,
     pub name: String,

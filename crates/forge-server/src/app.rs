@@ -35,9 +35,13 @@ pub async fn shutdown_signal() {
 
     #[cfg(unix)]
     let terminate = async {
-        let _ = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-            .map(|mut sig| sig.recv())
-            .map(|mut rx| async move { rx.await });
+        if let Ok(mut sig) =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+        {
+            sig.recv().await;
+        } else {
+            std::future::pending::<()>().await;
+        }
     };
 
     #[cfg(not(unix))]

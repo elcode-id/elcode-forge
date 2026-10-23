@@ -6,10 +6,10 @@ use std::str::FromStr;
 
 use sqlx::postgres::PgPoolOptions;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
-use sqlx::{PgPool, SqlitePool};
+use sqlx::{PgPool, Row, SqlitePool};
 
 use crate::error::ServerError;
-use models::{ApiKeyRow, FindingRow, ProjectRow, SnapshotRow};
+use models::{FindingRow, ProjectRow, SnapshotRow};
 
 /// Dual database connection pool.
 #[derive(Clone)]
@@ -206,22 +206,55 @@ impl Db {
 
     /// Fetches project by ID.
     pub async fn get_project(&self, id: &str) -> Result<Option<ProjectRow>, ServerError> {
+        let sql = "SELECT id, name, created_at, updated_at FROM projects WHERE id = $1";
         match &self.pool {
             DbPool::Sqlite(pool) => {
-                let row = sqlx::query_as::<_, ProjectRow>("SELECT * FROM projects WHERE id = $1")
+                let row = sqlx::query(sql)
                     .bind(id)
                     .fetch_optional(pool)
                     .await
                     .map_err(|e| ServerError::Database(format!("Failed to fetch project: {e}")))?;
-                Ok(row)
+                match row {
+                    Some(r) => Ok(Some(ProjectRow {
+                        id: r
+                            .try_get("id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        name: r
+                            .try_get("name")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        created_at: r
+                            .try_get("created_at")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        updated_at: r
+                            .try_get("updated_at")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    })),
+                    None => Ok(None),
+                }
             }
             DbPool::Postgres(pool) => {
-                let row = sqlx::query_as::<_, ProjectRow>("SELECT * FROM projects WHERE id = $1")
+                let row = sqlx::query(sql)
                     .bind(id)
                     .fetch_optional(pool)
                     .await
                     .map_err(|e| ServerError::Database(format!("Failed to fetch project: {e}")))?;
-                Ok(row)
+                match row {
+                    Some(r) => Ok(Some(ProjectRow {
+                        id: r
+                            .try_get("id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        name: r
+                            .try_get("name")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        created_at: r
+                            .try_get("created_at")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        updated_at: r
+                            .try_get("updated_at")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    })),
+                    None => Ok(None),
+                }
             }
         }
     }
@@ -358,55 +391,203 @@ impl Db {
         repo_id: &str,
         branch: &str,
     ) -> Result<Option<(SnapshotRow, Vec<FindingRow>)>, ServerError> {
-        let snapshot_opt: Option<SnapshotRow> = match &self.pool {
-            DbPool::Sqlite(pool) => {
-                sqlx::query_as::<_, SnapshotRow>(
-                    "SELECT * FROM snapshots WHERE repo_id = $1 AND branch = $2 ORDER BY created_at DESC LIMIT 1",
-                )
-                .bind(repo_id)
-                .bind(branch)
-                .fetch_optional(pool)
-                .await
-                .map_err(|e| ServerError::Database(format!("Failed to fetch latest snapshot: {e}")))?
-            }
-            DbPool::Postgres(pool) => {
-                sqlx::query_as::<_, SnapshotRow>(
-                    "SELECT * FROM snapshots WHERE repo_id = $1 AND branch = $2 ORDER BY created_at DESC LIMIT 1",
-                )
-                .bind(repo_id)
-                .bind(branch)
-                .fetch_optional(pool)
-                .await
-                .map_err(|e| ServerError::Database(format!("Failed to fetch latest snapshot: {e}")))?
-            }
-        };
+        let snap_sql = "SELECT id, repo_id, branch, commit_hash, content_hash, tool_version, health_overall, health_json, findings_count, modules_json, metadata_json, created_at FROM snapshots WHERE repo_id = $1 AND branch = $2 ORDER BY created_at DESC LIMIT 1";
+        let find_sql = "SELECT id, snapshot_id, finding_id, rule_id, category, severity, confidence, title, finding_json FROM findings WHERE snapshot_id = $1";
 
-        let Some(snapshot) = snapshot_opt else {
-            return Ok(None);
-        };
-
-        let findings = match &self.pool {
+        match &self.pool {
             DbPool::Sqlite(pool) => {
-                sqlx::query_as::<_, FindingRow>("SELECT * FROM findings WHERE snapshot_id = $1")
+                let snap_row = sqlx::query(snap_sql)
+                    .bind(repo_id)
+                    .bind(branch)
+                    .fetch_optional(pool)
+                    .await
+                    .map_err(|e| {
+                        ServerError::Database(format!("Failed to fetch latest snapshot: {e}"))
+                    })?;
+
+                let Some(r) = snap_row else {
+                    return Ok(None);
+                };
+
+                let snapshot = SnapshotRow {
+                    id: r
+                        .try_get("id")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    repo_id: r
+                        .try_get("repo_id")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    branch: r
+                        .try_get("branch")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    commit_hash: r
+                        .try_get("commit_hash")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    content_hash: r
+                        .try_get("content_hash")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    tool_version: r
+                        .try_get("tool_version")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    health_overall: r
+                        .try_get("health_overall")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    health_json: r
+                        .try_get("health_json")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    findings_count: r
+                        .try_get("findings_count")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    modules_json: r
+                        .try_get("modules_json")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    metadata_json: r
+                        .try_get("metadata_json")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    created_at: r
+                        .try_get("created_at")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                };
+
+                let findings_db = sqlx::query(find_sql)
                     .bind(&snapshot.id)
                     .fetch_all(pool)
                     .await
                     .map_err(|e| {
                         ServerError::Database(format!("Failed to fetch snapshot findings: {e}"))
-                    })?
+                    })?;
+
+                let mut findings = Vec::with_capacity(findings_db.len());
+                for f in findings_db {
+                    findings.push(FindingRow {
+                        id: f
+                            .try_get("id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        snapshot_id: f
+                            .try_get("snapshot_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        finding_id: f
+                            .try_get("finding_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        rule_id: f
+                            .try_get("rule_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        category: f
+                            .try_get("category")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        severity: f
+                            .try_get("severity")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        confidence: f
+                            .try_get("confidence")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        title: f
+                            .try_get("title")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        finding_json: f
+                            .try_get("finding_json")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    });
+                }
+
+                Ok(Some((snapshot, findings)))
             }
             DbPool::Postgres(pool) => {
-                sqlx::query_as::<_, FindingRow>("SELECT * FROM findings WHERE snapshot_id = $1")
+                let snap_row = sqlx::query(snap_sql)
+                    .bind(repo_id)
+                    .bind(branch)
+                    .fetch_optional(pool)
+                    .await
+                    .map_err(|e| {
+                        ServerError::Database(format!("Failed to fetch latest snapshot: {e}"))
+                    })?;
+
+                let Some(r) = snap_row else {
+                    return Ok(None);
+                };
+
+                let snapshot = SnapshotRow {
+                    id: r
+                        .try_get("id")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    repo_id: r
+                        .try_get("repo_id")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    branch: r
+                        .try_get("branch")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    commit_hash: r
+                        .try_get("commit_hash")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    content_hash: r
+                        .try_get("content_hash")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    tool_version: r
+                        .try_get("tool_version")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    health_overall: r
+                        .try_get("health_overall")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    health_json: r
+                        .try_get("health_json")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    findings_count: r
+                        .try_get("findings_count")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    modules_json: r
+                        .try_get("modules_json")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    metadata_json: r
+                        .try_get("metadata_json")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    created_at: r
+                        .try_get("created_at")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                };
+
+                let findings_db = sqlx::query(find_sql)
                     .bind(&snapshot.id)
                     .fetch_all(pool)
                     .await
                     .map_err(|e| {
                         ServerError::Database(format!("Failed to fetch snapshot findings: {e}"))
-                    })?
-            }
-        };
+                    })?;
 
-        Ok(Some((snapshot, findings)))
+                let mut findings = Vec::with_capacity(findings_db.len());
+                for f in findings_db {
+                    findings.push(FindingRow {
+                        id: f
+                            .try_get("id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        snapshot_id: f
+                            .try_get("snapshot_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        finding_id: f
+                            .try_get("finding_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        rule_id: f
+                            .try_get("rule_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        category: f
+                            .try_get("category")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        severity: f
+                            .try_get("severity")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        confidence: f
+                            .try_get("confidence")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        title: f
+                            .try_get("title")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        finding_json: f
+                            .try_get("finding_json")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    });
+                }
+
+                Ok(Some((snapshot, findings)))
+            }
+        }
     }
 
     /// Stores an API key hash.
@@ -461,25 +642,36 @@ impl Db {
         key_hash: &str,
         now: i64,
     ) -> Result<bool, ServerError> {
-        let key_opt: Option<ApiKeyRow> = match &self.pool {
-            DbPool::Sqlite(pool) => sqlx::query_as::<_, ApiKeyRow>(
-                "SELECT * FROM api_keys WHERE key_hash = $1 AND is_active = 1",
-            )
-            .bind(key_hash)
-            .fetch_optional(pool)
-            .await
-            .map_err(|e| ServerError::Database(format!("Failed to query API key: {e}")))?,
-            DbPool::Postgres(pool) => sqlx::query_as::<_, ApiKeyRow>(
-                "SELECT * FROM api_keys WHERE key_hash = $1 AND is_active = 1",
-            )
-            .bind(key_hash)
-            .fetch_optional(pool)
-            .await
-            .map_err(|e| ServerError::Database(format!("Failed to query API key: {e}")))?,
+        let sql = "SELECT id, name, key_hash, created_at, expires_at, is_active FROM api_keys WHERE key_hash = $1 AND is_active = 1";
+        let expires_at_opt: Option<Option<i64>> = match &self.pool {
+            DbPool::Sqlite(pool) => {
+                let row = sqlx::query(sql)
+                    .bind(key_hash)
+                    .fetch_optional(pool)
+                    .await
+                    .map_err(|e| ServerError::Database(format!("Failed to query API key: {e}")))?;
+                row.map(|r| {
+                    r.try_get("expires_at")
+                        .map_err(|e| ServerError::Database(e.to_string()))
+                })
+                .transpose()?
+            }
+            DbPool::Postgres(pool) => {
+                let row = sqlx::query(sql)
+                    .bind(key_hash)
+                    .fetch_optional(pool)
+                    .await
+                    .map_err(|e| ServerError::Database(format!("Failed to query API key: {e}")))?;
+                row.map(|r| {
+                    r.try_get("expires_at")
+                        .map_err(|e| ServerError::Database(e.to_string()))
+                })
+                .transpose()?
+            }
         };
 
-        if let Some(key) = key_opt {
-            if let Some(exp) = key.expires_at {
+        if let Some(exp_opt) = expires_at_opt {
+            if let Some(exp) = exp_opt {
                 if now > exp {
                     return Ok(false);
                 }
