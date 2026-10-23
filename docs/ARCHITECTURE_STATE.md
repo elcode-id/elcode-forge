@@ -807,3 +807,18 @@
   - Zero-panic: all file I/O and parsing operations propagate `ForgeError::Io`, `ForgeError::Config`, or `ForgeError::Serialization`.
   - Credentials file permissions on Unix set to `0o600`.
   - Contributes to **Epic #201** (Phase 9A: Remote Sync Protocol & CLI Client).
+
+
+## Issue #203 — CLI Remote Commands (login, logout, auth, push, pull, sync) (COMPLETED)
+- **Crate:** `crates/forge-cli` (`Cargo.toml`, `src/cli.rs`, `src/commands/auth.rs`, `src/commands/sync.rs`, `src/commands/mod.rs`, `src/lib.rs`, `tests/sync_cli_test.rs`).
+- **Commands & Capabilities:**
+  - `eforge login [--server <url>] [--token <tok>] [--username <user>] [--no-validate]`: Authenticates with remote server, validates against `/api/v1/health`, and stores credentials in `~/.eforge/credentials.yaml`.
+  - `eforge logout [--server <url>]`: Clears stored credentials for specified or default remote server.
+  - `eforge auth status [--server <url>] [--format <fmt>]`: Displays active server, masked token, credential store source, and all configured servers in Terminal or JSON.
+  - `eforge push [--server <url>] [--token <tok>] [--branch <branch>]`: Uploads complete repository snapshot (`SyncPushPayload`) to remote server (`POST /api/v1/sync/push`) and updates local cached baseline.
+  - `eforge pull [--server <url>] [--token <tok>] [--branch <branch>]`: Fetches remote baseline snapshot (`GET /api/v1/sync/pull`) and caches it in `<repo_root>/.eforge/baseline.json`.
+  - `eforge sync [--server <url>] [--token <tok>] [--branch <branch>] [--fail-on <sev>]`: CI/CD automation pipeline comparing local findings against remote baseline via `DeltaSummary`, pushing updated snapshot, and evaluating policy thresholds.
+- **Invariants:**
+  - Zero-panic: non-test code propagates structured errors without unwraps.
+  - Local cached baseline always written to `<repo_root>/.eforge/baseline.json`.
+  - Contributes to **Epic #201** (Phase 9A: Remote Sync Protocol & CLI Client).

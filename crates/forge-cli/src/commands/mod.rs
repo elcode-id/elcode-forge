@@ -2,6 +2,7 @@
 
 pub mod ai_admin;
 pub mod ai_review;
+pub mod auth;
 pub mod dependencies;
 pub mod diff;
 pub mod doctor;
@@ -19,3 +20,4 @@ pub mod sbom;
 pub mod scan;
 pub mod schema;
 pub mod security;
+pub mod sync;
