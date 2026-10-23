@@ -1,0 +1,38 @@
+# ============================================================
+# ELCODE Forge Dashboard — Production Containerfile
+# Image: elcode/forge-dashboard
+# Multi-stage: Node builder -> Minimal Nginx Alpine
+# ============================================================
+
+# Stage 1: Build static web assets
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Enable pnpm via Corepack
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy root workspace configurations
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY packages/ ./packages/
+COPY apps/dashboard/ ./apps/dashboard/
+
+# Install dependencies and build dashboard
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @elcode-forge/dashboard run build
+
+# Stage 2: Production Nginx static server
+FROM nginx:1.27-alpine
+
+# Copy custom Nginx configuration
+COPY docker/nginx-dashboard.conf /etc/nginx/conf.d/default.conf
+
+# Copy compiled static HTML/CSS/JS assets
+COPY --from=builder /app/apps/dashboard/build /usr/share/nginx/html
+
+EXPOSE 80
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=3s --retries=3 \
+    CMD wget -qO- http://127.0.0.1/healthz || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

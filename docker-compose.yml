@@ -1,0 +1,128 @@
+# ============================================================
+# ELCODE Forge — Multi-Service Orchestration Stack
+# Services:
+#   1. forge-server — Core synchronization and intelligence backend
+#   2. postgres     — Relational database backend
+#   3. minio        — S3-compatible artifact and cache storage
+#   4. dashboard    — Web intelligence UI dashboard
+# ============================================================
+
+services:
+  # ------------------------------------------------------------
+  # PostgreSQL Database
+  # ------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: forge-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-forge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-forge_production_password_change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-forge_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    networks:
+      - forge_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-forge} -d ${POSTGRES_DB:-forge_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ------------------------------------------------------------
+  # MinIO S3 Object Storage
+  # ------------------------------------------------------------
+  minio:
+    image: minio/minio:RELEASE.2024-10-13T13-34-11Z
+    container_name: forge-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-forge_minio_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-forge_minio_secret_password_change_me}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    networks:
+      - forge_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ------------------------------------------------------------
+  # Forge Server Backend
+  # ------------------------------------------------------------
+  forge-server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.server
+    image: elcode/forge-server:latest
+    container_name: forge-server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      EFORGE_SERVER_HOST: ${EFORGE_SERVER_HOST:-0.0.0.0}
+      EFORGE_SERVER_PORT: ${EFORGE_SERVER_PORT:-8080}
+      EFORGE_DATABASE_URL: ${EFORGE_DATABASE_URL:-postgres://forge:forge_production_password_change_me@postgres:5432/forge_db}
+      EFORGE_JWT_SECRET: ${EFORGE_JWT_SECRET:-super_secret_jwt_token_for_forge_cloud_auth_32bytes_minimum}
+      EFORGE_ADMIN_API_KEY: ${EFORGE_ADMIN_API_KEY:-forge_admin_api_key_default_bootstrap_12345}
+      RUST_LOG: ${RUST_LOG:-info,forge_server=debug}
+    volumes:
+      - forge_data:/var/lib/eforge
+    ports:
+      - "${EFORGE_SERVER_PORT:-8080}:8080"
+    networks:
+      - forge_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8080/api/v1/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # ------------------------------------------------------------
+  # Web Intelligence Dashboard
+  # ------------------------------------------------------------
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dashboard
+    image: elcode/forge-dashboard:latest
+    container_name: forge-dashboard
+    restart: unless-stopped
+    depends_on:
+      forge-server:
+        condition: service_healthy
+    ports:
+      - "${DASHBOARD_PORT:-3000}:80"
+    networks:
+      - forge_network
+
+# ------------------------------------------------------------
+# Persistent Data Volumes
+# ------------------------------------------------------------
+volumes:
+  postgres_data:
+    name: forge_postgres_data
+  minio_data:
+    name: forge_minio_data
+  forge_data:
+    name: forge_server_data
+
+# ------------------------------------------------------------
+# Isolated Internal Network
+# ------------------------------------------------------------
+networks:
+  forge_network:
+    name: forge_network
+    driver: bridge

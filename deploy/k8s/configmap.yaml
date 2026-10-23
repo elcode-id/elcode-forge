@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: forge-server-config
+  namespace: forge
+  labels:
+    app.kubernetes.io/name: forge-server
+    app.kubernetes.io/part-of: elcode-forge
+data:
+  EFORGE_SERVER_HOST: "0.0.0.0"
+  EFORGE_SERVER_PORT: "8080"
+  RUST_LOG: "info,forge_server=info"
