@@ -11,7 +11,12 @@ use crate::config::ServerConfig;
 use crate::db::Db;
 use crate::error::ServerError;
 use crate::routes::{
-    auth::token_handler, health::health_handler, sync::pull_handler, sync::push_handler,
+    auth::token_handler,
+    health::health_handler,
+    history::project_history_handler,
+    projects::{list_projects_handler, project_branches_handler, project_overview_handler},
+    sync::{pull_handler, push_handler},
+    webhooks::{create_webhook_handler, delete_webhook_handler, list_webhooks_handler},
 };
 use crate::state::AppState;
 
@@ -22,6 +27,27 @@ pub fn create_app(state: AppState) -> Router {
         .route("/api/v1/auth/token", post(token_handler))
         .route("/api/v1/sync/push", post(push_handler))
         .route("/api/v1/sync/pull", get(pull_handler))
+        .route("/api/v1/projects", get(list_projects_handler))
+        .route(
+            "/api/v1/projects/:repo_id/overview",
+            get(project_overview_handler),
+        )
+        .route(
+            "/api/v1/projects/:repo_id/branches",
+            get(project_branches_handler),
+        )
+        .route(
+            "/api/v1/projects/:repo_id/history",
+            get(project_history_handler),
+        )
+        .route(
+            "/api/v1/webhooks",
+            post(create_webhook_handler).get(list_webhooks_handler),
+        )
+        .route(
+            "/api/v1/webhooks/:id",
+            axum::routing::delete(delete_webhook_handler),
+        )
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
         .with_state(state)

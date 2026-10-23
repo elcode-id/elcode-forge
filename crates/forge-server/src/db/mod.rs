@@ -9,7 +9,9 @@ use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::{PgPool, Row, SqlitePool};
 
 use crate::error::ServerError;
-use models::{FindingRow, ProjectRow, SnapshotRow};
+use models::{
+    BranchSummary, FindingRow, HistoryPoint, ProjectRow, ProjectSummary, SnapshotRow, WebhookRow,
+};
 
 /// Dual database connection pool.
 #[derive(Clone)]
@@ -137,6 +139,19 @@ impl Db {
             expires_at BIGINT,
             is_active BIGINT NOT NULL DEFAULT 1
         );
+
+        CREATE TABLE IF NOT EXISTS webhooks (
+            id TEXT PRIMARY KEY,
+            repo_id TEXT,
+            url TEXT NOT NULL,
+            secret TEXT,
+            events_json TEXT NOT NULL,
+            min_health_threshold BIGINT,
+            is_active BIGINT NOT NULL DEFAULT 1,
+            created_at BIGINT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_webhooks_repo ON webhooks(repo_id);
         "#;
 
         match &self.pool {
@@ -255,6 +270,312 @@ impl Db {
                     })),
                     None => Ok(None),
                 }
+            }
+        }
+    }
+
+    /// Lists all projects with their most recent snapshot statistics.
+    pub async fn list_projects(&self) -> Result<Vec<ProjectSummary>, ServerError> {
+        let projects_sql = "SELECT id, name, updated_at FROM projects ORDER BY name ASC";
+        let latest_snap_sql = "SELECT branch, commit_hash, health_overall, findings_count, created_at FROM snapshots WHERE repo_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1";
+
+        let projects = match &self.pool {
+            DbPool::Sqlite(pool) => {
+                let rows = sqlx::query(projects_sql)
+                    .fetch_all(pool)
+                    .await
+                    .map_err(|e| ServerError::Database(e.to_string()))?;
+                let mut list = Vec::with_capacity(rows.len());
+                for r in rows {
+                    let id: String = r
+                        .try_get("id")
+                        .map_err(|e| ServerError::Database(e.to_string()))?;
+                    let name: String = r
+                        .try_get("name")
+                        .map_err(|e| ServerError::Database(e.to_string()))?;
+                    let updated_at: i64 = r
+                        .try_get("updated_at")
+                        .map_err(|e| ServerError::Database(e.to_string()))?;
+
+                    let snap_row = sqlx::query(latest_snap_sql)
+                        .bind(&id)
+                        .fetch_optional(pool)
+                        .await
+                        .map_err(|e| ServerError::Database(e.to_string()))?;
+
+                    let (latest_branch, latest_commit, latest_health, findings_count) =
+                        match snap_row {
+                            Some(sr) => (
+                                Some(
+                                    sr.try_get("branch")
+                                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                                ),
+                                Some(
+                                    sr.try_get("commit_hash")
+                                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                                ),
+                                Some(
+                                    sr.try_get::<i64, _>("health_overall")
+                                        .map_err(|e| ServerError::Database(e.to_string()))?
+                                        as u8,
+                                ),
+                                Some(
+                                    sr.try_get::<i64, _>("findings_count")
+                                        .map_err(|e| ServerError::Database(e.to_string()))?
+                                        as usize,
+                                ),
+                            ),
+                            None => (None, None, None, None),
+                        };
+
+                    list.push(ProjectSummary {
+                        repo_id: id,
+                        name,
+                        latest_branch,
+                        latest_commit,
+                        latest_health,
+                        findings_count,
+                        updated_at,
+                    });
+                }
+                list
+            }
+            DbPool::Postgres(pool) => {
+                let rows = sqlx::query(projects_sql)
+                    .fetch_all(pool)
+                    .await
+                    .map_err(|e| ServerError::Database(e.to_string()))?;
+                let mut list = Vec::with_capacity(rows.len());
+                for r in rows {
+                    let id: String = r
+                        .try_get("id")
+                        .map_err(|e| ServerError::Database(e.to_string()))?;
+                    let name: String = r
+                        .try_get("name")
+                        .map_err(|e| ServerError::Database(e.to_string()))?;
+                    let updated_at: i64 = r
+                        .try_get("updated_at")
+                        .map_err(|e| ServerError::Database(e.to_string()))?;
+
+                    let snap_row = sqlx::query(latest_snap_sql)
+                        .bind(&id)
+                        .fetch_optional(pool)
+                        .await
+                        .map_err(|e| ServerError::Database(e.to_string()))?;
+
+                    let (latest_branch, latest_commit, latest_health, findings_count) =
+                        match snap_row {
+                            Some(sr) => (
+                                Some(
+                                    sr.try_get("branch")
+                                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                                ),
+                                Some(
+                                    sr.try_get("commit_hash")
+                                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                                ),
+                                Some(
+                                    sr.try_get::<i64, _>("health_overall")
+                                        .map_err(|e| ServerError::Database(e.to_string()))?
+                                        as u8,
+                                ),
+                                Some(
+                                    sr.try_get::<i64, _>("findings_count")
+                                        .map_err(|e| ServerError::Database(e.to_string()))?
+                                        as usize,
+                                ),
+                            ),
+                            None => (None, None, None, None),
+                        };
+
+                    list.push(ProjectSummary {
+                        repo_id: id,
+                        name,
+                        latest_branch,
+                        latest_commit,
+                        latest_health,
+                        findings_count,
+                        updated_at,
+                    });
+                }
+                list
+            }
+        };
+
+        Ok(projects)
+    }
+
+    /// Lists distinct branches and their latest snapshot for a project.
+    pub async fn get_project_branches(
+        &self,
+        repo_id: &str,
+    ) -> Result<Vec<BranchSummary>, ServerError> {
+        let branch_sql =
+            "SELECT DISTINCT branch FROM snapshots WHERE repo_id = $1 ORDER BY branch ASC";
+        let latest_snap_sql = "SELECT commit_hash, health_overall, findings_count, created_at FROM snapshots WHERE repo_id = $1 AND branch = $2 ORDER BY created_at DESC, id DESC LIMIT 1";
+
+        let branches = match &self.pool {
+            DbPool::Sqlite(pool) => {
+                let rows = sqlx::query(branch_sql)
+                    .bind(repo_id)
+                    .fetch_all(pool)
+                    .await
+                    .map_err(|e| ServerError::Database(e.to_string()))?;
+                let mut list = Vec::with_capacity(rows.len());
+                for r in rows {
+                    let branch: String = r
+                        .try_get("branch")
+                        .map_err(|e| ServerError::Database(e.to_string()))?;
+                    if let Some(sr) = sqlx::query(latest_snap_sql)
+                        .bind(repo_id)
+                        .bind(&branch)
+                        .fetch_optional(pool)
+                        .await
+                        .map_err(|e| ServerError::Database(e.to_string()))?
+                    {
+                        list.push(BranchSummary {
+                            branch,
+                            latest_commit: sr
+                                .try_get("commit_hash")
+                                .map_err(|e| ServerError::Database(e.to_string()))?,
+                            latest_health: sr
+                                .try_get::<i64, _>("health_overall")
+                                .map_err(|e| ServerError::Database(e.to_string()))?
+                                as u8,
+                            findings_count: sr
+                                .try_get::<i64, _>("findings_count")
+                                .map_err(|e| ServerError::Database(e.to_string()))?
+                                as usize,
+                            updated_at: sr
+                                .try_get("created_at")
+                                .map_err(|e| ServerError::Database(e.to_string()))?,
+                        });
+                    }
+                }
+                list
+            }
+            DbPool::Postgres(pool) => {
+                let rows = sqlx::query(branch_sql)
+                    .bind(repo_id)
+                    .fetch_all(pool)
+                    .await
+                    .map_err(|e| ServerError::Database(e.to_string()))?;
+                let mut list = Vec::with_capacity(rows.len());
+                for r in rows {
+                    let branch: String = r
+                        .try_get("branch")
+                        .map_err(|e| ServerError::Database(e.to_string()))?;
+                    if let Some(sr) = sqlx::query(latest_snap_sql)
+                        .bind(repo_id)
+                        .bind(&branch)
+                        .fetch_optional(pool)
+                        .await
+                        .map_err(|e| ServerError::Database(e.to_string()))?
+                    {
+                        list.push(BranchSummary {
+                            branch,
+                            latest_commit: sr
+                                .try_get("commit_hash")
+                                .map_err(|e| ServerError::Database(e.to_string()))?,
+                            latest_health: sr
+                                .try_get::<i64, _>("health_overall")
+                                .map_err(|e| ServerError::Database(e.to_string()))?
+                                as u8,
+                            findings_count: sr
+                                .try_get::<i64, _>("findings_count")
+                                .map_err(|e| ServerError::Database(e.to_string()))?
+                                as usize,
+                            updated_at: sr
+                                .try_get("created_at")
+                                .map_err(|e| ServerError::Database(e.to_string()))?,
+                        });
+                    }
+                }
+                list
+            }
+        };
+
+        Ok(branches)
+    }
+
+    /// Fetches chronological snapshot history for a given project branch.
+    pub async fn get_branch_history(
+        &self,
+        repo_id: &str,
+        branch: &str,
+        limit: i64,
+    ) -> Result<Vec<HistoryPoint>, ServerError> {
+        let sql = "SELECT commit_hash, branch, created_at, health_overall, findings_count, health_json FROM snapshots WHERE repo_id = $1 AND branch = $2 ORDER BY created_at ASC, id ASC LIMIT $3";
+        match &self.pool {
+            DbPool::Sqlite(pool) => {
+                let rows = sqlx::query(sql)
+                    .bind(repo_id)
+                    .bind(branch)
+                    .bind(limit)
+                    .fetch_all(pool)
+                    .await
+                    .map_err(|e| ServerError::Database(e.to_string()))?;
+                let mut points = Vec::with_capacity(rows.len());
+                for r in rows {
+                    points.push(HistoryPoint {
+                        commit_hash: r
+                            .try_get("commit_hash")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        branch: r
+                            .try_get("branch")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        timestamp_secs: r
+                            .try_get("created_at")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        overall_health: r
+                            .try_get::<i64, _>("health_overall")
+                            .map_err(|e| ServerError::Database(e.to_string()))?
+                            as u8,
+                        findings_count: r
+                            .try_get::<i64, _>("findings_count")
+                            .map_err(|e| ServerError::Database(e.to_string()))?
+                            as usize,
+                        health_json: r
+                            .try_get("health_json")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    });
+                }
+                Ok(points)
+            }
+            DbPool::Postgres(pool) => {
+                let rows = sqlx::query(sql)
+                    .bind(repo_id)
+                    .bind(branch)
+                    .bind(limit)
+                    .fetch_all(pool)
+                    .await
+                    .map_err(|e| ServerError::Database(e.to_string()))?;
+                let mut points = Vec::with_capacity(rows.len());
+                for r in rows {
+                    points.push(HistoryPoint {
+                        commit_hash: r
+                            .try_get("commit_hash")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        branch: r
+                            .try_get("branch")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        timestamp_secs: r
+                            .try_get("created_at")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        overall_health: r
+                            .try_get::<i64, _>("health_overall")
+                            .map_err(|e| ServerError::Database(e.to_string()))?
+                            as u8,
+                        findings_count: r
+                            .try_get::<i64, _>("findings_count")
+                            .map_err(|e| ServerError::Database(e.to_string()))?
+                            as usize,
+                        health_json: r
+                            .try_get("health_json")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    });
+                }
+                Ok(points)
             }
         }
     }
@@ -391,7 +712,7 @@ impl Db {
         repo_id: &str,
         branch: &str,
     ) -> Result<Option<(SnapshotRow, Vec<FindingRow>)>, ServerError> {
-        let snap_sql = "SELECT id, repo_id, branch, commit_hash, content_hash, tool_version, health_overall, health_json, findings_count, modules_json, metadata_json, created_at FROM snapshots WHERE repo_id = $1 AND branch = $2 ORDER BY created_at DESC LIMIT 1";
+        let snap_sql = "SELECT id, repo_id, branch, commit_hash, content_hash, tool_version, health_overall, health_json, findings_count, modules_json, metadata_json, created_at FROM snapshots WHERE repo_id = $1 AND branch = $2 ORDER BY created_at DESC, id DESC LIMIT 1";
         let find_sql = "SELECT id, snapshot_id, finding_id, rule_id, category, severity, confidence, title, finding_json FROM findings WHERE snapshot_id = $1";
 
         match &self.pool {
@@ -680,5 +1001,181 @@ impl Db {
         }
 
         Ok(false)
+    }
+
+    /// Creates or updates a webhook subscription.
+    pub async fn create_webhook(&self, webhook: &WebhookRow) -> Result<(), ServerError> {
+        let sql = r#"
+        INSERT INTO webhooks (id, repo_id, url, secret, events_json, min_health_threshold, is_active, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ON CONFLICT(id) DO UPDATE SET
+            repo_id = excluded.repo_id,
+            url = excluded.url,
+            secret = excluded.secret,
+            events_json = excluded.events_json,
+            min_health_threshold = excluded.min_health_threshold,
+            is_active = excluded.is_active
+        "#;
+
+        match &self.pool {
+            DbPool::Sqlite(pool) => {
+                sqlx::query(sql)
+                    .bind(&webhook.id)
+                    .bind(&webhook.repo_id)
+                    .bind(&webhook.url)
+                    .bind(&webhook.secret)
+                    .bind(&webhook.events_json)
+                    .bind(webhook.min_health_threshold)
+                    .bind(webhook.is_active)
+                    .bind(webhook.created_at)
+                    .execute(pool)
+                    .await
+                    .map_err(|e| ServerError::Database(format!("Failed to create webhook: {e}")))?;
+            }
+            DbPool::Postgres(pool) => {
+                sqlx::query(sql)
+                    .bind(&webhook.id)
+                    .bind(&webhook.repo_id)
+                    .bind(&webhook.url)
+                    .bind(&webhook.secret)
+                    .bind(&webhook.events_json)
+                    .bind(webhook.min_health_threshold)
+                    .bind(webhook.is_active)
+                    .bind(webhook.created_at)
+                    .execute(pool)
+                    .await
+                    .map_err(|e| ServerError::Database(format!("Failed to create webhook: {e}")))?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Lists active webhooks, optionally filtered by `repo_id`.
+    pub async fn list_webhooks(
+        &self,
+        repo_id: Option<&str>,
+    ) -> Result<Vec<WebhookRow>, ServerError> {
+        let (sql, bind_repo) = if let Some(r) = repo_id {
+            (
+                "SELECT id, repo_id, url, secret, events_json, min_health_threshold, is_active, created_at FROM webhooks WHERE is_active = 1 AND (repo_id IS NULL OR repo_id = $1) ORDER BY created_at DESC",
+                Some(r),
+            )
+        } else {
+            (
+                "SELECT id, repo_id, url, secret, events_json, min_health_threshold, is_active, created_at FROM webhooks WHERE is_active = 1 ORDER BY created_at DESC",
+                None,
+            )
+        };
+
+        match &self.pool {
+            DbPool::Sqlite(pool) => {
+                let rows = if let Some(r) = bind_repo {
+                    sqlx::query(sql)
+                        .bind(r)
+                        .fetch_all(pool)
+                        .await
+                        .map_err(|e| ServerError::Database(e.to_string()))?
+                } else {
+                    sqlx::query(sql)
+                        .fetch_all(pool)
+                        .await
+                        .map_err(|e| ServerError::Database(e.to_string()))?
+                };
+                let mut list = Vec::with_capacity(rows.len());
+                for r in rows {
+                    list.push(WebhookRow {
+                        id: r
+                            .try_get("id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        repo_id: r
+                            .try_get("repo_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        url: r
+                            .try_get("url")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        secret: r
+                            .try_get("secret")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        events_json: r
+                            .try_get("events_json")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        min_health_threshold: r
+                            .try_get("min_health_threshold")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        is_active: r
+                            .try_get("is_active")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        created_at: r
+                            .try_get("created_at")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    });
+                }
+                Ok(list)
+            }
+            DbPool::Postgres(pool) => {
+                let rows = if let Some(r) = bind_repo {
+                    sqlx::query(sql)
+                        .bind(r)
+                        .fetch_all(pool)
+                        .await
+                        .map_err(|e| ServerError::Database(e.to_string()))?
+                } else {
+                    sqlx::query(sql)
+                        .fetch_all(pool)
+                        .await
+                        .map_err(|e| ServerError::Database(e.to_string()))?
+                };
+                let mut list = Vec::with_capacity(rows.len());
+                for r in rows {
+                    list.push(WebhookRow {
+                        id: r
+                            .try_get("id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        repo_id: r
+                            .try_get("repo_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        url: r
+                            .try_get("url")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        secret: r
+                            .try_get("secret")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        events_json: r
+                            .try_get("events_json")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        min_health_threshold: r
+                            .try_get("min_health_threshold")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        is_active: r
+                            .try_get("is_active")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        created_at: r
+                            .try_get("created_at")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    });
+                }
+                Ok(list)
+            }
+        }
+    }
+
+    /// Deactivates a webhook by ID.
+    pub async fn delete_webhook(&self, id: &str) -> Result<bool, ServerError> {
+        let sql = "UPDATE webhooks SET is_active = 0 WHERE id = $1";
+        let affected = match &self.pool {
+            DbPool::Sqlite(pool) => sqlx::query(sql)
+                .bind(id)
+                .execute(pool)
+                .await
+                .map_err(|e| ServerError::Database(e.to_string()))?
+                .rows_affected(),
+            DbPool::Postgres(pool) => sqlx::query(sql)
+                .bind(id)
+                .execute(pool)
+                .await
+                .map_err(|e| ServerError::Database(e.to_string()))?
+                .rows_affected(),
+        };
+        Ok(affected > 0)
     }
 }
