@@ -879,3 +879,15 @@
   - Container execution strictly enforces non-root unprivileged user (`UID 10001`).
   - All healthchecks point to standard `/api/v1/health` endpoint.
   - Completes **Epic #205** (Phase 9B: Lightweight Self-Hostable Forge Server).
+
+
+## Issue #210 — Team Cloud Mode, Project Switcher, Remote Trends & PR Baseline Diff Inspector (COMPLETED)
+- **App:** `apps/dashboard` (`src/lib/data/server.ts`, `src/lib/data/source.ts`, `src/lib/data/store.svelte.ts`, `src/routes/+layout.svelte`, `src/routes/projects/+page.svelte`, `src/routes/compare/+page.svelte`, `tests/server_sync.test.ts`).
+- **Capabilities Delivered:**
+  - `apps/dashboard/src/lib/data/server.ts`: Forge Server client library providing connection testing, project querying, project overview inspection, branch listing, historical score fetching, remote baseline snapshot pulling with transformation to `ReportBundle`, and `computeBaselineDiff` calculation.
+  - Mode Switcher & Navigation: Integrated toggle between `Local File` mode and `Team Cloud` mode in header with server status indicator, connection modal, and navigation links for `Projects` and `Compare`.
+  - Project Workspace Studio (`/projects`): Multi-repository grid displaying connected projects with real-time health score rings, open findings counters, branch/commit tracking, search filtering, and one-click "Open Dashboard" loading.
+  - PR Baseline Diff Inspector (`/compare`): Visual delta inspector calculating health score shifts, added findings, resolved findings, persistent baseline findings, and per-dimension delta bars with severity filtering.
+- **Invariants:**
+  - Sensitive server tokens are persisted only in local browser `localStorage` under `eforge_server_config`.
+  - Contributes to **Epic #209** (Phase 9C: Collaborative Team Intelligence, Dashboard Cloud Sync & v0.9.0 Release Prep).
