@@ -52,3 +52,49 @@ pub struct ApiKeyRow {
     pub expires_at: Option<i64>,
     pub is_active: i64,
 }
+
+/// Record representing a configured outbound webhook.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WebhookRow {
+    pub id: String,
+    pub repo_id: Option<String>,
+    pub url: String,
+    pub secret: Option<String>,
+    pub events_json: String,
+    pub min_health_threshold: Option<i64>,
+    pub is_active: i64,
+    pub created_at: i64,
+}
+
+/// Lightweight summary of a registered project with latest snapshot information.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProjectSummary {
+    pub repo_id: String,
+    pub name: String,
+    pub latest_branch: Option<String>,
+    pub latest_commit: Option<String>,
+    pub latest_health: Option<u8>,
+    pub findings_count: Option<usize>,
+    pub updated_at: i64,
+}
+
+/// Summary of a branch's current state.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BranchSummary {
+    pub branch: String,
+    pub latest_commit: String,
+    pub latest_health: u8,
+    pub findings_count: usize,
+    pub updated_at: i64,
+}
+
+/// Historical score point along a branch timeline.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HistoryPoint {
+    pub commit_hash: String,
+    pub branch: String,
+    pub timestamp_secs: i64,
+    pub overall_health: u8,
+    pub findings_count: usize,
+    pub health_json: String,
+}

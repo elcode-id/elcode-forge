@@ -852,3 +852,17 @@
   - Zero-panic: non-test code strictly avoids `unwrap()`, `expect()`, or `panic!()`, returning `ServerError` mapped to proper HTTP status codes (400, 401, 404, 500).
   - In-memory SQLite execution enables zero-dependency integration tests without external database setup.
   - Contributes to **Epic #205** (Phase 9B: Lightweight Self-Hostable Forge Server).
+
+
+## Issue #207 — Project Workspace Registry, Multi-Branch History Retention & Webhook Dispatcher (COMPLETED)
+- **Crate:** `crates/forge-server` (`src/db/mod.rs`, `src/db/models.rs`, `src/projects/mod.rs`, `src/history/mod.rs`, `src/webhooks/mod.rs`, `src/routes/projects.rs`, `src/routes/history.rs`, `src/routes/webhooks.rs`, `src/routes/sync.rs`, `src/app.rs`, `src/lib.rs`, `tests/webhook_and_projects_test.rs`).
+- **Public Types & Functions Exposed:**
+  - `forge_server::projects::{get_project_overview, ProjectOverview}`: Project workspace overview engine aggregating branch counts, latest health score, open/critical vulnerability counts, and chronological history.
+  - `forge_server::history::{calculate_history_trend, HistoryTrend, TrendDirection}`: Historical score retention and statistical trend calculator computing overall health deltas, directional trajectory (`Improving`, `Degrading`, `Stable`), and dimension averages (`architecture_avg`, `security_avg`, `maintainability_avg`).
+  - `forge_server::webhooks::{WebhookEvent, WebhookPayload, EventEvaluationContext, generate_hmac_signature, verify_hmac_signature, format_slack_payload, format_discord_payload, dispatch_webhooks, evaluate_and_dispatch_events}`: Outbound webhook notification dispatcher supporting Slack, Discord, and generic HTTP endpoints with HMAC-SHA256 signatures (`X-Forge-Signature: sha256=<hex>`), event triggers (`health_score_drop`, `critical_vulnerability`, `license_violation`, `snapshot_pushed`).
+  - API Endpoints: `GET /api/v1/projects`, `GET /api/v1/projects/:repo_id/overview`, `GET /api/v1/projects/:repo_id/branches`, `GET /api/v1/projects/:repo_id/history`, `POST /api/v1/webhooks`, `GET /api/v1/webhooks`, `DELETE /api/v1/webhooks/:id`.
+  - Automatic evaluation and asynchronous webhook dispatch wired directly into `POST /api/v1/sync/push`.
+- **Invariants:**
+  - Zero-panic: all database row mappings and endpoint handlers propagate structured `ServerError` without unwraps.
+  - HMAC-SHA256 signatures computed with standard hexadecimal encoding and timing-safe comparison.
+  - Contributes to **Epic #205** (Phase 9B: Lightweight Self-Hostable Forge Server).

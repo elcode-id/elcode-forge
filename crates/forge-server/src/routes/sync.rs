@@ -1,5 +1,7 @@
 //! Synchronization endpoints for push and pull.
 
+use std::sync::Arc;
+
 use axum::extract::{Query, State};
 use axum::Json;
 use serde::Deserialize;
@@ -11,6 +13,7 @@ use crate::auth::AuthenticatedUser;
 use crate::db::models::{FindingRow, SnapshotRow};
 use crate::error::ServerError;
 use crate::state::AppState;
+use crate::webhooks::{evaluate_and_dispatch_events, EventEvaluationContext};
 
 /// Query parameters for retrieving remote baseline snapshot.
 #[derive(Debug, Deserialize)]
@@ -33,7 +36,19 @@ pub async fn push_handler(
         .upsert_project(&payload.manifest.repo_id, &payload.manifest.repo_name, now)
         .await?;
 
-    // 2. Prepare snapshot row
+    // 2. Query previous latest snapshot to calculate health deltas for webhook notifications
+    let previous_snapshot_opt = state
+        .db
+        .get_latest_snapshot(&payload.manifest.repo_id, &payload.manifest.branch)
+        .await
+        .ok()
+        .flatten();
+
+    let previous_health: Option<HealthScore> = previous_snapshot_opt
+        .as_ref()
+        .and_then(|(s, _)| serde_json::from_str(&s.health_json).ok());
+
+    // 3. Prepare snapshot row
     let snapshot_id = format!(
         "{}:{}:{}",
         payload.manifest.repo_id, payload.manifest.branch, payload.manifest.commit_hash
@@ -58,7 +73,7 @@ pub async fn push_handler(
         created_at: now,
     };
 
-    // 3. Prepare finding rows
+    // 4. Prepare finding rows
     let mut finding_rows = Vec::with_capacity(payload.findings.len());
     for (idx, finding) in payload.findings.iter().enumerate() {
         let finding_json = serde_json::to_string(finding)?;
@@ -75,8 +90,20 @@ pub async fn push_handler(
         });
     }
 
-    // 4. Atomically persist snapshot and findings
+    // 5. Atomically persist snapshot and findings
     state.db.save_snapshot(&snapshot_row, &finding_rows).await?;
+
+    // 6. Evaluate and dispatch outbound webhooks asynchronously
+    let ctx = EventEvaluationContext {
+        repo_id: &payload.manifest.repo_id,
+        branch: &payload.manifest.branch,
+        commit_hash: &payload.manifest.commit_hash,
+        health_score: &payload.health_score,
+        previous_health: previous_health.as_ref(),
+        findings: &payload.findings,
+        delta: None,
+    };
+    evaluate_and_dispatch_events(Arc::clone(&state.db), ctx);
 
     let response = SyncPullResponse {
         repo_id: payload.manifest.repo_id,
