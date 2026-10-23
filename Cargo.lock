@@ -569,7 +569,7 @@ checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
 
 [[package]]
 name = "forge-ai"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "blake3",
  "forge-core",
@@ -581,7 +581,7 @@ dependencies = [
 
 [[package]]
 name = "forge-analyzer"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "blake3",
  "forge-core",
@@ -593,8 +593,10 @@ dependencies = [
 
 [[package]]
 name = "forge-cli"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
+ "axum",
+ "chrono",
  "clap",
  "forge-ai",
  "forge-analyzer",
@@ -603,17 +605,19 @@ dependencies = [
  "forge-mcp",
  "forge-rules",
  "forge-security",
+ "forge-server",
  "schemars",
  "serde",
  "serde_json",
  "tiny_http",
+ "tokio",
  "toml",
  "ureq",
 ]
 
 [[package]]
 name = "forge-core"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "blake3",
  "schemars",
@@ -625,7 +629,7 @@ dependencies = [
 
 [[package]]
 name = "forge-git"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "forge-core",
  "schemars",
@@ -635,7 +639,7 @@ dependencies = [
 
 [[package]]
 name = "forge-mcp"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "forge-analyzer",
  "forge-core",
@@ -648,7 +652,7 @@ dependencies = [
 
 [[package]]
 name = "forge-rules"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "forge-core",
  "regex",
@@ -658,7 +662,7 @@ dependencies = [
 
 [[package]]
 name = "forge-security"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "blake3",
  "forge-core",
@@ -670,7 +674,7 @@ dependencies = [
 
 [[package]]
 name = "forge-server"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "axum",
  "blake3",

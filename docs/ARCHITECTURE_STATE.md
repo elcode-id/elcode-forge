@@ -891,3 +891,16 @@
 - **Invariants:**
   - Sensitive server tokens are persisted only in local browser `localStorage` under `eforge_server_config`.
   - Contributes to **Epic #209** (Phase 9C: Collaborative Team Intelligence, Dashboard Cloud Sync & v0.9.0 Release Prep).
+
+
+## Issue #211 — Forge Server CI Integration Test, docs/SELF_HOSTING.md & v0.9.0 Release Prep (COMPLETED)
+- **Files:** `.github/workflows/ci-server.yml`, `crates/forge-cli/tests/sync_e2e_test.rs`, `crates/forge-server/tests/postgres_integration_test.rs`, `Cargo.toml`, `package.json`, `packages/forge-schema/package.json`, `packages/forge-ui/package.json`, `packages/forge-cli-npm/package.json`, `apps/dashboard/package.json`, `README.md`, `docs/ARCHITECTURE_STATE.md`.
+- **Capabilities Delivered:**
+  - Automated CI Workflow (`.github/workflows/ci-server.yml`): Path-aware execution testing both SQLite embedded backend and live PostgreSQL 16 container service with container healthcheck probing.
+  - Sync E2E Test Suite (`crates/forge-cli/tests/sync_e2e_test.rs`): Full lifecycle integration test spawning `forge-server` in background on ephemeral port, executing `run_auth_login`, `run_auth_status`, `run_sync_push`, caching baseline, `run_sync_pull`, delta sync pipeline execution, and `run_auth_logout`.
+  - PostgreSQL Integration Test Suite (`crates/forge-server/tests/postgres_integration_test.rs`): Dedicated database migration and CRUD lifecycle tests connecting directly to PostgreSQL instances when `FORGE_DATABASE_URL` is set in CI.
+  - Workspace Monorepo Version Bump to `0.9.0`: Synchronized workspace version across Rust workspace crates (`Cargo.toml`, `Cargo.lock`) and TypeScript packages (`package.json`, `packages/forge-schema`, `packages/forge-ui`, `packages/forge-cli-npm`, `apps/dashboard`).
+  - Documentation Finalization: Updated `README.md` to `v0.9.0` with Team Cloud Sync (`eforge sync`, `eforge push`, `eforge pull`), Self-Hosting architecture links, 23 subcommands CLI table, and CI workflow badges.
+- **Invariants:**
+  - Synchronous `ureq` CLI invocations in Tokio runtime must execute inside `tokio::task::spawn_blocking` with multi-thread worker pools to prevent loopback socket deadlocks.
+  - Completes **Epic #209** (Phase 9C: Collaborative Team Intelligence, Dashboard Cloud Sync & v0.9.0 Release Prep) and marks **Phase 9 (Collaborative Team Intelligence, Remote Sync & Forge Server)** 100% completed.

@@ -33,6 +33,12 @@ toml = { workspace = true }
 ureq = { workspace = true }
 clap = { version = "4.5", features = ["derive"] }
 
+[dev-dependencies]
+forge-server = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+axum = { workspace = true }
+chrono = { workspace = true }
+
 [lints]
 workspace = true
 
