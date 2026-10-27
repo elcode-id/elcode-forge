@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::Path;
 
+use forge_core::policy::PolicyImpactSummary;
 use forge_core::Module;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -14,6 +15,44 @@ pub struct ChangeImpactReport {
     pub directly_affected_modules: Vec<String>,
     pub transitively_affected_modules: Vec<String>,
     pub changed_files_without_tests: Vec<String>,
+}
+
+impl From<&ChangeImpactReport> for PolicyImpactSummary {
+    fn from(report: &ChangeImpactReport) -> Self {
+        let mut affected = BTreeSet::new();
+        for m in &report.directly_affected_modules {
+            affected.insert(m.as_str());
+        }
+        for m in &report.transitively_affected_modules {
+            affected.insert(m.as_str());
+        }
+
+        let total_modified_lines = report
+            .changed_files
+            .iter()
+            .map(|f| (f.added_lines + f.deleted_lines) as usize)
+            .sum();
+
+        let untested_paths: BTreeSet<&str> = report
+            .changed_files_without_tests
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
+
+        let untested_modified_lines = report
+            .changed_files
+            .iter()
+            .filter(|f| untested_paths.contains(f.path.as_str()))
+            .map(|f| (f.added_lines + f.deleted_lines) as usize)
+            .sum();
+
+        Self {
+            affected_module_count: affected.len(),
+            untested_changed_files: report.changed_files_without_tests.len(),
+            total_modified_lines,
+            untested_modified_lines,
+        }
+    }
 }
 
 /// Computes the direct and transitive module blast radius for `changes` across `modules`,
@@ -169,5 +208,11 @@ mod tests {
             vec!["src/pages", "src/services"]
         );
         assert_eq!(report.changed_files_without_tests, vec!["src/db/client.ts"]);
+
+        let summary: PolicyImpactSummary = (&report).into();
+        assert_eq!(summary.affected_module_count, 3);
+        assert_eq!(summary.untested_changed_files, 1);
+        assert_eq!(summary.total_modified_lines, 5);
+        assert_eq!(summary.untested_modified_lines, 5);
     }
 }
