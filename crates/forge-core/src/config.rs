@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::ForgeError;
 use crate::ir::Severity;
+use crate::policy::{parse_policy_yaml, PolicyDocument};
 
 /// Primary configuration filename (PRD v1.1 standard).
 pub const PRIMARY_CONFIG_FILE: &str = "eforge.config.yaml";
@@ -183,6 +184,8 @@ pub struct ForgeConfig {
     pub license: Option<LicenseConfig>,
     #[serde(default)]
     pub security: Option<SecurityConfig>,
+    #[serde(default)]
+    pub policy: Option<PolicyDocument>,
 }
 
 impl Default for ForgeConfig {
@@ -207,6 +210,7 @@ impl Default for ForgeConfig {
             hooks: None,
             license: None,
             security: None,
+            policy: None,
         }
     }
 }
@@ -249,6 +253,7 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
     let mut active_ai_sub: Option<(String, usize)> = None;
     let mut active_hook_sub: Option<(String, usize)> = None;
     let mut custom_ignores_started = false;
+    let mut policy_lines: Vec<&str> = Vec::new();
 
     for (idx, raw_line) in content.lines().enumerate() {
         let line_no = idx + 1;
@@ -265,6 +270,11 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
             .chars()
             .take_while(|c| c.is_whitespace())
             .count();
+
+        if current_section == Some("policy") && indent > 0 {
+            policy_lines.push(raw_line);
+            continue;
+        }
 
         if let Some(item) = trimmed.strip_prefix('-') {
             let value = unquote(item.trim());
@@ -319,6 +329,11 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
         let val = unquote(raw_val.trim());
 
         if indent == 0 {
+            if current_section == Some("policy") && !policy_lines.is_empty() {
+                config.policy = Some(parse_policy_block(&policy_lines)?);
+                policy_lines.clear();
+            }
+
             current_section = None;
             active_list = None;
             active_rule_id = None;
@@ -415,6 +430,9 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                     if config.security.is_none() {
                         config.security = Some(SecurityConfig::default());
                     }
+                }
+                "policy" => {
+                    current_section = Some("policy");
                 }
                 _ => {
                     return Err(ForgeError::Config {
@@ -776,6 +794,10 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
         }
     }
 
+    if current_section == Some("policy") && !policy_lines.is_empty() {
+        config.policy = Some(parse_policy_block(&policy_lines)?);
+    }
+
     if config.ai.enabled != config.ai_enabled {
         let unified = config.ai.enabled || config.ai_enabled;
         config.ai.enabled = unified;
@@ -783,6 +805,29 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
     }
 
     Ok(config)
+}
+
+fn parse_policy_block(lines: &[&str]) -> Result<PolicyDocument, ForgeError> {
+    let min_indent = lines
+        .iter()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| l.chars().take_while(|c| c.is_whitespace()).count())
+        .min()
+        .unwrap_or(0);
+
+    let dedented: Vec<String> = lines
+        .iter()
+        .map(|l| {
+            if l.len() >= min_indent {
+                l[min_indent..].to_string()
+            } else {
+                l.trim().to_string()
+            }
+        })
+        .collect();
+
+    let content = dedented.join("\n");
+    parse_policy_yaml(&content)
 }
 
 fn parse_inline_array(raw: &str) -> Option<Vec<String>> {

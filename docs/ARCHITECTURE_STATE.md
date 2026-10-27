@@ -904,3 +904,17 @@
 - **Invariants:**
   - Synchronous `ureq` CLI invocations in Tokio runtime must execute inside `tokio::task::spawn_blocking` with multi-thread worker pools to prevent loopback socket deadlocks.
   - Completes **Epic #209** (Phase 9C: Collaborative Team Intelligence, Dashboard Cloud Sync & v0.9.0 Release Prep) and marks **Phase 9 (Collaborative Team Intelligence, Remote Sync & Forge Server)** 100% completed.
+
+
+## Issue #222 — Policy-as-Code Gate Evaluation Engine & Policy Schema (COMPLETED)
+- **Crates:** `crates/forge-core` (`src/policy.rs`, `src/config.rs`, `src/lib.rs`, `tests/policy_test.rs`), `crates/forge-git` (`src/impact.rs`), `crates/forge-rules` (`src/policy_engine.rs`, `src/lib.rs`, `tests/policy_test.rs`).
+- **Public Types & Functions Exposed:**
+  - `forge_core::policy`: `PolicyDocument`, `PolicyConstraints`, `PolicyWaiver` (`is_expired`, `is_expired_at`, `matches`), `PolicyRuleOverride`, `PolicyVerdict`, `PolicyReport` (`is_passed`, `is_violation`, `is_warning`), `PolicyImpactSummary`, `load_policy(path: &Path) -> Result<PolicyDocument, ForgeError>`, `parse_policy_yaml(content: &str) -> Result<PolicyDocument, ForgeError>`, `glob_path_match(pattern: &str, path: &str) -> bool`.
+  - `forge_core::config`: Added `pub policy: Option<PolicyDocument>` field to `ForgeConfig`, with automatic YAML block parsing under `policy:`.
+  - `forge_git::impact`: `impl From<&ChangeImpactReport> for PolicyImpactSummary` bridging Git blast radius without crate DAG circularity.
+  - `forge_rules::policy_engine`: `evaluate_policy(policy: &PolicyDocument, findings: &[Finding], health: &HealthScore, impact: Option<&PolicyImpactSummary>, dependencies: &[Dependency], configured_rule_packs: &[String]) -> PolicyReport`.
+- **Invariants:**
+  - Crate DAG strictness: `forge-rules` never depends on `forge-git`; `PolicyImpactSummary` in `forge-core` acts as normalized metric carrier.
+  - Waivers: time-bounded with RFC 3339 / ISO date checking against UTC, path-scoped via glob matching.
+  - Contributes to **Epic #221** (Phase 10A: Organization Policy-as-Code Engine & Compliance Audits).
+
