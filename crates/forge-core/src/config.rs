@@ -246,6 +246,7 @@ pub fn load_config(repo_root: &Path) -> Result<ForgeConfig, ForgeError> {
 /// flat keys (`project_name`, `languages`, `ignore_patterns`, `git_enabled`, `ai_enabled`,
 /// `fail_on_severity`).
 pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
+    let content = content.strip_prefix('\u{feff}').unwrap_or(content);
     let mut config = ForgeConfig::default();
     let mut current_section: Option<&str> = None;
     let mut active_list: Option<&str> = None;
@@ -622,7 +623,7 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
                         "budget" => {
                             active_ai_sub = Some(("budget".to_string(), indent));
                         }
-                        "budget.daily_usd" => {
+                        "budget.daily_usd" | "budget_daily_usd" => {
                             let parsed = val.parse::<f64>().map_err(|_| ForgeError::Config {
                                 message: format!(
                                     "line {line_no}: invalid float for budget daily_usd '{val}'"
