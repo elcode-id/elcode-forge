@@ -918,3 +918,15 @@
   - Waivers: time-bounded with RFC 3339 / ISO date checking against UTC, path-scoped via glob matching.
   - Contributes to **Epic #221** (Phase 10A: Organization Policy-as-Code Engine & Compliance Audits).
 
+
+## Issue #223 — `eforge policy check` CLI Command & Enterprise Gate Exit Codes (COMPLETED)
+- **Crate:** `crates/forge-cli` (`src/commands/policy.rs`, `src/commands/mod.rs`, `src/cli.rs`, `src/lib.rs`, `tests/policy_cli_test.rs`).
+- **Public Types & Functions Exposed:**
+  - `forge_cli::commands::policy`: `execute_policy_check(repo_root: &Path, policy_path: Option<&Path>) -> Result<PolicyReport, ForgeError>`, `compute_policy_exit_code(report: &PolicyReport, fail_on: Option<Severity>) -> ExitCode`, `render_policy_report(report: &PolicyReport, format: OutputFormat) -> Result<String, ForgeError>`, `run_policy_check(repo_root: &Path, policy_path: Option<&Path>, format: OutputFormat, fail_on: Option<Severity>) -> ExitCode`.
+  - `forge_cli::cli`: `Commands::Policy`, `PolicyAction::Check` with `--policy <path>`, `--path <dir>`, `--fail-on <severity>`, and `--format <format>`.
+- **Invariants:**
+  - Policy discovery hierarchy: CLI `--policy <path>` takes precedence over inline `policy:` block in `eforge.config.yaml`. Absence of both yields `ExitCode::ConfigurationError` (2).
+  - Deterministic exit codes: `0` (Success/Passed), `4` (SecurityPolicyFailure / Violation), `1` (FindingsAboveThreshold / Warning when threshold met).
+  - Contributes to **Epic #221** (Phase 10A: Organization Policy-as-Code Engine & Compliance Audits).
+
+
