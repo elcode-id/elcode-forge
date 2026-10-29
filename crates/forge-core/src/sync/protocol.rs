@@ -182,7 +182,7 @@ mod tests {
             commit_hash: "a1b2c3d4e5f6".to_string(),
             timestamp_secs: 1770000000,
             content_hash: "0123456789abcdef".to_string(),
-            tool_version: "0.9.0".to_string(),
+            tool_version: "1.0.0".to_string(),
         };
 
         let json = serde_json::to_string(&manifest);
@@ -206,7 +206,7 @@ mod tests {
                 commit_hash: "c0ffee".to_string(),
                 timestamp_secs: 1770000000,
                 content_hash: "feedface".to_string(),
-                tool_version: "0.9.0".to_string(),
+                tool_version: "1.0.0".to_string(),
             },
             findings_count: 1,
             health_score: HealthScore {

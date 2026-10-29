@@ -113,7 +113,7 @@
     const res = await checkServerHealth(serverUrlInput, tokenInput);
     if (res.ok) {
       testStatus = {
-        text: `Connected successfully! (version: ${res.version || "0.9.0"})`,
+        text: `Connected successfully! (version: ${res.version || "1.0.0"})`,
         ok: true,
       };
     } else {

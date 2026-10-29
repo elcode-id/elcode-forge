@@ -245,6 +245,42 @@ importers:
         specifier: ^3.0.0
         version: 3.2.7(@types/node@20.19.43)(jiti@1.21.7)(lightningcss@1.33.0)(supports-color@7.2.0)
 
+  apps/docs:
+    devDependencies:
+      '@sveltejs/adapter-static':
+        specifier: ^3.0.0
+        version: 3.0.10(@sveltejs/kit@2.70.3(@sveltejs/vite-plugin-svelte@5.1.1(supports-color@7.2.0)(svelte@5.57.2(@typescript-eslint/types@8.71.2))(vite@6.4.4(@types/node@20.19.43)(jiti@1.21.7)(lightningcss@1.33.0)))(svelte@5.57.2(@typescript-eslint/types@8.71.2))(typescript@5.9.3)(vite@6.4.4(@types/node@20.19.43)(jiti@1.21.7)(lightningcss@1.33.0)))
+      '@sveltejs/kit':
+        specifier: ^2.0.0
+        version: 2.70.3(@sveltejs/vite-plugin-svelte@5.1.1(supports-color@7.2.0)(svelte@5.57.2(@typescript-eslint/types@8.71.2))(vite@6.4.4(@types/node@20.19.43)(jiti@1.21.7)(lightningcss@1.33.0)))(svelte@5.57.2(@typescript-eslint/types@8.71.2))(typescript@5.9.3)(vite@6.4.4(@types/node@20.19.43)(jiti@1.21.7)(lightningcss@1.33.0))
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^5.0.0
+        version: 5.1.1(supports-color@7.2.0)(svelte@5.57.2(@typescript-eslint/types@8.71.2))(vite@6.4.4(@types/node@20.19.43)(jiti@1.21.7)(lightningcss@1.33.0))
+      '@types/node':
+        specifier: ^20.14.0
+        version: 20.19.43
+      autoprefixer:
+        specifier: ^10.4.19
+        version: 10.6.1(postcss@8.5.30)
+      postcss:
+        specifier: ^8.4.38
+        version: 8.5.30
+      svelte:
+        specifier: ^5.0.0
+        version: 5.57.2(@typescript-eslint/types@8.71.2)
+      svelte-check:
+        specifier: ^4.0.0
+        version: 4.7.7(picomatch@4.0.7)(svelte@5.57.2(@typescript-eslint/types@8.71.2))(typescript@5.9.3)
+      tailwindcss:
+        specifier: ^3.4.4
+        version: 3.4.19
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      vite:
+        specifier: ^6.0.0
+        version: 6.4.4(@types/node@20.19.43)(jiti@1.21.7)(lightningcss@1.33.0)
+
   packages/forge-cli-npm:
     devDependencies:
       '@types/node':

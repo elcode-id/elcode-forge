@@ -54,7 +54,7 @@ fn sample_push_payload(repo_id: &str, branch: &str, commit: &str) -> SyncPushPay
         commit_hash: commit.to_string(),
         timestamp_secs: 1_700_000_000,
         content_hash: "blake3_mock_content_hash_123456789".to_string(),
-        tool_version: "0.9.0".to_string(),
+        tool_version: "1.0.0".to_string(),
     };
 
     SyncPushPayload {
