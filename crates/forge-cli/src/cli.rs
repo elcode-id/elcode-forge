@@ -409,6 +409,43 @@ pub enum Commands {
         #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
         format: OutputFormat,
     },
+    /// Assert enterprise Policy-as-Code rules, constraints, and thresholds (`eforge policy check`).
+    Policy {
+        #[command(subcommand)]
+        action: Option<PolicyAction>,
+        /// Optional path to an external policy file (`.yaml` or `.json`).
+        #[arg(long)]
+        policy: Option<PathBuf>,
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Minimum finding severity to fail on (`critical|high|medium|low|info`).
+        #[arg(long)]
+        fail_on: Option<String>,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+}
+
+/// Subcommands available under `eforge policy`.
+#[derive(Debug, Subcommand)]
+pub enum PolicyAction {
+    /// Evaluate repository findings, scores, and change impact against organizational policy.
+    Check {
+        /// Optional path to an external policy file (`.yaml` or `.json`).
+        #[arg(long)]
+        policy: Option<PathBuf>,
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Minimum finding severity to fail on (`critical|high|medium|low|info`).
+        #[arg(long)]
+        fail_on: Option<String>,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
 }
 
 /// Actions available under `eforge auth`.
