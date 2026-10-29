@@ -25,7 +25,7 @@ pub struct PullQuery {
 /// Handler for `POST /api/v1/sync/push`.
 pub async fn push_handler(
     State(state): State<AppState>,
-    _user: AuthenticatedUser,
+    user: AuthenticatedUser,
     Json(payload): Json<SyncPushPayload>,
 ) -> Result<Json<SyncPullResponse>, ServerError> {
     let now = chrono::Utc::now().timestamp();
@@ -104,6 +104,57 @@ pub async fn push_handler(
         delta: None,
     };
     evaluate_and_dispatch_events(Arc::clone(&state.db), ctx);
+
+    // 7. Asynchronously recompute materialized rollups for all organizations containing this repo
+    let org_db = Arc::clone(&state.db);
+    let repo_id_for_org = payload.manifest.repo_id.clone();
+    tokio::spawn(async move {
+        if let Err(e) = crate::org::recompute_all_orgs_for_project(&org_db, &repo_id_for_org).await
+        {
+            tracing::error!(
+                "Failed to recompute organization rollups for project '{repo_id_for_org}': {e}"
+            );
+        }
+    });
+
+    // 8. Record audit event for snapshot ingestion
+    let audit_db = Arc::clone(&state.db);
+    let audit_actor = user.subject.clone();
+    let audit_repo = payload.manifest.repo_id.clone();
+    let audit_snap_id = snapshot_id.clone();
+    let audit_branch = payload.manifest.branch.clone();
+    let audit_commit = payload.manifest.commit_hash.clone();
+    let audit_health = payload.health_score.overall;
+    let audit_findings_count = payload.findings.len();
+    tokio::spawn(async move {
+        let org_id = audit_db
+            .get_organizations_for_project(&audit_repo)
+            .await
+            .ok()
+            .and_then(|orgs| orgs.into_iter().next())
+            .unwrap_or_else(|| "default".to_string());
+
+        let details = serde_json::json!({
+            "branch": audit_branch,
+            "commit": audit_commit,
+            "health": audit_health,
+            "findings_count": audit_findings_count
+        });
+
+        let _ = crate::audit::record_audit_event(
+            &audit_db,
+            crate::audit::AuditEventParams {
+                org_id: &org_id,
+                project_id: Some(&audit_repo),
+                actor: &audit_actor,
+                action: crate::audit::actions::SNAPSHOT_PUSH,
+                resource_type: crate::audit::resources::SNAPSHOT,
+                resource_id: &audit_snap_id,
+                details: Some(&details),
+            },
+        )
+        .await;
+    });
 
     let response = SyncPullResponse {
         repo_id: payload.manifest.repo_id,

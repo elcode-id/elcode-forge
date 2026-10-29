@@ -79,13 +79,13 @@ describe("Server Client API Methods", () => {
   it("validates server health successfully", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ status: "ok", version: "0.9.0", database: "postgres" }),
+      json: async () => ({ status: "ok", version: "1.0.0", database: "postgres" }),
     } as Response);
 
     const result = await checkServerHealth("http://localhost:8080", "test-token");
     expect(result.ok).toBe(true);
     expect(result.status).toBe("ok");
-    expect(result.version).toBe("0.9.0");
+    expect(result.version).toBe("1.0.0");
   });
 
   it("handles server health check failure gracefully", async () => {

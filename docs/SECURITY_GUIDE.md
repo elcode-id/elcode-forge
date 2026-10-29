@@ -16,6 +16,7 @@ ELCODE Forge (`eforge`) provides enterprise-grade, deterministic, and local-firs
 5. [Credential Detection & Shannon Entropy Scanner](#5-credential-detection--shannon-entropy-scanner)
 6. [Security Configuration (`eforge.config.yaml`)](#6-security-configuration)
 7. [CI/CD Gates & GitHub Code Scanning (SARIF)](#7-cicd-gates--github-code-scanning-sarif)
+8. [Cryptographic Provenance & SLSA Level 3 Verification](#8-cryptographic-provenance--slsa-level-3-verification)
 
 ---
 
@@ -206,3 +207,16 @@ jobs:
           name: sbom-cyclonedx
           path: cyclonedx.sbom.json
 ```
+
+---
+
+## 8. Cryptographic Provenance & SLSA Level 3 Verification
+
+All official ELCODE Forge release binaries, archives, and npm packages are published with verifiable cryptographic attestations and SLSA Build Level 3 provenance:
+
+- **GitHub Artifact Attestations:** Signed via Sigstore Fulcio OIDC certificates and immutable Rekor transparency logs. Verify using `gh attestation verify <binary-archive> --owner elcode-id`.
+- **SLSA Level 3 In-Toto Statements:** Generated via `slsa-framework/slsa-github-generator` in isolated runners. Verify using `slsa-verifier verify-artifact <binary-archive> --provenance-path multiple.intoto.jsonl --source-uri github.com/elcode-id/elcode-forge`.
+- **SHA-256 Checksums:** Multi-platform digest verification via `SHA256SUMS.txt`.
+
+For exhaustive step-by-step verification commands, air-gapped Dockerfile ingestion examples, and CI/CD gates, see the [Cryptographic Verification Guide (docs/VERIFICATION_GUIDE.md)](./VERIFICATION_GUIDE.md).
+

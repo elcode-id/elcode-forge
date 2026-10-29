@@ -12,7 +12,7 @@ use std::fs;
 use std::path::Path;
 
 use clap::Parser;
-pub use cli::{AuthAction, Cli, Commands, OutputFormat};
+pub use cli::{AuthAction, Cli, CliComplianceStandard, Commands, OutputFormat, PolicyAction};
 pub use exit_code::{parse_severity_threshold, ExitCode};
 pub use formatters::render_repository_report;
 pub use theme::{health_rating, render_score_meter, ColorMode, Theme};
@@ -771,5 +771,50 @@ pub fn run_cli_from_env() -> ExitCode {
             fail_on.as_deref(),
             format,
         ),
+        Some(Commands::Policy {
+            action,
+            policy,
+            path,
+            fail_on,
+            format,
+        }) => {
+            let (target_policy, target_path, target_fail_on, target_format) = match action {
+                Some(cli::PolicyAction::Check {
+                    policy: check_policy,
+                    path: check_path,
+                    fail_on: check_fail_on,
+                    format: check_format,
+                }) => {
+                    let p = check_policy.or(policy);
+                    let dir = if check_path != Path::new(".") {
+                        check_path
+                    } else {
+                        path
+                    };
+                    let fo = check_fail_on.or(fail_on);
+                    let fmt = if check_format != cli::OutputFormat::Terminal {
+                        check_format
+                    } else {
+                        format
+                    };
+                    (p, dir, fo, fmt)
+                }
+                None => (policy, path, fail_on, format),
+            };
+
+            let fail_on_sev = target_fail_on.as_deref().and_then(parse_severity_threshold);
+            commands::policy::run_policy_check(
+                &target_path,
+                target_policy.as_deref(),
+                target_format,
+                fail_on_sev,
+            )
+        }
+        Some(Commands::Audit {
+            standard,
+            path,
+            format,
+            output,
+        }) => commands::audit::run_audit(&path, standard.into(), format, output.as_deref()),
     }
 }

@@ -31,7 +31,7 @@ spec:
         fsGroup: 10001
       containers:
         - name: forge-server
-          image: elcode/forge-server:v0.9.0
+          image: elcode/forge-server:v1.0.0
           imagePullPolicy: IfNotPresent
           securityContext:
             readOnlyRootFilesystem: true

@@ -89,12 +89,16 @@ jobs:
           retention-days: 30
 
   publish-release-assets:
-    name: Publish Release Assets & SHA256SUMS
+    name: Publish Release Assets & Attestations
     needs: build-binaries
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
+    outputs:
+      hashes: ${{ steps.generate-hashes.outputs.hashes }}
     steps:
       - name: Download all binary artifacts
         uses: actions/download-artifact@v4
@@ -102,12 +106,23 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Generate unified SHA256SUMS.txt
+      - name: Generate unified SHA256SUMS.txt & SLSA subjects
+        id: generate-hashes
         working-directory: dist
         run: |
           set -euo pipefail
           cat *.sha256 > SHA256SUMS.txt
           cat SHA256SUMS.txt
+          HASHES=$(base64 -w0 SHA256SUMS.txt 2>/dev/null || base64 SHA256SUMS.txt | tr -d '\n')
+          echo "hashes=$HASHES" >> "$GITHUB_OUTPUT"
+
+      - name: Attest build provenance (GitHub Sigstore)
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/eforge-*.tar.gz
+            dist/eforge-*.zip
+            dist/SHA256SUMS.txt
 
       - name: Upload assets to GitHub Release
         env:
@@ -121,3 +136,16 @@ jobs:
             gh release create "${{ github.ref_name }}" --repo "${{ github.repository }}" --title "ELCODE Forge ${{ github.ref_name }}" --generate-notes
           fi
           gh release upload "${{ github.ref_name }}" --repo "${{ github.repository }}" eforge-*.tar.gz eforge-*.zip SHA256SUMS.txt --clobber
+
+  provenance:
+    name: Generate SLSA Level 3 Provenance
+    needs: publish-release-assets
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      id-token: write
+      contents: write
+      actions: read
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    with:
+      base64-subjects: "${{ needs.publish-release-assets.outputs.hashes }}"
+      upload-assets: true

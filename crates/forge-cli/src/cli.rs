@@ -42,6 +42,33 @@ impl From<CliSbomFormat> for forge_security::SbomFormat {
     }
 }
 
+/// Supported compliance standards for `eforge audit`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CliComplianceStandard {
+    /// AICPA SOC 2 Type II Trust Services Criteria
+    #[value(name = "soc2")]
+    Soc2,
+    /// OWASP Top 10 (2021) Web Application Security Risks
+    #[value(name = "owasp")]
+    Owasp,
+    /// ISO/IEC 27001:2022 Information Security Management Controls
+    #[value(name = "iso27001")]
+    Iso27001,
+}
+
+impl From<CliComplianceStandard> for forge_security::compliance::ComplianceStandard {
+    fn from(standard: CliComplianceStandard) -> Self {
+        match standard {
+            CliComplianceStandard::Soc2 => forge_security::compliance::ComplianceStandard::Soc2,
+            CliComplianceStandard::Owasp => forge_security::compliance::ComplianceStandard::Owasp,
+            CliComplianceStandard::Iso27001 => {
+                forge_security::compliance::ComplianceStandard::Iso27001
+            }
+        }
+    }
+}
+
 /// Primary CLI parser for `eforge` / `elcode-forge`.
 #[derive(Debug, Parser)]
 #[command(
@@ -402,6 +429,58 @@ pub enum Commands {
         /// Target Git branch name (defaults to active branch or "main").
         #[arg(long)]
         branch: Option<String>,
+        /// Minimum finding severity to fail on (`critical|high|medium|low|info`).
+        #[arg(long)]
+        fail_on: Option<String>,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Assert enterprise Policy-as-Code rules, constraints, and thresholds (`eforge policy check`).
+    Policy {
+        #[command(subcommand)]
+        action: Option<PolicyAction>,
+        /// Optional path to an external policy file (`.yaml` or `.json`).
+        #[arg(long)]
+        policy: Option<PathBuf>,
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Minimum finding severity to fail on (`critical|high|medium|low|info`).
+        #[arg(long)]
+        fail_on: Option<String>,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Export automated compliance audit reports (SOC 2 Type II, OWASP Top 10, ISO 27001).
+    Audit {
+        /// Compliance framework standard (`soc2`, `owasp`, `iso27001`).
+        #[arg(long, value_enum, default_value_t = CliComplianceStandard::Soc2)]
+        standard: CliComplianceStandard,
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+        /// Optional file path to write the rendered audit report.
+        #[arg(long, short = 'o')]
+        output: Option<PathBuf>,
+    },
+}
+
+/// Subcommands available under `eforge policy`.
+#[derive(Debug, Subcommand)]
+pub enum PolicyAction {
+    /// Evaluate repository findings, scores, and change impact against organizational policy.
+    Check {
+        /// Optional path to an external policy file (`.yaml` or `.json`).
+        #[arg(long)]
+        policy: Option<PathBuf>,
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
         /// Minimum finding severity to fail on (`critical|high|medium|low|info`).
         #[arg(long)]
         fail_on: Option<String>,

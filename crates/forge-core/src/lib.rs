@@ -1,6 +1,6 @@
 //! `forge-core` — Foundational Intermediate Representation (IR), error model, configuration
 //! loader, canonical path guard, `.eforge/` incremental cache, explainable scoring engine,
-//! remote synchronization protocol, and core traits for ELCODE Forge (`eforge`).
+//! remote synchronization protocol, policy engine data models, and core traits for ELCODE Forge (`eforge`).
 //!
 //! This crate is the leaf of the workspace dependency DAG and MUST NOT depend on any other
 //! internal `forge-*` crate.
@@ -10,6 +10,7 @@ pub mod config;
 pub mod error;
 pub mod ir;
 pub mod path_guard;
+pub mod policy;
 pub mod scoring;
 pub mod sync;
 pub mod traits;
@@ -29,6 +30,10 @@ pub use ir::{
     Severity, SourceLocation,
 };
 pub use path_guard::resolve_safe_path;
+pub use policy::{
+    glob_path_match, load_policy, parse_policy_yaml, PolicyConstraints, PolicyDocument,
+    PolicyImpactSummary, PolicyReport, PolicyRuleOverride, PolicyVerdict, PolicyWaiver,
+};
 pub use scoring::{calculate_change_risk, calculate_health_score, RiskLevel, RiskReport};
 pub use sync::{
     compute_sync_content_hash, default_credentials_path, home_dir, load_credentials,

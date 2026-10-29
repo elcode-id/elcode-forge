@@ -46,7 +46,7 @@ fn test_sync_protocol_complete_workflow() {
         commit_hash: "9f8e7d6c5b4a".to_string(),
         timestamp_secs: 1775000000,
         content_hash: "blake3_hash_abcdef1234567890".to_string(),
-        tool_version: "0.9.0".to_string(),
+        tool_version: "1.0.0".to_string(),
     };
 
     let f1 = make_finding("F1", "rule-01", Severity::Low);

@@ -13,4 +13,4 @@ resources:
 
 images:
   - name: elcode/forge-server
-    newTag: v0.9.0
+    newTag: v1.0.0

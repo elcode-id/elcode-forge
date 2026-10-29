@@ -48,7 +48,7 @@
       <div class="flex items-center gap-3">
         <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
         <span class="font-bold tracking-tight text-sm font-mono">ELCODE Forge</span>
-        <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">v0.9.0</span>
+        <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">v1.0.0</span>
 
         <nav class="flex items-center gap-1 ml-4" aria-label="Main Navigation">
           <a
@@ -69,6 +69,13 @@
             class="px-2.5 py-1 rounded text-xs text-slate-300 hover:text-white hover:bg-slate-800 transition-colors font-medium"
           >
             Compare
+          </a>
+          <a
+            href="/governance"
+            class="px-2.5 py-1 rounded text-xs text-purple-300 hover:text-white hover:bg-slate-800 transition-colors font-medium flex items-center gap-1"
+          >
+            <span>Governance</span>
+            <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
           </a>
           <a
             href="/architecture"

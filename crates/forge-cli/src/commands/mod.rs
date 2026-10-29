@@ -2,6 +2,7 @@
 
 pub mod ai_admin;
 pub mod ai_review;
+pub mod audit;
 pub mod auth;
 pub mod dependencies;
 pub mod diff;
@@ -13,6 +14,7 @@ pub mod hook;
 pub mod init;
 pub mod mcp;
 pub mod onboard;
+pub mod policy;
 pub mod report;
 pub mod review;
 pub mod rules;

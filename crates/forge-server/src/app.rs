@@ -11,9 +11,14 @@ use crate::config::ServerConfig;
 use crate::db::Db;
 use crate::error::ServerError;
 use crate::routes::{
+    audit::list_audit_events_handler,
     auth::token_handler,
     health::health_handler,
     history::project_history_handler,
+    orgs::{
+        create_org_handler, get_org_summary_handler, get_org_vulnerabilities_handler,
+        link_project_handler, list_orgs_handler,
+    },
     projects::{list_projects_handler, project_branches_handler, project_overview_handler},
     sync::{pull_handler, push_handler},
     webhooks::{create_webhook_handler, delete_webhook_handler, list_webhooks_handler},
@@ -40,6 +45,17 @@ pub fn create_app(state: AppState) -> Router {
             "/api/v1/projects/:repo_id/history",
             get(project_history_handler),
         )
+        .route(
+            "/api/v1/orgs",
+            post(create_org_handler).get(list_orgs_handler),
+        )
+        .route("/api/v1/orgs/:id/projects", post(link_project_handler))
+        .route("/api/v1/orgs/:id/summary", get(get_org_summary_handler))
+        .route(
+            "/api/v1/orgs/:id/vulnerabilities",
+            get(get_org_vulnerabilities_handler),
+        )
+        .route("/api/v1/audit-events", get(list_audit_events_handler))
         .route(
             "/api/v1/webhooks",
             post(create_webhook_handler).get(list_webhooks_handler),

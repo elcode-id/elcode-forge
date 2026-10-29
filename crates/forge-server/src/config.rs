@@ -19,6 +19,10 @@ pub struct ServerConfig {
     pub admin_api_key: Option<String>,
     /// Token expiration duration in seconds (default: 7 days).
     pub jwt_expiration_secs: u64,
+    /// Whether to trust reverse-proxy identity headers (X-Forwarded-User, X-Forwarded-Role, X-Forwarded-Email).
+    pub trust_proxy_headers: bool,
+    /// Optional JWKS endpoint URL for validating external JWTs.
+    pub jwks_url: Option<String>,
 }
 
 impl Default for ServerConfig {
@@ -30,6 +34,8 @@ impl Default for ServerConfig {
             jwt_secret: "forge-dev-secret-key-must-be-replaced-in-production-32-chars".to_string(),
             admin_api_key: None,
             jwt_expiration_secs: 7 * 24 * 3600,
+            trust_proxy_headers: false,
+            jwks_url: None,
         }
     }
 }
@@ -71,6 +77,16 @@ impl ServerConfig {
         if let Ok(exp_str) = env::var("EFORGE_JWT_EXPIRATION_SECS") {
             if let Ok(exp) = exp_str.parse::<u64>() {
                 config.jwt_expiration_secs = exp;
+            }
+        }
+
+        if let Ok(val) = env::var("EFORGE_TRUST_PROXY_HEADERS") {
+            config.trust_proxy_headers = val.eq_ignore_ascii_case("true") || val == "1";
+        }
+
+        if let Ok(url) = env::var("EFORGE_JWKS_URL") {
+            if !url.trim().is_empty() {
+                config.jwks_url = Some(url);
             }
         }
 

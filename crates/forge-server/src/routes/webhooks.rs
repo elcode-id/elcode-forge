@@ -93,6 +93,22 @@ pub async fn create_webhook_handler(
     };
 
     state.db.create_webhook(&row).await?;
+
+    let org_id = row.repo_id.as_deref().unwrap_or("default");
+    let _ = crate::audit::record_audit_event(
+        &state.db,
+        crate::audit::AuditEventParams {
+            org_id,
+            project_id: row.repo_id.as_deref(),
+            actor: &_user.subject,
+            action: crate::audit::actions::WEBHOOK_CREATE,
+            resource_type: crate::audit::resources::WEBHOOK,
+            resource_id: &row.id,
+            details: Some(&serde_json::json!({ "url": row.url })),
+        },
+    )
+    .await;
+
     Ok((StatusCode::CREATED, Json(WebhookSummaryResponse::from(row))))
 }
 
@@ -116,6 +132,19 @@ pub async fn delete_webhook_handler(
 ) -> Result<StatusCode, ServerError> {
     let deleted = state.db.delete_webhook(&id).await?;
     if deleted {
+        let _ = crate::audit::record_audit_event(
+            &state.db,
+            crate::audit::AuditEventParams {
+                org_id: "default",
+                project_id: None,
+                actor: &_user.subject,
+                action: crate::audit::actions::WEBHOOK_DELETE,
+                resource_type: crate::audit::resources::WEBHOOK,
+                resource_id: &id,
+                details: None,
+            },
+        )
+        .await;
         Ok(StatusCode::NO_CONTENT)
     } else {
         Err(ServerError::NotFound(format!("Webhook '{id}' not found")))

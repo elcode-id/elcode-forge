@@ -10,7 +10,8 @@ use sqlx::{PgPool, Row, SqlitePool};
 
 use crate::error::ServerError;
 use models::{
-    BranchSummary, FindingRow, HistoryPoint, ProjectRow, ProjectSummary, SnapshotRow, WebhookRow,
+    AuditEventFilter, AuditEventRow, BranchSummary, FindingRow, HistoryPoint,
+    OrganizationRollupRow, OrganizationRow, ProjectRow, ProjectSummary, SnapshotRow, WebhookRow,
 };
 
 /// Dual database connection pool.
@@ -152,6 +153,52 @@ impl Db {
         );
 
         CREATE INDEX IF NOT EXISTS idx_webhooks_repo ON webhooks(repo_id);
+
+        CREATE TABLE IF NOT EXISTS organizations (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            slug TEXT NOT NULL UNIQUE,
+            created_at BIGINT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_organizations_slug ON organizations(slug);
+
+        CREATE TABLE IF NOT EXISTS organization_projects (
+            org_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            joined_at BIGINT NOT NULL,
+            PRIMARY KEY (org_id, project_id),
+            FOREIGN KEY (org_id) REFERENCES organizations(id),
+            FOREIGN KEY (project_id) REFERENCES projects(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_org_projects_proj ON organization_projects(project_id);
+
+        CREATE TABLE IF NOT EXISTS organization_rollups (
+            org_id TEXT PRIMARY KEY,
+            health_score BIGINT NOT NULL,
+            total_projects BIGINT NOT NULL,
+            total_vulnerabilities BIGINT NOT NULL,
+            matrix_json TEXT NOT NULL,
+            updated_at BIGINT NOT NULL,
+            FOREIGN KEY (org_id) REFERENCES organizations(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS audit_events (
+            id TEXT PRIMARY KEY,
+            org_id TEXT NOT NULL,
+            project_id TEXT,
+            actor TEXT NOT NULL,
+            action TEXT NOT NULL,
+            resource_type TEXT NOT NULL,
+            resource_id TEXT NOT NULL,
+            details_json TEXT,
+            created_at BIGINT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_audit_events_lookup ON audit_events(org_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_audit_events_actor ON audit_events(actor, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_audit_events_action ON audit_events(action, created_at DESC);
         "#;
 
         match &self.pool {
@@ -1177,5 +1224,794 @@ impl Db {
                 .rows_affected(),
         };
         Ok(affected > 0)
+    }
+
+    /// Registers a new organization.
+    pub async fn create_organization(&self, org: &OrganizationRow) -> Result<(), ServerError> {
+        let sql = "INSERT INTO organizations (id, name, slug, created_at) VALUES ($1, $2, $3, $4)";
+        match &self.pool {
+            DbPool::Sqlite(pool) => {
+                sqlx::query(sql)
+                    .bind(&org.id)
+                    .bind(&org.name)
+                    .bind(&org.slug)
+                    .bind(org.created_at)
+                    .execute(pool)
+                    .await
+                    .map_err(|e| {
+                        ServerError::Database(format!("Failed to create organization: {e}"))
+                    })?;
+            }
+            DbPool::Postgres(pool) => {
+                sqlx::query(sql)
+                    .bind(&org.id)
+                    .bind(&org.name)
+                    .bind(&org.slug)
+                    .bind(org.created_at)
+                    .execute(pool)
+                    .await
+                    .map_err(|e| {
+                        ServerError::Database(format!("Failed to create organization: {e}"))
+                    })?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Lists all organizations sorted alphabetically by name.
+    pub async fn list_organizations(&self) -> Result<Vec<OrganizationRow>, ServerError> {
+        let sql = "SELECT id, name, slug, created_at FROM organizations ORDER BY name ASC";
+        match &self.pool {
+            DbPool::Sqlite(pool) => {
+                let rows = sqlx::query(sql).fetch_all(pool).await.map_err(|e| {
+                    ServerError::Database(format!("Failed to list organizations: {e}"))
+                })?;
+                let mut list = Vec::with_capacity(rows.len());
+                for r in rows {
+                    list.push(OrganizationRow {
+                        id: r
+                            .try_get("id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        name: r
+                            .try_get("name")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        slug: r
+                            .try_get("slug")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        created_at: r
+                            .try_get("created_at")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    });
+                }
+                Ok(list)
+            }
+            DbPool::Postgres(pool) => {
+                let rows = sqlx::query(sql).fetch_all(pool).await.map_err(|e| {
+                    ServerError::Database(format!("Failed to list organizations: {e}"))
+                })?;
+                let mut list = Vec::with_capacity(rows.len());
+                for r in rows {
+                    list.push(OrganizationRow {
+                        id: r
+                            .try_get("id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        name: r
+                            .try_get("name")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        slug: r
+                            .try_get("slug")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        created_at: r
+                            .try_get("created_at")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    });
+                }
+                Ok(list)
+            }
+        }
+    }
+
+    /// Fetches an organization by either ID or slug.
+    pub async fn get_organization(
+        &self,
+        id_or_slug: &str,
+    ) -> Result<Option<OrganizationRow>, ServerError> {
+        let sql = "SELECT id, name, slug, created_at FROM organizations WHERE id = $1 OR slug = $1 LIMIT 1";
+        match &self.pool {
+            DbPool::Sqlite(pool) => {
+                let row = sqlx::query(sql)
+                    .bind(id_or_slug)
+                    .fetch_optional(pool)
+                    .await
+                    .map_err(|e| {
+                        ServerError::Database(format!("Failed to fetch organization: {e}"))
+                    })?;
+                match row {
+                    Some(r) => Ok(Some(OrganizationRow {
+                        id: r
+                            .try_get("id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        name: r
+                            .try_get("name")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        slug: r
+                            .try_get("slug")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        created_at: r
+                            .try_get("created_at")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    })),
+                    None => Ok(None),
+                }
+            }
+            DbPool::Postgres(pool) => {
+                let row = sqlx::query(sql)
+                    .bind(id_or_slug)
+                    .fetch_optional(pool)
+                    .await
+                    .map_err(|e| {
+                        ServerError::Database(format!("Failed to fetch organization: {e}"))
+                    })?;
+                match row {
+                    Some(r) => Ok(Some(OrganizationRow {
+                        id: r
+                            .try_get("id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        name: r
+                            .try_get("name")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        slug: r
+                            .try_get("slug")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        created_at: r
+                            .try_get("created_at")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    })),
+                    None => Ok(None),
+                }
+            }
+        }
+    }
+
+    /// Links a project to an organization.
+    pub async fn link_project_to_organization(
+        &self,
+        org_id: &str,
+        project_id: &str,
+        joined_at: i64,
+    ) -> Result<(), ServerError> {
+        match &self.pool {
+            DbPool::Sqlite(pool) => {
+                sqlx::query(
+                    r#"
+                    INSERT INTO organization_projects (org_id, project_id, joined_at)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT(org_id, project_id) DO UPDATE SET joined_at = excluded.joined_at
+                    "#,
+                )
+                .bind(org_id)
+                .bind(project_id)
+                .bind(joined_at)
+                .execute(pool)
+                .await
+                .map_err(|e| {
+                    ServerError::Database(format!("Failed to link project to organization: {e}"))
+                })?;
+            }
+            DbPool::Postgres(pool) => {
+                sqlx::query(
+                    r#"
+                    INSERT INTO organization_projects (org_id, project_id, joined_at)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT(org_id, project_id) DO UPDATE SET joined_at = EXCLUDED.joined_at
+                    "#,
+                )
+                .bind(org_id)
+                .bind(project_id)
+                .bind(joined_at)
+                .execute(pool)
+                .await
+                .map_err(|e| {
+                    ServerError::Database(format!("Failed to link project to organization: {e}"))
+                })?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Retrieves all project IDs linked to an organization.
+    pub async fn get_organization_projects(
+        &self,
+        org_id: &str,
+    ) -> Result<Vec<String>, ServerError> {
+        let sql = "SELECT project_id FROM organization_projects WHERE org_id = $1 ORDER BY project_id ASC";
+        match &self.pool {
+            DbPool::Sqlite(pool) => {
+                let rows = sqlx::query(sql)
+                    .bind(org_id)
+                    .fetch_all(pool)
+                    .await
+                    .map_err(|e| {
+                        ServerError::Database(format!("Failed to get org projects: {e}"))
+                    })?;
+                let mut list = Vec::with_capacity(rows.len());
+                for r in rows {
+                    list.push(
+                        r.try_get("project_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    );
+                }
+                Ok(list)
+            }
+            DbPool::Postgres(pool) => {
+                let rows = sqlx::query(sql)
+                    .bind(org_id)
+                    .fetch_all(pool)
+                    .await
+                    .map_err(|e| {
+                        ServerError::Database(format!("Failed to get org projects: {e}"))
+                    })?;
+                let mut list = Vec::with_capacity(rows.len());
+                for r in rows {
+                    list.push(
+                        r.try_get("project_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    );
+                }
+                Ok(list)
+            }
+        }
+    }
+
+    /// Retrieves all organization IDs that contain a given project.
+    pub async fn get_organizations_for_project(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<String>, ServerError> {
+        let sql =
+            "SELECT org_id FROM organization_projects WHERE project_id = $1 ORDER BY org_id ASC";
+        match &self.pool {
+            DbPool::Sqlite(pool) => {
+                let rows = sqlx::query(sql)
+                    .bind(project_id)
+                    .fetch_all(pool)
+                    .await
+                    .map_err(|e| {
+                        ServerError::Database(format!("Failed to get orgs for project: {e}"))
+                    })?;
+                let mut list = Vec::with_capacity(rows.len());
+                for r in rows {
+                    list.push(
+                        r.try_get("org_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    );
+                }
+                Ok(list)
+            }
+            DbPool::Postgres(pool) => {
+                let rows = sqlx::query(sql)
+                    .bind(project_id)
+                    .fetch_all(pool)
+                    .await
+                    .map_err(|e| {
+                        ServerError::Database(format!("Failed to get orgs for project: {e}"))
+                    })?;
+                let mut list = Vec::with_capacity(rows.len());
+                for r in rows {
+                    list.push(
+                        r.try_get("org_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    );
+                }
+                Ok(list)
+            }
+        }
+    }
+
+    /// Persists or updates the materialized rollup for an organization.
+    pub async fn save_organization_rollup(
+        &self,
+        rollup: &OrganizationRollupRow,
+    ) -> Result<(), ServerError> {
+        match &self.pool {
+            DbPool::Sqlite(pool) => {
+                sqlx::query(
+                    r#"
+                    INSERT INTO organization_rollups (org_id, health_score, total_projects, total_vulnerabilities, matrix_json, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                    ON CONFLICT(org_id) DO UPDATE SET
+                        health_score = excluded.health_score,
+                        total_projects = excluded.total_projects,
+                        total_vulnerabilities = excluded.total_vulnerabilities,
+                        matrix_json = excluded.matrix_json,
+                        updated_at = excluded.updated_at
+                    "#,
+                )
+                .bind(&rollup.org_id)
+                .bind(rollup.health_score)
+                .bind(rollup.total_projects)
+                .bind(rollup.total_vulnerabilities)
+                .bind(&rollup.matrix_json)
+                .bind(rollup.updated_at)
+                .execute(pool)
+                .await
+                .map_err(|e| ServerError::Database(format!("Failed to save organization rollup: {e}")))?;
+            }
+            DbPool::Postgres(pool) => {
+                sqlx::query(
+                    r#"
+                    INSERT INTO organization_rollups (org_id, health_score, total_projects, total_vulnerabilities, matrix_json, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                    ON CONFLICT(org_id) DO UPDATE SET
+                        health_score = EXCLUDED.health_score,
+                        total_projects = EXCLUDED.total_projects,
+                        total_vulnerabilities = EXCLUDED.total_vulnerabilities,
+                        matrix_json = EXCLUDED.matrix_json,
+                        updated_at = EXCLUDED.updated_at
+                    "#,
+                )
+                .bind(&rollup.org_id)
+                .bind(rollup.health_score)
+                .bind(rollup.total_projects)
+                .bind(rollup.total_vulnerabilities)
+                .bind(&rollup.matrix_json)
+                .bind(rollup.updated_at)
+                .execute(pool)
+                .await
+                .map_err(|e| ServerError::Database(format!("Failed to save organization rollup: {e}")))?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Retrieves the materialized rollup for an organization.
+    pub async fn get_organization_rollup(
+        &self,
+        org_id: &str,
+    ) -> Result<Option<OrganizationRollupRow>, ServerError> {
+        let sql = "SELECT org_id, health_score, total_projects, total_vulnerabilities, matrix_json, updated_at FROM organization_rollups WHERE org_id = $1";
+        match &self.pool {
+            DbPool::Sqlite(pool) => {
+                let row = sqlx::query(sql)
+                    .bind(org_id)
+                    .fetch_optional(pool)
+                    .await
+                    .map_err(|e| {
+                        ServerError::Database(format!("Failed to get organization rollup: {e}"))
+                    })?;
+                match row {
+                    Some(r) => Ok(Some(OrganizationRollupRow {
+                        org_id: r
+                            .try_get("org_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        health_score: r
+                            .try_get("health_score")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        total_projects: r
+                            .try_get("total_projects")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        total_vulnerabilities: r
+                            .try_get("total_vulnerabilities")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        matrix_json: r
+                            .try_get("matrix_json")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        updated_at: r
+                            .try_get("updated_at")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    })),
+                    None => Ok(None),
+                }
+            }
+            DbPool::Postgres(pool) => {
+                let row = sqlx::query(sql)
+                    .bind(org_id)
+                    .fetch_optional(pool)
+                    .await
+                    .map_err(|e| {
+                        ServerError::Database(format!("Failed to get organization rollup: {e}"))
+                    })?;
+                match row {
+                    Some(r) => Ok(Some(OrganizationRollupRow {
+                        org_id: r
+                            .try_get("org_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        health_score: r
+                            .try_get("health_score")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        total_projects: r
+                            .try_get("total_projects")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        total_vulnerabilities: r
+                            .try_get("total_vulnerabilities")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        matrix_json: r
+                            .try_get("matrix_json")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        updated_at: r
+                            .try_get("updated_at")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    })),
+                    None => Ok(None),
+                }
+            }
+        }
+    }
+
+    /// Fetches the latest snapshot and its findings across any branch for a project.
+    pub async fn get_latest_snapshot_for_project(
+        &self,
+        repo_id: &str,
+    ) -> Result<Option<(SnapshotRow, Vec<FindingRow>)>, ServerError> {
+        let snap_sql = "SELECT id, repo_id, branch, commit_hash, content_hash, tool_version, health_overall, health_json, findings_count, modules_json, metadata_json, created_at FROM snapshots WHERE repo_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1";
+        let find_sql = "SELECT id, snapshot_id, finding_id, rule_id, category, severity, confidence, title, finding_json FROM findings WHERE snapshot_id = $1";
+
+        match &self.pool {
+            DbPool::Sqlite(pool) => {
+                let snap_row = sqlx::query(snap_sql)
+                    .bind(repo_id)
+                    .fetch_optional(pool)
+                    .await
+                    .map_err(|e| {
+                        ServerError::Database(format!(
+                            "Failed to fetch latest snapshot for project: {e}"
+                        ))
+                    })?;
+
+                let Some(r) = snap_row else {
+                    return Ok(None);
+                };
+
+                let snapshot = SnapshotRow {
+                    id: r
+                        .try_get("id")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    repo_id: r
+                        .try_get("repo_id")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    branch: r
+                        .try_get("branch")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    commit_hash: r
+                        .try_get("commit_hash")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    content_hash: r
+                        .try_get("content_hash")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    tool_version: r
+                        .try_get("tool_version")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    health_overall: r
+                        .try_get("health_overall")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    health_json: r
+                        .try_get("health_json")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    findings_count: r
+                        .try_get("findings_count")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    modules_json: r
+                        .try_get("modules_json")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    metadata_json: r
+                        .try_get("metadata_json")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    created_at: r
+                        .try_get("created_at")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                };
+
+                let find_rows = sqlx::query(find_sql)
+                    .bind(&snapshot.id)
+                    .fetch_all(pool)
+                    .await
+                    .map_err(|e| ServerError::Database(format!("Failed to fetch findings: {e}")))?;
+
+                let mut findings = Vec::with_capacity(find_rows.len());
+                for fr in find_rows {
+                    findings.push(FindingRow {
+                        id: fr
+                            .try_get("id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        snapshot_id: fr
+                            .try_get("snapshot_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        finding_id: fr
+                            .try_get("finding_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        rule_id: fr
+                            .try_get("rule_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        category: fr
+                            .try_get("category")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        severity: fr
+                            .try_get("severity")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        confidence: fr
+                            .try_get("confidence")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        title: fr
+                            .try_get("title")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        finding_json: fr
+                            .try_get("finding_json")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    });
+                }
+
+                Ok(Some((snapshot, findings)))
+            }
+            DbPool::Postgres(pool) => {
+                let snap_row = sqlx::query(snap_sql)
+                    .bind(repo_id)
+                    .fetch_optional(pool)
+                    .await
+                    .map_err(|e| {
+                        ServerError::Database(format!(
+                            "Failed to fetch latest snapshot for project: {e}"
+                        ))
+                    })?;
+
+                let Some(r) = snap_row else {
+                    return Ok(None);
+                };
+
+                let snapshot = SnapshotRow {
+                    id: r
+                        .try_get("id")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    repo_id: r
+                        .try_get("repo_id")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    branch: r
+                        .try_get("branch")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    commit_hash: r
+                        .try_get("commit_hash")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    content_hash: r
+                        .try_get("content_hash")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    tool_version: r
+                        .try_get("tool_version")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    health_overall: r
+                        .try_get("health_overall")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    health_json: r
+                        .try_get("health_json")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    findings_count: r
+                        .try_get("findings_count")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    modules_json: r
+                        .try_get("modules_json")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    metadata_json: r
+                        .try_get("metadata_json")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                    created_at: r
+                        .try_get("created_at")
+                        .map_err(|e| ServerError::Database(e.to_string()))?,
+                };
+
+                let find_rows = sqlx::query(find_sql)
+                    .bind(&snapshot.id)
+                    .fetch_all(pool)
+                    .await
+                    .map_err(|e| ServerError::Database(format!("Failed to fetch findings: {e}")))?;
+
+                let mut findings = Vec::with_capacity(find_rows.len());
+                for fr in find_rows {
+                    findings.push(FindingRow {
+                        id: fr
+                            .try_get("id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        snapshot_id: fr
+                            .try_get("snapshot_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        finding_id: fr
+                            .try_get("finding_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        rule_id: fr
+                            .try_get("rule_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        category: fr
+                            .try_get("category")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        severity: fr
+                            .try_get("severity")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        confidence: fr
+                            .try_get("confidence")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        title: fr
+                            .try_get("title")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        finding_json: fr
+                            .try_get("finding_json")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    });
+                }
+
+                Ok(Some((snapshot, findings)))
+            }
+        }
+    }
+
+    /// Persists a new immutable audit event.
+    pub async fn record_audit_event(&self, event: &AuditEventRow) -> Result<(), ServerError> {
+        let sql = r#"
+        INSERT INTO audit_events (id, org_id, project_id, actor, action, resource_type, resource_id, details_json, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        "#;
+        match &self.pool {
+            DbPool::Sqlite(pool) => {
+                sqlx::query(sql)
+                    .bind(&event.id)
+                    .bind(&event.org_id)
+                    .bind(&event.project_id)
+                    .bind(&event.actor)
+                    .bind(&event.action)
+                    .bind(&event.resource_type)
+                    .bind(&event.resource_id)
+                    .bind(&event.details_json)
+                    .bind(event.created_at)
+                    .execute(pool)
+                    .await
+                    .map_err(|e| {
+                        ServerError::Database(format!("Failed to record audit event: {e}"))
+                    })?;
+            }
+            DbPool::Postgres(pool) => {
+                sqlx::query(sql)
+                    .bind(&event.id)
+                    .bind(&event.org_id)
+                    .bind(&event.project_id)
+                    .bind(&event.actor)
+                    .bind(&event.action)
+                    .bind(&event.resource_type)
+                    .bind(&event.resource_id)
+                    .bind(&event.details_json)
+                    .bind(event.created_at)
+                    .execute(pool)
+                    .await
+                    .map_err(|e| {
+                        ServerError::Database(format!("Failed to record audit event: {e}"))
+                    })?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Queries audit events based on filter criteria.
+    pub async fn query_audit_events(
+        &self,
+        filter: &AuditEventFilter,
+    ) -> Result<Vec<AuditEventRow>, ServerError> {
+        let mut conditions = Vec::new();
+        let mut params: Vec<String> = Vec::new();
+
+        if let Some(org_id) = &filter.org_id {
+            params.push(org_id.clone());
+            conditions.push(format!("org_id = ${}", params.len()));
+        }
+        if let Some(project_id) = &filter.project_id {
+            params.push(project_id.clone());
+            conditions.push(format!("project_id = ${}", params.len()));
+        }
+        if let Some(actor) = &filter.actor {
+            params.push(actor.clone());
+            conditions.push(format!("actor = ${}", params.len()));
+        }
+        if let Some(action) = &filter.action {
+            params.push(action.clone());
+            conditions.push(format!("action = ${}", params.len()));
+        }
+        if let Some(since) = filter.since {
+            conditions.push(format!("created_at >= {since}"));
+        }
+        if let Some(until) = filter.until {
+            conditions.push(format!("created_at <= {until}"));
+        }
+
+        let where_clause = if conditions.is_empty() {
+            String::new()
+        } else {
+            format!("WHERE {}", conditions.join(" AND "))
+        };
+
+        let limit = filter.limit.unwrap_or(100).min(500);
+        let sql = format!(
+            "SELECT id, org_id, project_id, actor, action, resource_type, resource_id, details_json, created_at FROM audit_events {where_clause} ORDER BY created_at DESC LIMIT {limit}"
+        );
+
+        match &self.pool {
+            DbPool::Sqlite(pool) => {
+                let mut query = sqlx::query(&sql);
+                for p in &params {
+                    query = query.bind(p);
+                }
+                let rows = query.fetch_all(pool).await.map_err(|e| {
+                    ServerError::Database(format!("Failed to query audit events: {e}"))
+                })?;
+                let mut list = Vec::with_capacity(rows.len());
+                for r in rows {
+                    list.push(AuditEventRow {
+                        id: r
+                            .try_get("id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        org_id: r
+                            .try_get("org_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        project_id: r
+                            .try_get("project_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        actor: r
+                            .try_get("actor")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        action: r
+                            .try_get("action")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        resource_type: r
+                            .try_get("resource_type")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        resource_id: r
+                            .try_get("resource_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        details_json: r
+                            .try_get("details_json")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        created_at: r
+                            .try_get("created_at")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    });
+                }
+                Ok(list)
+            }
+            DbPool::Postgres(pool) => {
+                let mut query = sqlx::query(&sql);
+                for p in &params {
+                    query = query.bind(p);
+                }
+                let rows = query.fetch_all(pool).await.map_err(|e| {
+                    ServerError::Database(format!("Failed to query audit events: {e}"))
+                })?;
+                let mut list = Vec::with_capacity(rows.len());
+                for r in rows {
+                    list.push(AuditEventRow {
+                        id: r
+                            .try_get("id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        org_id: r
+                            .try_get("org_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        project_id: r
+                            .try_get("project_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        actor: r
+                            .try_get("actor")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        action: r
+                            .try_get("action")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        resource_type: r
+                            .try_get("resource_type")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        resource_id: r
+                            .try_get("resource_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        details_json: r
+                            .try_get("details_json")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        created_at: r
+                            .try_get("created_at")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    });
+                }
+                Ok(list)
+            }
+        }
     }
 }

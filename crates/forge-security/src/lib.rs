@@ -7,6 +7,7 @@ use std::path::Path;
 use forge_core::config::SecurityConfig;
 use forge_core::{Dependency, FileNode, Finding, ForgeError};
 
+pub mod compliance;
 pub mod entropy;
 pub mod license;
 pub mod osv;
@@ -15,6 +16,11 @@ pub mod php_patterns;
 pub mod python_patterns;
 pub mod sbom;
 pub mod secrets;
+
+pub use compliance::{
+    evaluate_compliance, render_compliance_markdown, render_compliance_terminal,
+    ComplianceClauseResult, ComplianceClauseStatus, ComplianceReport, ComplianceStandard,
+};
 
 pub use entropy::{
     calculate_shannon_entropy, find_high_entropy_tokens, is_hex, is_high_entropy,
