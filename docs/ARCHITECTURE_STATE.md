@@ -946,3 +946,17 @@
   - Deterministic exit codes: `0` (Success/Overall Passed), `4` (SecurityPolicyFailure when any clause status is `Fail`).
   - Supports dual reporting: human-readable terminal summary and auditable GitHub-flavored Markdown / JSON with evidence linking.
   - Completes **Epic #221** (Phase 10A: Organization Policy-as-Code Engine & Compliance Audits).
+
+
+## Issue #226 — Multi-Repository Organization Aggregator & Materialized Rollups (COMPLETED)
+- **Crate:** `crates/forge-server` (`src/db/mod.rs`, `src/db/models.rs`, `src/org/mod.rs`, `src/org/aggregator.rs`, `src/routes/orgs.rs`, `src/routes/sync.rs`, `src/routes/mod.rs`, `src/app.rs`, `src/lib.rs`, `tests/org_aggregator_test.rs`).
+- **Public Types & Functions Exposed:**
+  - `forge_server::db::models`: `OrganizationRow`, `OrganizationProjectRow`, `OrganizationRollupRow`, `CrossRepoVulnerability`, `OrganizationSummary`.
+  - `forge_server::org`: `compute_organization_rollup`, `recompute_org_rollup`, `recompute_all_orgs_for_project`, `get_organization_summary`.
+  - Database schema: added `organizations`, `organization_projects`, and `organization_rollups` with index structures.
+  - Endpoints: `POST /api/v1/orgs`, `GET /api/v1/orgs`, `POST /api/v1/orgs/:id/projects`, `GET /api/v1/orgs/:id/summary`, `GET /api/v1/orgs/:id/vulnerabilities`.
+  - Ingestion hook: asynchronous organization rollup recomputation triggered on `POST /api/v1/sync/push`.
+- **Invariants:**
+  - $O(1)$ fast retrieval for organization summary from `organization_rollups` materialized view.
+  - Cross-Repository Vulnerability Matrix aggregates shared CVEs and security findings with deterministic ranking by affected repository count.
+  - Contributes to **Epic #225** (Phase 10B: Multi-Repository Organization Aggregator & Enterprise Auth).
