@@ -1026,3 +1026,17 @@
 
 
 
+
+## ELCODE Forge v1.0.0 General Availability (GA) Release (COMPLETED)
+- **Release PR:** [#240](https://github.com/elcode-id/elcode-forge/pull/240) (`develop -> main`)
+- **Git Release Tag:** `v1.0.0`
+- **Release Assets Published:**
+  - `eforge-v1.0.0-x86_64-unknown-linux-gnu.tar.gz`
+  - `eforge-v1.0.0-aarch64-apple-darwin.tar.gz`
+  - `eforge-v1.0.0-x86_64-pc-windows-msvc.zip`
+  - `SHA256SUMS.txt`
+  - `multiple.intoto.jsonl` (SLSA Build Level 3 Provenance statement)
+- **Capabilities & Milestones:**
+  - All 10 Phases across 240+ issues and pull requests are 100% completed with zero open issues or open PRs.
+  - Multi-platform `--locked` release binaries published with GitHub Artifact Attestations and SLSA Level 3 cryptographically signed provenance.
+  - Full synchronization across `main` and `develop` branches under the ELCODE Studio Manifesto (`01`–`05`).
