@@ -19,8 +19,8 @@
 <div class="min-h-screen flex flex-col bg-[#0b0d13] text-slate-100">
   <header class="sticky top-0 z-50 backdrop-blur-md bg-[#0b0d13]/85 border-b border-[#262c3f]">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-      <div class="flex items-center gap-6">
-        <a href="{base}/" class="flex items-center gap-3 group">
+      <div class="flex items-center gap-5">
+        <a href="{base}/" class="flex items-center gap-3 group shrink-0">
           <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
             ⚡
           </div>
@@ -33,12 +33,18 @@
           </div>
         </a>
 
-        <nav class="hidden lg:flex items-center gap-1 text-sm font-medium">
+        <nav class="hidden xl:flex items-center gap-1 text-xs font-medium">
           <a
             href="{base}/"
             class="px-2.5 py-1.5 rounded-lg transition-colors {isHome ? 'text-white bg-slate-800/80' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'}"
           >
-            Overview
+            Overview & Install
+          </a>
+          <a
+            href="{base}/configuration"
+            class="px-2.5 py-1.5 rounded-lg transition-colors {isActive('/configuration') ? 'text-white bg-slate-800/80' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'}"
+          >
+            Configuration
           </a>
           <a
             href="{base}/cli"
@@ -47,16 +53,16 @@
             CLI Reference
           </a>
           <a
-            href="{base}/mcp"
-            class="px-2.5 py-1.5 rounded-lg transition-colors {isActive('/mcp') ? 'text-white bg-slate-800/80' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'}"
-          >
-            MCP Server
-          </a>
-          <a
             href="{base}/rules"
             class="px-2.5 py-1.5 rounded-lg transition-colors {isActive('/rules') ? 'text-white bg-slate-800/80' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'}"
           >
             Custom Rules
+          </a>
+          <a
+            href="{base}/mcp"
+            class="px-2.5 py-1.5 rounded-lg transition-colors {isActive('/mcp') ? 'text-white bg-slate-800/80' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'}"
+          >
+            MCP Server
           </a>
           <a
             href="{base}/policy"
@@ -68,7 +74,7 @@
             href="{base}/compliance"
             class="px-2.5 py-1.5 rounded-lg transition-colors {isActive('/compliance') ? 'text-white bg-slate-800/80' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'}"
           >
-            Compliance
+            Security & Compliance
           </a>
           <a
             href="{base}/self-hosting"
@@ -98,14 +104,15 @@
       </div>
     </div>
 
-    <!-- Mobile Sub-Navigation -->
-    <div class="lg:hidden flex items-center gap-2 px-4 py-2 overflow-x-auto border-t border-slate-800/60 text-xs font-mono scrollbar-none">
-      <a href="{base}/" class="px-2 py-1 rounded whitespace-nowrap {isHome ? 'text-white bg-slate-800' : 'text-slate-400'}">Overview</a>
-      <a href="{base}/cli" class="px-2 py-1 rounded whitespace-nowrap {isActive('/cli') ? 'text-white bg-slate-800' : 'text-slate-400'}">CLI</a>
-      <a href="{base}/mcp" class="px-2 py-1 rounded whitespace-nowrap {isActive('/mcp') ? 'text-white bg-slate-800' : 'text-slate-400'}">MCP</a>
-      <a href="{base}/rules" class="px-2 py-1 rounded whitespace-nowrap {isActive('/rules') ? 'text-white bg-slate-800' : 'text-slate-400'}">Rules</a>
-      <a href="{base}/policy" class="px-2 py-1 rounded whitespace-nowrap {isActive('/policy') ? 'text-white bg-slate-800' : 'text-slate-400'}">Policy</a>
-      <a href="{base}/compliance" class="px-2 py-1 rounded whitespace-nowrap {isActive('/compliance') ? 'text-white bg-slate-800' : 'text-slate-400'}">Compliance</a>
+    <!-- Mobile & Tablet Sub-Navigation -->
+    <div class="xl:hidden flex items-center gap-2 px-4 py-2 overflow-x-auto border-t border-slate-800/60 text-xs font-mono scrollbar-none">
+      <a href="{base}/" class="px-2 py-1 rounded whitespace-nowrap {isHome ? 'text-white bg-slate-800' : 'text-slate-400'}">Overview & Install</a>
+      <a href="{base}/configuration" class="px-2 py-1 rounded whitespace-nowrap {isActive('/configuration') ? 'text-white bg-slate-800' : 'text-slate-400'}">Configuration</a>
+      <a href="{base}/cli" class="px-2 py-1 rounded whitespace-nowrap {isActive('/cli') ? 'text-white bg-slate-800' : 'text-slate-400'}">CLI Reference</a>
+      <a href="{base}/rules" class="px-2 py-1 rounded whitespace-nowrap {isActive('/rules') ? 'text-white bg-slate-800' : 'text-slate-400'}">Custom Rules</a>
+      <a href="{base}/mcp" class="px-2 py-1 rounded whitespace-nowrap {isActive('/mcp') ? 'text-white bg-slate-800' : 'text-slate-400'}">MCP Server</a>
+      <a href="{base}/policy" class="px-2 py-1 rounded whitespace-nowrap {isActive('/policy') ? 'text-white bg-slate-800' : 'text-slate-400'}">Policy-as-Code</a>
+      <a href="{base}/compliance" class="px-2 py-1 rounded whitespace-nowrap {isActive('/compliance') ? 'text-white bg-slate-800' : 'text-slate-400'}">Security & Compliance</a>
       <a href="{base}/self-hosting" class="px-2 py-1 rounded whitespace-nowrap {isActive('/self-hosting') ? 'text-white bg-slate-800' : 'text-slate-400'}">Self-Hosting</a>
       <a href="{base}/provenance" class="px-2 py-1 rounded whitespace-nowrap {isActive('/provenance') ? 'text-white bg-slate-800' : 'text-slate-400'}">Provenance</a>
     </div>
@@ -120,7 +127,7 @@
   <footer class="border-t border-[#262c3f] bg-[#0b0d13] py-8 text-center text-xs text-slate-500 font-mono">
     <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
       <div>
-        ELCODE Forge v1.0.0 GA — Know your code. Ship with confidence.
+        ELCODE Forge (`eforge`) v1.0.0 GA — Know your code. Ship with confidence.
       </div>
       <div class="flex items-center gap-4 text-slate-400">
         <a href="https://elcode.id" target="_blank" rel="noreferrer" class="hover:text-white">Studio Manifesto</a>

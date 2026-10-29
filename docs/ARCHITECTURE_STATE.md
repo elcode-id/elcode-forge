@@ -1053,3 +1053,13 @@
   - AI provider resilience: UTF-8 BOM tolerance, `budget_daily_usd` alias support, and OpenAI strict schema compliance (`additionalProperties: false`, `#[serde(default)]` on `GroundedClaim.verified`).
 - **Invariants:**
   - SvelteKit static export generates clean single-page artifacts supporting both standalone deployment and GitHub Pages subpath mounting (`/elcode-forge`).
+
+
+## Documentation Portal (`apps/docs`) Comprehensive Accuracy & Configuration Expansion (COMPLETED)
+- **Paths:** `apps/docs/src/routes/{+layout.svelte, +page.svelte, configuration/+page.svelte, cli/+page.svelte, rules/+page.svelte, mcp/+page.svelte, policy/+page.svelte, compliance/+page.svelte, self-hosting/+page.svelte, provenance/+page.svelte}`.
+- **Capabilities & Implementations:**
+  - Added dedicated `/configuration` route documenting `eforge.config.yaml` / `forge.config.yaml` precedence, master annotated YAML schema, local AI providers (Ollama, LM Studio) & `api_key_env` credential isolation, `.eforge/` directory layout, environment variables, and `elcode-id/forge-action` inputs/outputs.
+  - Expanded `/` with 5-channel installation guide (`npx elcode-forge`, POSIX/PowerShell installers, Homebrew tap, `cargo binstall`, source build), 6-step Golden Path quickstart, polyglot ecosystem matrix, and 8-dimension health score weights.
+  - Synchronized `/cli` with all 34 exact `clap` CLI commands/subcommands, flags, 5 output formatters, and 5 deterministic exit codes (`0..=4`); aligned `/rules` with all 6 matchers (`dependency_restriction`, `companion: "tests/{name}.test.ts"`, `convention`) and 4 rule packs; aligned `/mcp` with the 7 `eforge_*` tools and `UntrustedEnvelope<T>`; and expanded `/policy`, `/compliance`, `/self-hosting`, and `/provenance`.
+- **Invariants:**
+  - Zero TypeScript/Svelte diagnostics (`pnpm --filter docs run check`) and 100% prerendered static build (`pnpm --filter docs run build`).
