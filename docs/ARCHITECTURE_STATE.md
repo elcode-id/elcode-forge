@@ -976,3 +976,18 @@
   - Reverse-proxy identity headers (`X-Forwarded-*`) are strictly rejected with 401 when `trust_proxy_headers == false`.
   - Audit log table is strictly append-only; events are permanently indexed and queryable across actors and actions.
   - Contributes to **Epic #225** (Phase 10B: Multi-Repository Organization Aggregator & Enterprise Auth).
+
+
+## Issue #228 — Enterprise Governance Dashboard, Policy Management UI & Portfolio Rollups (COMPLETED)
+- **App/Package:** `apps/dashboard` (`src/lib/data/org.ts`, `src/routes/governance/+page.svelte`, `src/routes/projects/+page.svelte`, `src/routes/+layout.svelte`, `tests/governance_and_org.test.ts`).
+- **Public Types & Functions Exposed:**
+  - `org.ts`: `PolicyDocument`, `PolicyConstraints`, `PolicyWaiver`, `PolicyRuleOverride`, `PolicyEvaluationResult`, `OrganizationSummary`, `CrossRepoVulnerability`, `AuditEvent`, `AuditEventFilter`, `STARTER_POLICY_YAML`, `parsePolicyYaml`, `isWaiverExpired`, `evaluatePolicyAgainstBundle`, `fetchOrganizations`, `fetchOrganizationSummary`, `fetchAuditEvents`.
+  - Routes:
+    - `/governance`: Visual Policy-as-Code editor, constraint meters (min health, zero-tolerance secrets, blocked severities, circular dependency caps, forbidden licenses), live gate assertion evaluation against active bundles, and active/expired waiver audit table.
+    - `/projects`: Portfolio Rollup Header (cross-repo avg health, active vulnerabilities, connected workspaces, shared CVEs), multi-tab layout (`Repositories`, `Cross-Repo Vulnerability Matrix`, `Audit Event Stream`).
+    - `+layout.svelte`: Added `Governance` navigation item in primary header.
+- **Invariants:**
+  - Zero external YAML parsing dependencies; parses declarative `eforge.config.yaml` policies client-side with full validation.
+  - Gracefully degrades between cloud/server mode (`forge-server` organization and audit endpoints) and local offline file mode (computes rollups and evaluates policies directly against in-memory loaded bundles).
+  - Completes **Epic #225** (Phase 10B: Multi-Repository Organization Aggregator & Enterprise Auth).
+

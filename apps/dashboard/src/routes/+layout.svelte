@@ -71,6 +71,13 @@
             Compare
           </a>
           <a
+            href="/governance"
+            class="px-2.5 py-1 rounded text-xs text-purple-300 hover:text-white hover:bg-slate-800 transition-colors font-medium flex items-center gap-1"
+          >
+            <span>Governance</span>
+            <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+          </a>
+          <a
             href="/architecture"
             class="px-2.5 py-1 rounded text-xs text-slate-300 hover:text-white hover:bg-slate-800 transition-colors font-medium"
           >
