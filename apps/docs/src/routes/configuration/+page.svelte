@@ -2,20 +2,15 @@
   <title>Configuration Reference (eforge.config.yaml) | ELCODE Forge Documentation</title>
 </svelte:head>
 
-<div class="space-y-10 max-w-5xl">
-  <!-- Header -->
-  <div>
-    <div class="text-xs font-mono uppercase tracking-wider text-indigo-400 mb-1">Workspace & Engine Configuration</div>
-    <h1 class="text-3xl font-extrabold text-white">Configuration Reference (<code class="text-indigo-300 font-mono text-2xl">eforge.config.yaml</code>)</h1>
-    <p class="text-slate-400 mt-2 text-base leading-relaxed">
-      Complete specification for configuring ELCODE Forge project settings, rule pack inheritance, AI providers, secret scanning entropy, open-source license compliance, Git hooks, Policy-as-Code, environment variables, and the GitHub Action.
-    </p>
-  </div>
+<div class="space-y-10">
+  <p class="lead">
+    Complete specification for configuring ELCODE Forge project settings, rule pack inheritance, AI providers, secret scanning entropy, open-source license compliance, Git hooks, Policy-as-Code, environment variables, and the GitHub Action via <code>eforge.config.yaml</code>.
+  </p>
 
   <!-- 1. Resolution Precedence & File Discovery -->
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
-    <h2 class="text-lg font-bold text-white font-mono flex items-center gap-2">
-      <span class="text-indigo-400">01.</span>
+    <h2 id="precedence" class="text-lg font-bold text-white font-mono flex items-center gap-2">
+      <span class="text-sky-400">01.</span>
       <span>Configuration File Discovery & Precedence</span>
     </h2>
     <p class="text-sm text-slate-300 leading-relaxed">
@@ -182,9 +177,9 @@ policy:
   <!-- 3. AI Provider Configurations -->
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-6">
     <div>
-      <h2 class="text-lg font-bold text-white font-mono flex items-center gap-2">
-        <span class="text-indigo-400">03.</span>
-        <span>AI Providers, Local Offline Models & Security Invariants (<code class="text-indigo-300">ai:</code>)</span>
+      <h2 id="ai-providers" class="text-lg font-bold text-white font-mono flex items-center gap-2">
+        <span class="text-sky-400">03.</span>
+        <span>AI Providers, Local Offline Models & Security Invariants (<code class="text-sky-300">ai:</code>)</span>
       </h2>
       <p class="text-sm text-slate-300 mt-1 leading-relaxed">
         ELCODE Forge strictly enforces <strong>credential isolation</strong>: if you place a raw <code class="text-rose-400 font-mono">api_key</code>, <code class="text-rose-400 font-mono">token</code>, <code class="text-rose-400 font-mono">secret</code>, or <code class="text-rose-400 font-mono">password</code> key inside the <code class="text-amber-300 font-mono">ai:</code> section, the parser immediately rejects the configuration with <code class="text-rose-400 font-mono">ForgeError::Config</code>. Always pass the <strong>environment variable name</strong> via <code class="text-emerald-300 font-mono">api_key_env</code>.
@@ -277,8 +272,8 @@ policy:
 
   <!-- 5. Environment Variables Reference -->
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
-    <h2 class="text-lg font-bold text-white font-mono flex items-center gap-2">
-      <span class="text-indigo-400">05.</span>
+    <h2 id="env-vars" class="text-lg font-bold text-white font-mono flex items-center gap-2">
+      <span class="text-sky-400">05.</span>
       <span>Environment Variables Reference</span>
     </h2>
     <div class="overflow-x-auto">
@@ -333,9 +328,9 @@ policy:
 
   <!-- 6. GitHub Action Reference -->
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
-    <h2 class="text-lg font-bold text-white font-mono flex items-center gap-2">
-      <span class="text-indigo-400">06.</span>
-      <span>GitHub Action Integration (<code class="text-indigo-300">elcode-id/forge-action</code>)</span>
+    <h2 id="github-action" class="text-lg font-bold text-white font-mono flex items-center gap-2">
+      <span class="text-sky-400">06.</span>
+      <span>GitHub Action Integration (<code class="text-sky-300">elcode-id/forge-action</code>)</span>
     </h2>
     <p class="text-sm text-slate-300 leading-relaxed">
       Gate pull requests, publish Markdown summaries to <code class="text-blue-300 font-mono">$GITHUB_STEP_SUMMARY</code>, and upload OASIS SARIF v2.1.0 security reports using the composite GitHub Action in <code class="text-slate-200 font-mono">integrations/github-action</code>:

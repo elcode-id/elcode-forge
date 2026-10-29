@@ -2,14 +2,10 @@
   <title>Enterprise Policy-as-Code Engine | ELCODE Forge Documentation</title>
 </svelte:head>
 
-<div class="space-y-8 max-w-5xl">
-  <div>
-    <div class="text-xs font-mono uppercase tracking-wider text-blue-400 mb-1">Specification & Gate Guide</div>
-    <h1 class="text-3xl font-extrabold text-white">Enterprise Policy-as-Code Engine (<code class="text-blue-300 font-mono text-2xl">eforge policy check</code>)</h1>
-    <p class="text-slate-400 mt-2 text-base leading-relaxed">
-      Declare non-negotiable architectural boundaries, minimum 8-dimension health thresholds, secret zero-tolerance, license allow/denylists, diff blast-radius caps, and time-bounded exception waivers either inline in <code class="text-blue-300 font-mono text-sm">eforge.config.yaml</code> or in standalone YAML/JSON policy documents.
-    </p>
-  </div>
+<div class="space-y-8">
+  <p class="lead">
+    Declare non-negotiable architectural boundaries, minimum 8-dimension health thresholds, secret zero-tolerance, license allow/denylists, diff blast-radius caps, and time-bounded exception waivers either inline in <code>eforge.config.yaml</code> or in standalone YAML/JSON policy documents.
+  </p>
 
   <!-- 1. Policy Discovery Hierarchy & CLI Usage -->
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">

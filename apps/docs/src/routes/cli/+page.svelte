@@ -695,17 +695,13 @@
   );
 </script>
 
-<div class="space-y-8 max-w-5xl">
-  <!-- Header -->
-  <div>
-    <div class="text-xs font-mono uppercase tracking-wider text-blue-400 mb-1">Command-Line Interface</div>
-    <h1 class="text-3xl font-extrabold text-white">CLI Reference & Command Catalog ({commands.length} Commands)</h1>
-    <p class="text-slate-400 mt-2 text-base leading-relaxed">
-      Complete, authoritative reference for all <code class="text-blue-300 font-mono text-sm">eforge</code> (and alias <code class="text-blue-300 font-mono text-sm">elcode-forge</code>) commands, flags, output formatters, and deterministic exit codes.
-    </p>
-  </div>
+<div class="space-y-8">
+  <p class="lead">
+    Complete, authoritative reference for all {commands.length} <code>eforge</code> (and alias <code>elcode-forge</code>) commands, flags, output formatters, and deterministic exit codes.
+  </p>
 
   <!-- Global Exit Codes & Output Formats Contract -->
+  <h2 id="exit-codes">Output Formats &amp; Deterministic Exit Codes (0..=4)</h2>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
     <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-5 space-y-3">
       <div class="text-xs font-mono uppercase tracking-wider text-emerald-400 font-bold">Deterministic Exit Codes Contract (0..=4)</div>
