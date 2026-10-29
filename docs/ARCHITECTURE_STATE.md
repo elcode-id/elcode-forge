@@ -1040,3 +1040,16 @@
   - All 10 Phases across 240+ issues and pull requests are 100% completed with zero open issues or open PRs.
   - Multi-platform `--locked` release binaries published with GitHub Artifact Attestations and SLSA Level 3 cryptographically signed provenance.
   - Full synchronization across `main` and `develop` branches under the ELCODE Studio Manifesto (`01`–`05`).
+
+
+## Issue #241 — GitHub Pages Deployment Workflow & Documentation Expansion (COMPLETED)
+- **Paths:** `.github/workflows/deploy-docs.yml`, `apps/docs/svelte.config.js`, `apps/docs/src/routes/**`, `crates/forge-core/src/config.rs`, `crates/forge-cli/src/ai/orchestrate.rs`, `crates/forge-cli/src/commands/ai_review.rs`.
+- **Capabilities & Implementations:**
+  - GitHub Pages CI/CD workflow (`.github/workflows/deploy-docs.yml`) with automated `pnpm --filter docs run build`, `actions/configure-pages@v5`, `actions/upload-pages-artifact@v3`, and `actions/deploy-pages@v4`.
+  - Base path configuration in `apps/docs/svelte.config.js` (`paths: { base: process.env.BASE_PATH || "" }`) and dynamic routing with `$app/paths`.
+  - Comprehensive CLI reference route (`apps/docs/src/routes/cli/+page.svelte`) documenting all 36 CLI commands, arguments, practical examples, and exit codes contract.
+  - Model Context Protocol (MCP) server guide (`apps/docs/src/routes/mcp/+page.svelte`) with setup configs for Cursor, Claude Desktop, Windsurf, Cline, cataloging the 7 `eforge_*` tools and prompt isolation security envelopes.
+  - Declarative custom rules authoring manual (`apps/docs/src/routes/rules/+page.svelte`) covering YAML rule schema, 6 built-in matcher types, and CI validation commands (`eforge rules validate`, `eforge rules test`).
+  - AI provider resilience: UTF-8 BOM tolerance, `budget_daily_usd` alias support, and OpenAI strict schema compliance (`additionalProperties: false`, `#[serde(default)]` on `GroundedClaim.verified`).
+- **Invariants:**
+  - SvelteKit static export generates clean single-page artifacts supporting both standalone deployment and GitHub Pages subpath mounting (`/elcode-forge`).

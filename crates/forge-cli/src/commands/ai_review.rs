@@ -157,11 +157,13 @@ pub fn review_response_schema() -> serde_json::Value {
                         "line": { "type": ["integer", "null"] },
                         "related_finding_id": { "type": ["string", "null"] }
                     },
-                    "required": ["classification", "title", "rationale"]
+                    "required": ["classification", "title", "rationale", "file", "line", "related_finding_id"],
+                    "additionalProperties": false
                 }
             }
         },
-        "required": ["items"]
+        "required": ["items"],
+        "additionalProperties": false
     })
 }
 
