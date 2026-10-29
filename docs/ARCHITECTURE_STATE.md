@@ -930,3 +930,19 @@
   - Contributes to **Epic #221** (Phase 10A: Organization Policy-as-Code Engine & Compliance Audits).
 
 
+
+
+## Issue #224 — Automated SOC 2, ISO 27001, OWASP Top 10 Compliance Audit Exporter (COMPLETED)
+- **Crates:** `crates/forge-security` (`src/compliance/mod.rs`, `src/compliance/soc2.rs`, `src/compliance/owasp.rs`, `src/compliance/iso27001.rs`, `src/lib.rs`, `tests/compliance_test.rs`), `crates/forge-cli` (`src/commands/audit.rs`, `src/commands/mod.rs`, `src/cli.rs`, `src/lib.rs`, `tests/audit_cli_test.rs`).
+- **Public Types & Functions Exposed:**
+  - `forge_security::compliance`: `ComplianceStandard` (`Soc2Type2`, `OwaspTop10_2021`, `Iso27001_2022`), `ComplianceClauseStatus` (`Pass`, `Fail`, `NotApplicable`), `ComplianceClauseResult`, `ComplianceReport`, `evaluate_compliance(standard, findings, dependencies, graph, repo_root) -> ComplianceReport`, `render_compliance_markdown(&ComplianceReport) -> String`, `render_compliance_terminal(&ComplianceReport) -> String`.
+  - `forge_cli::commands::audit`: `execute_audit(repo_root, standard) -> Result<ComplianceReport, ForgeError>`, `render_audit_report(report, format) -> Result<String, ForgeError>`, `run_audit(repo_root, standard, format, output) -> ExitCode`.
+  - `forge_cli::cli`: `Commands::Audit` with `--standard <soc2|owasp|iso27001>`, `--path <dir>`, `--format <terminal|json|markdown>`, `--output <file>`.
+  - Evaluated Controls:
+    - SOC 2 Type II: CC6.1 (Logical Access & Secrets), CC6.6 (Boundary Protection), CC7.1 (Vulnerability Management), CC8.1 (Change Management & Architectural Quality).
+    - OWASP Top 10 (2021): A01 (Broken Access Control), A02 (Cryptographic Failures), A03 (Injection), A06 (Vulnerable & Outdated Components).
+    - ISO/IEC 27001:2022: Control 8.8 (Management of Technical Vulnerabilities), Control 8.28 (Secure Coding).
+- **Invariants:**
+  - Deterministic exit codes: `0` (Success/Overall Passed), `4` (SecurityPolicyFailure when any clause status is `Fail`).
+  - Supports dual reporting: human-readable terminal summary and auditable GitHub-flavored Markdown / JSON with evidence linking.
+  - Completes **Epic #221** (Phase 10A: Organization Policy-as-Code Engine & Compliance Audits).

@@ -2,6 +2,7 @@
 
 pub mod ai_admin;
 pub mod ai_review;
+pub mod audit;
 pub mod auth;
 pub mod dependencies;
 pub mod diff;
