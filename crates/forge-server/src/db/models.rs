@@ -98,3 +98,56 @@ pub struct HistoryPoint {
     pub findings_count: usize,
     pub health_json: String,
 }
+
+/// Record representing an organization.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OrganizationRow {
+    pub id: String,
+    pub name: String,
+    pub slug: String,
+    pub created_at: i64,
+}
+
+/// Association between an organization and a repository project.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OrganizationProjectRow {
+    pub org_id: String,
+    pub project_id: String,
+    pub joined_at: i64,
+}
+
+/// Materialized rollup metrics for an organization.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OrganizationRollupRow {
+    pub org_id: String,
+    pub health_score: i64,
+    pub total_projects: i64,
+    pub total_vulnerabilities: i64,
+    pub matrix_json: String,
+    pub updated_at: i64,
+}
+
+/// Security finding or vulnerability identified across one or more repositories in an organization.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CrossRepoVulnerability {
+    pub rule_id: String,
+    pub severity: String,
+    pub title: String,
+    pub category: String,
+    pub affected_projects: Vec<String>,
+    pub occurrence_count: usize,
+}
+
+/// Complete rollup summary for an organization.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OrganizationSummary {
+    pub id: String,
+    pub name: String,
+    pub slug: String,
+    pub health_score: u8,
+    pub total_projects: usize,
+    pub total_vulnerabilities: usize,
+    pub cross_repo_vulnerabilities: Vec<CrossRepoVulnerability>,
+    pub project_ids: Vec<String>,
+    pub updated_at: i64,
+}

@@ -6,6 +6,7 @@ pub mod config;
 pub mod db;
 pub mod error;
 pub mod history;
+pub mod org;
 pub mod projects;
 pub mod routes;
 pub mod state;
@@ -14,9 +15,17 @@ pub mod webhooks;
 pub use app::{create_app, run_server, shutdown_signal};
 pub use auth::{hash_api_key, issue_jwt, verify_jwt, AuthenticatedUser, Claims};
 pub use config::ServerConfig;
+pub use db::models::{
+    CrossRepoVulnerability, OrganizationProjectRow, OrganizationRollupRow, OrganizationRow,
+    OrganizationSummary,
+};
 pub use db::Db;
 pub use error::ServerError;
 pub use history::{calculate_history_trend, HistoryTrend, TrendDirection};
+pub use org::{
+    compute_organization_rollup, get_organization_summary, recompute_all_orgs_for_project,
+    recompute_org_rollup,
+};
 pub use projects::{get_project_overview, ProjectOverview};
 pub use state::AppState;
 pub use webhooks::{

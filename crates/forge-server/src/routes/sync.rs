@@ -105,6 +105,18 @@ pub async fn push_handler(
     };
     evaluate_and_dispatch_events(Arc::clone(&state.db), ctx);
 
+    // 7. Asynchronously recompute materialized rollups for all organizations containing this repo
+    let org_db = Arc::clone(&state.db);
+    let repo_id_for_org = payload.manifest.repo_id.clone();
+    tokio::spawn(async move {
+        if let Err(e) = crate::org::recompute_all_orgs_for_project(&org_db, &repo_id_for_org).await
+        {
+            tracing::error!(
+                "Failed to recompute organization rollups for project '{repo_id_for_org}': {e}"
+            );
+        }
+    });
+
     let response = SyncPullResponse {
         repo_id: payload.manifest.repo_id,
         branch: payload.manifest.branch,
