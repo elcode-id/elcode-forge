@@ -10,8 +10,8 @@ use sqlx::{PgPool, Row, SqlitePool};
 
 use crate::error::ServerError;
 use models::{
-    BranchSummary, FindingRow, HistoryPoint, OrganizationRollupRow, OrganizationRow, ProjectRow,
-    ProjectSummary, SnapshotRow, WebhookRow,
+    AuditEventFilter, AuditEventRow, BranchSummary, FindingRow, HistoryPoint,
+    OrganizationRollupRow, OrganizationRow, ProjectRow, ProjectSummary, SnapshotRow, WebhookRow,
 };
 
 /// Dual database connection pool.
@@ -183,6 +183,22 @@ impl Db {
             updated_at BIGINT NOT NULL,
             FOREIGN KEY (org_id) REFERENCES organizations(id)
         );
+
+        CREATE TABLE IF NOT EXISTS audit_events (
+            id TEXT PRIMARY KEY,
+            org_id TEXT NOT NULL,
+            project_id TEXT,
+            actor TEXT NOT NULL,
+            action TEXT NOT NULL,
+            resource_type TEXT NOT NULL,
+            resource_id TEXT NOT NULL,
+            details_json TEXT,
+            created_at BIGINT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_audit_events_lookup ON audit_events(org_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_audit_events_actor ON audit_events(actor, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_audit_events_action ON audit_events(action, created_at DESC);
         "#;
 
         match &self.pool {
@@ -1820,6 +1836,181 @@ impl Db {
                 }
 
                 Ok(Some((snapshot, findings)))
+            }
+        }
+    }
+
+    /// Persists a new immutable audit event.
+    pub async fn record_audit_event(&self, event: &AuditEventRow) -> Result<(), ServerError> {
+        let sql = r#"
+        INSERT INTO audit_events (id, org_id, project_id, actor, action, resource_type, resource_id, details_json, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        "#;
+        match &self.pool {
+            DbPool::Sqlite(pool) => {
+                sqlx::query(sql)
+                    .bind(&event.id)
+                    .bind(&event.org_id)
+                    .bind(&event.project_id)
+                    .bind(&event.actor)
+                    .bind(&event.action)
+                    .bind(&event.resource_type)
+                    .bind(&event.resource_id)
+                    .bind(&event.details_json)
+                    .bind(event.created_at)
+                    .execute(pool)
+                    .await
+                    .map_err(|e| {
+                        ServerError::Database(format!("Failed to record audit event: {e}"))
+                    })?;
+            }
+            DbPool::Postgres(pool) => {
+                sqlx::query(sql)
+                    .bind(&event.id)
+                    .bind(&event.org_id)
+                    .bind(&event.project_id)
+                    .bind(&event.actor)
+                    .bind(&event.action)
+                    .bind(&event.resource_type)
+                    .bind(&event.resource_id)
+                    .bind(&event.details_json)
+                    .bind(event.created_at)
+                    .execute(pool)
+                    .await
+                    .map_err(|e| {
+                        ServerError::Database(format!("Failed to record audit event: {e}"))
+                    })?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Queries audit events based on filter criteria.
+    pub async fn query_audit_events(
+        &self,
+        filter: &AuditEventFilter,
+    ) -> Result<Vec<AuditEventRow>, ServerError> {
+        let mut conditions = Vec::new();
+        let mut params: Vec<String> = Vec::new();
+
+        if let Some(org_id) = &filter.org_id {
+            params.push(org_id.clone());
+            conditions.push(format!("org_id = ${}", params.len()));
+        }
+        if let Some(project_id) = &filter.project_id {
+            params.push(project_id.clone());
+            conditions.push(format!("project_id = ${}", params.len()));
+        }
+        if let Some(actor) = &filter.actor {
+            params.push(actor.clone());
+            conditions.push(format!("actor = ${}", params.len()));
+        }
+        if let Some(action) = &filter.action {
+            params.push(action.clone());
+            conditions.push(format!("action = ${}", params.len()));
+        }
+        if let Some(since) = filter.since {
+            conditions.push(format!("created_at >= {since}"));
+        }
+        if let Some(until) = filter.until {
+            conditions.push(format!("created_at <= {until}"));
+        }
+
+        let where_clause = if conditions.is_empty() {
+            String::new()
+        } else {
+            format!("WHERE {}", conditions.join(" AND "))
+        };
+
+        let limit = filter.limit.unwrap_or(100).min(500);
+        let sql = format!(
+            "SELECT id, org_id, project_id, actor, action, resource_type, resource_id, details_json, created_at FROM audit_events {where_clause} ORDER BY created_at DESC LIMIT {limit}"
+        );
+
+        match &self.pool {
+            DbPool::Sqlite(pool) => {
+                let mut query = sqlx::query(&sql);
+                for p in &params {
+                    query = query.bind(p);
+                }
+                let rows = query.fetch_all(pool).await.map_err(|e| {
+                    ServerError::Database(format!("Failed to query audit events: {e}"))
+                })?;
+                let mut list = Vec::with_capacity(rows.len());
+                for r in rows {
+                    list.push(AuditEventRow {
+                        id: r
+                            .try_get("id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        org_id: r
+                            .try_get("org_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        project_id: r
+                            .try_get("project_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        actor: r
+                            .try_get("actor")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        action: r
+                            .try_get("action")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        resource_type: r
+                            .try_get("resource_type")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        resource_id: r
+                            .try_get("resource_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        details_json: r
+                            .try_get("details_json")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        created_at: r
+                            .try_get("created_at")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    });
+                }
+                Ok(list)
+            }
+            DbPool::Postgres(pool) => {
+                let mut query = sqlx::query(&sql);
+                for p in &params {
+                    query = query.bind(p);
+                }
+                let rows = query.fetch_all(pool).await.map_err(|e| {
+                    ServerError::Database(format!("Failed to query audit events: {e}"))
+                })?;
+                let mut list = Vec::with_capacity(rows.len());
+                for r in rows {
+                    list.push(AuditEventRow {
+                        id: r
+                            .try_get("id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        org_id: r
+                            .try_get("org_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        project_id: r
+                            .try_get("project_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        actor: r
+                            .try_get("actor")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        action: r
+                            .try_get("action")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        resource_type: r
+                            .try_get("resource_type")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        resource_id: r
+                            .try_get("resource_id")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        details_json: r
+                            .try_get("details_json")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                        created_at: r
+                            .try_get("created_at")
+                            .map_err(|e| ServerError::Database(e.to_string()))?,
+                    });
+                }
+                Ok(list)
             }
         }
     }

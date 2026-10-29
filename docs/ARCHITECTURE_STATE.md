@@ -960,3 +960,19 @@
   - $O(1)$ fast retrieval for organization summary from `organization_rollups` materialized view.
   - Cross-Repository Vulnerability Matrix aggregates shared CVEs and security findings with deterministic ranking by affected repository count.
   - Contributes to **Epic #225** (Phase 10B: Multi-Repository Organization Aggregator & Enterprise Auth).
+
+
+## Issue #227 — Enterprise JWKS/Proxy Auth, RBAC Roles & Append-Only Audit Logging (COMPLETED)
+- **Crate:** `crates/forge-server` (`src/config.rs`, `src/error.rs`, `src/state.rs`, `src/auth/mod.rs`, `src/auth/jwks.rs`, `src/auth/rbac.rs`, `src/db/mod.rs`, `src/db/models.rs`, `src/audit/mod.rs`, `src/routes/audit.rs`, `src/routes/orgs.rs`, `src/routes/sync.rs`, `src/routes/webhooks.rs`, `src/app.rs`, `src/lib.rs`, `tests/audit_events_test.rs`).
+- **Public Types & Functions Exposed:**
+  - `forge_server::auth::rbac`: `Role` (`Viewer`, `Auditor`, `Maintainer`, `Admin`), `Role::from_str_loose`, privilege predicates (`can_read_audit`, `can_write_snapshots`, `can_manage_orgs`, `can_read_findings`).
+  - `forge_server::auth::jwks`: `JwksCache`, `JwksDocument`, `JwkKey`, `verify_token`.
+  - `forge_server::auth`: `AuthenticatedUser` with `role: Role` and `email: Option<String>`, reverse-proxy header parsing (`X-Forwarded-User`, `X-Forwarded-Role`, `X-Forwarded-Email`) gated by `ServerConfig::trust_proxy_headers`.
+  - `forge_server::db::models`: `AuditEventRow`, `AuditEventFilter`.
+  - `forge_server::db`: `record_audit_event`, `query_audit_events`.
+  - `forge_server::audit`: `record_audit_event`, `AuditEventParams`, `actions` constants (`snapshot.push`, `org.create`, `project.link`, `webhook.create`, `webhook.delete`), `resources` constants.
+  - Endpoints: `GET /api/v1/audit-events` (guarded by `Auditor` / `Admin` RBAC check with 403 Forbidden for unauthorized roles, filterable by `actor`, `action`, `org_id`, `project_id`, `since`, `until`, `limit`).
+- **Invariants:**
+  - Reverse-proxy identity headers (`X-Forwarded-*`) are strictly rejected with 401 when `trust_proxy_headers == false`.
+  - Audit log table is strictly append-only; events are permanently indexed and queryable across actors and actions.
+  - Contributes to **Epic #225** (Phase 10B: Multi-Repository Organization Aggregator & Enterprise Auth).

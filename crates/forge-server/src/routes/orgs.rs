@@ -40,7 +40,7 @@ pub struct OrgListItem {
 /// Handler for `POST /api/v1/orgs`.
 pub async fn create_org_handler(
     State(state): State<AppState>,
-    _user: AuthenticatedUser,
+    user: AuthenticatedUser,
     Json(payload): Json<CreateOrgRequest>,
 ) -> Result<(StatusCode, Json<OrganizationRow>), ServerError> {
     let name = payload.name.trim();
@@ -88,6 +88,21 @@ pub async fn create_org_handler(
     // Seed empty materialized rollup
     let _ = recompute_org_rollup(&state.db, &org_id).await?;
 
+    // Record audit event
+    let _ = crate::audit::record_audit_event(
+        &state.db,
+        crate::audit::AuditEventParams {
+            org_id: &org_id,
+            project_id: None,
+            actor: &user.subject,
+            action: crate::audit::actions::ORG_CREATE,
+            resource_type: crate::audit::resources::ORGANIZATION,
+            resource_id: &org_id,
+            details: Some(&serde_json::json!({ "name": name, "slug": slug })),
+        },
+    )
+    .await;
+
     Ok((StatusCode::CREATED, Json(org_row)))
 }
 
@@ -130,7 +145,7 @@ pub async fn list_orgs_handler(
 /// Handler for `POST /api/v1/orgs/:id/projects`.
 pub async fn link_project_handler(
     State(state): State<AppState>,
-    _user: AuthenticatedUser,
+    user: AuthenticatedUser,
     Path(id): Path<String>,
     Json(payload): Json<LinkProjectRequest>,
 ) -> Result<Json<serde_json::Value>, ServerError> {
@@ -160,6 +175,21 @@ pub async fn link_project_handler(
 
     // Recompute rollup materialized view
     recompute_org_rollup(&state.db, &org.id).await?;
+
+    // Record audit event
+    let _ = crate::audit::record_audit_event(
+        &state.db,
+        crate::audit::AuditEventParams {
+            org_id: &org.id,
+            project_id: Some(project_id),
+            actor: &user.subject,
+            action: crate::audit::actions::PROJECT_LINK,
+            resource_type: crate::audit::resources::PROJECT,
+            resource_id: project_id,
+            details: None,
+        },
+    )
+    .await;
 
     Ok(Json(serde_json::json!({
         "status": "linked",

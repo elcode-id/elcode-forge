@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use crate::auth::jwks::JwksCache;
 use crate::config::ServerConfig;
 use crate::db::Db;
 
@@ -10,6 +11,7 @@ use crate::db::Db;
 pub struct AppState {
     pub db: Arc<Db>,
     pub config: Arc<ServerConfig>,
+    pub jwks: Arc<JwksCache>,
 }
 
 impl AppState {
@@ -17,6 +19,7 @@ impl AppState {
         Self {
             db: Arc::new(db),
             config: Arc::new(config),
+            jwks: Arc::new(JwksCache::new()),
         }
     }
 }
