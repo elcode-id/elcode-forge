@@ -151,3 +151,29 @@ pub struct OrganizationSummary {
     pub project_ids: Vec<String>,
     pub updated_at: i64,
 }
+
+/// Append-only record tracking security and administrative operations.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AuditEventRow {
+    pub id: String,
+    pub org_id: String,
+    pub project_id: Option<String>,
+    pub actor: String,
+    pub action: String,
+    pub resource_type: String,
+    pub resource_id: String,
+    pub details_json: Option<String>,
+    pub created_at: i64,
+}
+
+/// Filter criteria for querying audit events.
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct AuditEventFilter {
+    pub org_id: Option<String>,
+    pub project_id: Option<String>,
+    pub actor: Option<String>,
+    pub action: Option<String>,
+    pub since: Option<i64>,
+    pub until: Option<i64>,
+    pub limit: Option<usize>,
+}

@@ -15,6 +15,9 @@ pub enum ServerError {
     #[error("Authentication error: {0}")]
     Auth(String),
 
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
+
     #[error("Resource not found: {0}")]
     NotFound(String),
 
@@ -50,6 +53,7 @@ impl IntoResponse for ServerError {
     fn into_response(self) -> Response {
         let (status, message) = match &self {
             ServerError::Auth(msg) => (StatusCode::UNAUTHORIZED, msg.clone()),
+            ServerError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg.clone()),
             ServerError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
             ServerError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
             ServerError::Database(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),

@@ -1,6 +1,7 @@
 //! `forge-server` — Lightweight self-hostable synchronization backend for ELCODE Forge.
 
 pub mod app;
+pub mod audit;
 pub mod auth;
 pub mod config;
 pub mod db;
@@ -13,11 +14,15 @@ pub mod state;
 pub mod webhooks;
 
 pub use app::{create_app, run_server, shutdown_signal};
-pub use auth::{hash_api_key, issue_jwt, verify_jwt, AuthenticatedUser, Claims};
+pub use audit::{record_audit_event, AuditEventParams};
+pub use auth::{
+    hash_api_key, issue_jwt, verify_jwt, AuthenticatedUser, Claims, JwkKey, JwksCache,
+    JwksDocument, Role,
+};
 pub use config::ServerConfig;
 pub use db::models::{
-    CrossRepoVulnerability, OrganizationProjectRow, OrganizationRollupRow, OrganizationRow,
-    OrganizationSummary,
+    AuditEventFilter, AuditEventRow, CrossRepoVulnerability, OrganizationProjectRow,
+    OrganizationRollupRow, OrganizationRow, OrganizationSummary,
 };
 pub use db::Db;
 pub use error::ServerError;
