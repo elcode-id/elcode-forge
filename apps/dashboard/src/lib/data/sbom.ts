@@ -85,7 +85,7 @@ export function generateClientCycloneDx(bundle: ReportBundle): string {
         {
           vendor: "ELCODE",
           name: "eforge",
-          version: bundle.tool_version || "0.9.0",
+          version: bundle.tool_version || "1.0.0",
         },
       ],
       component: {
@@ -162,7 +162,7 @@ export function generateClientSpdx(bundle: ReportBundle): string {
     documentNamespace: `https://spdx.org/spdxdocs/${projectName}-${Date.now()}`,
     creationInfo: {
       creators: [
-        `Tool: elcode-forge-${bundle.tool_version || "0.9.0"}`,
+        `Tool: elcode-forge-${bundle.tool_version || "1.0.0"}`,
         "Organization: ELCODE",
       ],
       created: "2024-01-01T00:00:00Z",

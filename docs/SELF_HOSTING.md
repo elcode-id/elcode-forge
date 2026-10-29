@@ -2,7 +2,7 @@
 
 **Product:** ELCODE Forge (`eforge`)  
 **Component:** `crates/forge-server`  
-**Target Release:** v0.9.0 (Phase 9B)  
+**Target Release:** v1.0.0 (Phase 9B)  
 **Organization:** [ELCODE](https://elcode.id/) (Independent Software Studio — Bandung, Indonesia)
 
 ---
@@ -214,12 +214,12 @@ For secure environments without direct internet connectivity:
 
 ```bash
 # 1. On an internet-connected workstation, pull and export images
-docker pull elcode/forge-server:v0.9.0
+docker pull elcode/forge-server:v1.0.0
 docker pull postgres:16-alpine
 docker pull minio/minio:RELEASE.2024-10-13T13-34-11Z
 
 docker save \
-  elcode/forge-server:v0.9.0 \
+  elcode/forge-server:v1.0.0 \
   postgres:16-alpine \
   minio/minio:RELEASE.2024-10-13T13-34-11Z | gzip > forge-server-airgap-bundle.tar.gz
 
@@ -246,7 +246,7 @@ docker compose up -d
 ## 9. Observability & Troubleshooting
 
 - **Health Probe:** `curl -sS http://localhost:8080/api/v1/health`  
-  Returns `{ "status": "ok", "version": "0.9.0", "database": "sqlite"|"postgres" }`.
+  Returns `{ "status": "ok", "version": "1.0.0", "database": "sqlite"|"postgres" }`.
 - **Database Migrations:** Schema migrations run automatically upon startup. If a migration fails due to lock timeout, check `RUST_LOG=debug` logs.
 - **Log Inspection:**
   ```bash
