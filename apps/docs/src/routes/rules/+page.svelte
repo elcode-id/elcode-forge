@@ -1,211 +1,265 @@
 <svelte:head>
-  <title>Declarative Custom Rules Manual | ELCODE Forge Documentation</title>
+  <title>Declarative Custom Rules & Rule Packs Manual | ELCODE Forge Documentation</title>
 </svelte:head>
 
-<div class="space-y-8 max-w-4xl">
+<div class="space-y-8 max-w-5xl">
   <!-- Title -->
   <div>
     <div class="text-xs font-mono uppercase tracking-wider text-amber-400 mb-1">Architecture & Governance</div>
-    <h1 class="text-3xl font-extrabold text-white">Declarative Custom Rules Manual</h1>
+    <h1 class="text-3xl font-extrabold text-white">Declarative Custom Rules & Rule Packs Manual</h1>
     <p class="text-slate-400 mt-2 text-base leading-relaxed">
-      Author custom architectural constraints, security boundaries, and codebase conventions using pure declarative YAML evaluated in milliseconds.
+      Enforce custom architectural boundaries, companion test coverage, naming conventions, file size caps, prohibited regex tokens, and dependency restrictions in pure declarative YAML or JSON with zero arbitrary code execution.
     </p>
   </div>
 
-  <!-- Introduction -->
+  <!-- 1. Rule File Organization & Inheritance Hierarchy -->
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
     <h2 class="text-lg font-bold text-white font-mono flex items-center gap-2">
       <span class="text-amber-400">01.</span>
-      <span>Rule File Organization</span>
+      <span>Rule Packs & 4-Tier Inheritance Hierarchy</span>
     </h2>
     <p class="text-sm text-slate-300 leading-relaxed">
-      Custom rules can be authored directly within <code class="text-amber-300 font-mono">eforge.config.yaml</code> under the <code class="text-amber-300 font-mono">rules:</code> block, or modularized into individual files in the <code class="text-blue-300 font-mono">.eforge/rules/</code> directory:
+      ELCODE Forge evaluates rules deterministically across a 4-tier precedence hierarchy:
+      <code class="text-amber-300 font-mono text-xs">1. Built-in Defaults &lt; 2. Extended Packs &lt; 3. Custom Local Rules (.eforge/rules/*) &lt; 4. Per-Rule Overrides (eforge.config.yaml)</code>.
+      Projects without an explicit <code class="text-blue-300 font-mono">extends:</code> list automatically extend the <code class="text-emerald-300 font-mono">recommended</code> pack.
     </p>
 
-    <div class="bg-black/50 border border-slate-800 rounded-lg p-4 font-mono text-xs overflow-x-auto text-slate-300">
-      <pre><code>.eforge/
-└── rules/
-    ├── architecture-boundaries.yaml
-    ├── security-forbidden-patterns.yaml
-    └── naming-conventions.yaml</code></pre>
-    </div>
-  </div>
-
-  <!-- Anatomy of a Rule -->
-  <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
-    <h2 class="text-lg font-bold text-white font-mono flex items-center gap-2">
-      <span class="text-amber-400">02.</span>
-      <span>Anatomy of a Rule Definition</span>
-    </h2>
-
-    <div class="bg-black/50 border border-slate-800 rounded-lg p-4 font-mono text-xs overflow-x-auto text-slate-300">
-      <pre><code>id: arch/no-direct-db-in-ui
-name: Prohibit Direct Database Imports in UI Components
-severity: high
-category: architecture
-message: "UI components must not import database clients or repositories directly. Use an application service or API layer."
-remediation: "Refactor the component to call a hook or API client from '@/lib/api' instead of importing from '@/server/db'."
-
-matcher:
-  type: forbidden_imports
-  files:
-    - "src/components/**/*.svelte"
-    - "src/components/**/*.tsx"
-  forbidden:
-    - "@/server/db"
-    - "@prisma/client"
-    - "drizzle-orm"</code></pre>
-    </div>
-
-    <!-- Fields Table -->
     <div class="overflow-x-auto">
       <table class="w-full text-left text-xs font-mono">
         <thead>
           <tr class="border-b border-slate-800 text-slate-400">
-            <th class="pb-2">Field</th>
-            <th class="pb-2">Type</th>
-            <th class="pb-2">Description</th>
+            <th class="py-2 pr-4">Built-in Pack Name</th>
+            <th class="py-2 px-3">Engineering Focus</th>
+            <th class="py-2 pl-3">Included Rules & Thresholds</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-800/40 text-slate-300">
+        <tbody class="divide-y divide-slate-800/60 text-slate-300">
           <tr>
-            <td class="py-2 text-blue-300">id</td>
-            <td class="py-2 text-slate-500">string</td>
-            <td class="py-2">Unique namespaced rule identifier (e.g. <code class="text-slate-200">arch/layer-boundary</code>)</td>
+            <td class="py-2.5 pr-4 font-bold text-emerald-400">recommended</td>
+            <td class="py-2.5 px-3">Standard Baseline</td>
+            <td class="py-2.5 pl-3 font-sans"><code class="font-mono text-slate-200">arch/no-direct-db-in-ui</code>, <code class="font-mono text-slate-200">arch/no-circular-dependencies</code>, <code class="font-mono text-slate-200">quality/require-service-tests</code>, <code class="font-mono text-slate-200">quality/max-file-lines</code> (300 lines)</td>
           </tr>
           <tr>
-            <td class="py-2 text-blue-300">severity</td>
-            <td class="py-2 text-slate-500">enum</td>
-            <td class="py-2"><code class="text-emerald-400">critical</code>, <code class="text-red-400">high</code>, <code class="text-amber-400">medium</code>, <code class="text-blue-400">low</code>, or <code class="text-slate-400">info</code></td>
+            <td class="py-2.5 pr-4 font-bold text-blue-400">strict</td>
+            <td class="py-2.5 px-3">Elevated Discipline</td>
+            <td class="py-2.5 pl-3 font-sans">Critical architecture boundaries, 250-line file limit, strict test companions, and unpinned dependency version prevention</td>
           </tr>
           <tr>
-            <td class="py-2 text-blue-300">category</td>
-            <td class="py-2 text-slate-500">enum</td>
-            <td class="py-2"><code class="text-slate-200">architecture</code>, <code class="text-slate-200">security</code>, <code class="text-slate-200">style</code>, <code class="text-slate-200">performance</code>, or <code class="text-slate-200">dependency</code></td>
+            <td class="py-2.5 pr-4 font-bold text-rose-400">security</td>
+            <td class="py-2.5 px-3">Code Hardening</td>
+            <td class="py-2.5 pl-3 font-sans">Prohibits <code class="font-mono text-slate-200">eval()</code>, <code class="font-mono text-slate-200">child_process.exec()</code>, <code class="font-mono text-slate-200">debugger</code> statements, <code class="font-mono text-slate-200">dangerouslySetInnerHTML</code>, and deprecated packages</td>
           </tr>
           <tr>
-            <td class="py-2 text-blue-300">message</td>
-            <td class="py-2 text-slate-500">string</td>
-            <td class="py-2">Concise diagnostic summary shown when the rule matches</td>
-          </tr>
-          <tr>
-            <td class="py-2 text-blue-300">remediation</td>
-            <td class="py-2 text-slate-500">string</td>
-            <td class="py-2">Explicit, actionable instructions for resolving the violation</td>
+            <td class="py-2.5 pr-4 font-bold text-purple-400">clean-architecture</td>
+            <td class="py-2.5 px-3">Hexagonal / Onion Layers</td>
+            <td class="py-2.5 pl-3 font-sans">Enforces 4-tier hexagonal boundaries (<code class="font-mono text-slate-200">ui-no-infra</code>, <code class="font-mono text-slate-200">domain-pure</code>, <code class="font-mono text-slate-200">infra-no-ui</code>, <code class="font-mono text-slate-200">ui-no-db</code>)</td>
           </tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- Matcher Types Reference -->
+  <!-- 2. Declarative Rule File Schema -->
+  <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
+    <h2 class="text-lg font-bold text-white font-mono flex items-center gap-2">
+      <span class="text-amber-400">02.</span>
+      <span>Declarative Rule File Schema (<code class="text-amber-300">.eforge/rules/*.yaml</code>)</span>
+    </h2>
+    <p class="text-sm text-slate-300 leading-relaxed">
+      Initialize a starter rule file via <code class="text-amber-300 font-mono">eforge rules init</code>. All rule files are path-guarded via <code class="text-slate-200 font-mono">resolve_safe_path</code> to prevent directory traversal outside the repository root:
+    </p>
+
+    <div class="bg-black/60 border border-slate-800 rounded-lg p-4 font-mono text-xs overflow-x-auto text-slate-200">
+      <pre><code>{`version: 1
+pack: team-custom-rules
+description: Organization-specific architectural and supply-chain rules
+
+rules:
+  - id: arch/no-direct-db-in-ui
+    name: No Direct DB Imports in UI Layer
+    category: architecture          # architecture (arch) | quality | security (sec) | dependencies (deps)
+    severity: critical              # critical | high | medium | low | info
+    confidence: certain             # certain | high | medium | low (default: high)
+    enabled: true                   # true | false (default: true)
+    description: "UI components must not import database clients or ORM drivers directly."
+    remediation: "Route data access through application services in src/services/."
+    matcher:                        # (also accepts alias 'match:')
+      type: forbidden_imports
+      files:
+        - "src/ui/**"
+        - "src/components/**"
+      forbidden:
+        - "src/db/**"
+        - "@prisma/client"
+        - "pg"`}</code></pre>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs font-mono">
+        <thead>
+          <tr class="border-b border-slate-800 text-slate-400">
+            <th class="py-2 pr-3">Field</th>
+            <th class="py-2 px-3">Required</th>
+            <th class="py-2 pl-3">Validation Rule</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/40 text-slate-300">
+          <tr>
+            <td class="py-2 pr-3 text-blue-300 font-bold">id</td>
+            <td class="py-2 px-3 text-emerald-400">Yes</td>
+            <td class="py-2 pl-3 font-sans">Must strictly match <code class="font-mono text-slate-200">&lt;category&gt;/&lt;slug&gt;</code> where category is <code class="font-mono text-slate-200">arch</code>, <code class="font-mono text-slate-200">quality</code>, <code class="font-mono text-slate-200">security</code>, or <code class="font-mono text-slate-200">deps</code>.</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-3 text-blue-300 font-bold">name</td>
+            <td class="py-2 px-3 text-emerald-400">Yes</td>
+            <td class="py-2 pl-3 font-sans">Non-empty human-readable rule title.</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-3 text-blue-300 font-bold">category</td>
+            <td class="py-2 px-3 text-emerald-400">Yes</td>
+            <td class="py-2 pl-3 font-sans"><code class="font-mono text-slate-200">architecture</code> (alias <code class="font-mono">arch</code>), <code class="font-mono text-slate-200">quality</code>, <code class="font-mono text-slate-200">security</code> (alias <code class="font-mono">sec</code>), or <code class="font-mono text-slate-200">dependencies</code> (alias <code class="font-mono">deps</code>).</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-3 text-blue-300 font-bold">severity</td>
+            <td class="py-2 px-3 text-emerald-400">Yes</td>
+            <td class="py-2 pl-3 font-sans"><code class="font-mono text-rose-400">critical</code>, <code class="font-mono text-amber-400">high</code>, <code class="font-mono text-yellow-300">medium</code>, <code class="font-mono text-blue-400">low</code>, or <code class="font-mono text-slate-400">info</code>.</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-3 text-blue-300 font-bold">confidence</td>
+            <td class="py-2 px-3 text-slate-500">Optional</td>
+            <td class="py-2 pl-3 font-sans"><code class="font-mono text-slate-200">certain</code>, <code class="font-mono text-slate-200">high</code> (default), <code class="font-mono text-slate-200">medium</code>, or <code class="font-mono text-slate-200">low</code>.</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-3 text-blue-300 font-bold">description</td>
+            <td class="py-2 px-3 text-emerald-400">Yes</td>
+            <td class="py-2 pl-3 font-sans">Non-empty diagnostic explanation included in every emitted <code class="font-mono text-slate-200">Finding</code>.</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-3 text-blue-300 font-bold">remediation</td>
+            <td class="py-2 px-3 text-slate-500">Optional</td>
+            <td class="py-2 pl-3 font-sans">Actionable remediation steps shown in terminal cards, SARIF help text, and the dashboard.</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-3 text-blue-300 font-bold">matcher / match</td>
+            <td class="py-2 px-3 text-emerald-400">Yes</td>
+            <td class="py-2 pl-3 font-sans">One of the 6 deterministic matcher objects documented below.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 3. All 6 Deterministic Matchers -->
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-6">
     <h2 class="text-lg font-bold text-white font-mono flex items-center gap-2">
       <span class="text-amber-400">03.</span>
-      <span>Matcher Types & Examples</span>
+      <span>The 6 Deterministic Rule Matchers</span>
     </h2>
 
-    <!-- Matcher 1: Forbidden Imports -->
-    <div class="space-y-2">
-      <div class="flex items-center justify-between">
-        <h3 class="text-sm font-bold text-white font-mono">1. forbidden_imports</h3>
-        <span class="text-[10px] font-mono text-blue-400 uppercase">Architecture</span>
-      </div>
-      <p class="text-xs text-slate-400">
-        Prevents specified glob patterns from importing restricted modules or internal packages.
-      </p>
-      <div class="bg-black/50 border border-slate-800 rounded-lg p-3 font-mono text-xs overflow-x-auto text-slate-300">
-        <pre><code>matcher:
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- 1. forbidden_imports -->
+      <div class="bg-black/40 border border-slate-800 rounded-lg p-4 space-y-2">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white font-mono">1. forbidden_imports</h3>
+          <span class="text-[10px] font-mono text-blue-400 uppercase">Layer Boundaries</span>
+        </div>
+        <p class="text-xs text-slate-400">Requires <code class="text-slate-200 font-mono">forbidden</code> (non-empty list of restricted module paths or package names) and optional <code class="text-slate-200 font-mono">files</code> globs.</p>
+        <pre class="bg-black/60 p-3 rounded border border-slate-800/80 text-xs font-mono text-slate-200 overflow-x-auto"><code>{`matcher:
   type: forbidden_imports
-  files: ["crates/forge-core/**"]
-  forbidden: ["crates/forge-cli/**", "crates/forge-analyzer/**"]</code></pre>
+  files: ["src/domain/**"]
+  forbidden: ["src/infra/**", "src/ui/**", "axios"]`}</code></pre>
       </div>
-    </div>
 
-    <!-- Matcher 2: Required Companion -->
-    <div class="space-y-2">
-      <div class="flex items-center justify-between">
-        <h3 class="text-sm font-bold text-white font-mono">2. required_companion</h3>
-        <span class="text-[10px] font-mono text-emerald-400 uppercase">Quality</span>
-      </div>
-      <p class="text-xs text-slate-400">
-        Enforces companion file pairing, such as requiring a unit test or documentation companion.
-      </p>
-      <div class="bg-black/50 border border-slate-800 rounded-lg p-3 font-mono text-xs overflow-x-auto text-slate-300">
-        <pre><code>matcher:
+      <!-- 2. required_companion -->
+      <div class="bg-black/40 border border-slate-800 rounded-lg p-4 space-y-2">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white font-mono">2. required_companion</h3>
+          <span class="text-[10px] font-mono text-emerald-400 uppercase">Test Coverage</span>
+        </div>
+        <p class="text-xs text-slate-400">Requires <code class="text-slate-200 font-mono">companion</code> pattern. Supports <code class="text-slate-200 font-mono">{`{name}`}</code> interpolation of the source file stem.</p>
+        <pre class="bg-black/60 p-3 rounded border border-slate-800/80 text-xs font-mono text-slate-200 overflow-x-auto"><code>{`matcher:
   type: required_companion
-  files: ["src/services/**/*.service.ts"]
-  companion_pattern: "&lbrace;stem&rbrace;.service.test.ts"</code></pre>
+  files: ["src/services/**"]
+  companion: "tests/{name}.test.ts"`}</code></pre>
       </div>
-    </div>
 
-    <!-- Matcher 3: Regex Pattern -->
-    <div class="space-y-2">
-      <div class="flex items-center justify-between">
-        <h3 class="text-sm font-bold text-white font-mono">3. regex_pattern</h3>
-        <span class="text-[10px] font-mono text-red-400 uppercase">Security & Style</span>
-      </div>
-      <p class="text-xs text-slate-400">
-        Scans file contents for banned regex patterns, such as unsafe string evaluations or DOM injections.
-      </p>
-      <div class="bg-black/50 border border-slate-800 rounded-lg p-3 font-mono text-xs overflow-x-auto text-slate-300">
-        <pre><code>matcher:
-  type: regex_pattern
-  files: ["**/*.&lbrace;js,ts,jsx,tsx&rbrace;"]
-  pattern: "eval\\s*\\(|dangerouslySetInnerHTML"</code></pre>
-      </div>
-    </div>
-
-    <!-- Matcher 4: File Naming -->
-    <div class="space-y-2">
-      <div class="flex items-center justify-between">
-        <h3 class="text-sm font-bold text-white font-mono">4. file_naming</h3>
-        <span class="text-[10px] font-mono text-purple-400 uppercase">Conventions</span>
-      </div>
-      <p class="text-xs text-slate-400">
-        Enforces naming casing conventions (<code class="text-slate-300 font-mono">kebab-case</code>, <code class="text-slate-300 font-mono">PascalCase</code>, <code class="text-slate-300 font-mono">camelCase</code>).
-      </p>
-      <div class="bg-black/50 border border-slate-800 rounded-lg p-3 font-mono text-xs overflow-x-auto text-slate-300">
-        <pre><code>matcher:
+      <!-- 3. file_naming -->
+      <div class="bg-black/40 border border-slate-800 rounded-lg p-4 space-y-2">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white font-mono">3. file_naming</h3>
+          <span class="text-[10px] font-mono text-purple-400 uppercase">Naming Discipline</span>
+        </div>
+        <p class="text-xs text-slate-400">Requires <code class="text-slate-200 font-mono">convention</code> (<code class="text-slate-200 font-mono">kebab-case</code>, <code class="text-slate-200 font-mono">snake_case</code>, <code class="text-slate-200 font-mono">camelCase</code>, <code class="text-slate-200 font-mono">PascalCase</code>, or wildcard <code class="text-slate-200 font-mono">*Controller.ts</code>).</p>
+        <pre class="bg-black/60 p-3 rounded border border-slate-800/80 text-xs font-mono text-slate-200 overflow-x-auto"><code>{`matcher:
   type: file_naming
-  files: ["src/components/**/*.svelte"]
-  casing: "PascalCase"</code></pre>
+  files: ["src/controllers/**"]
+  convention: "*Controller.ts"`}</code></pre>
       </div>
-    </div>
 
-    <!-- Matcher 5: File Size Limits -->
-    <div class="space-y-2">
-      <div class="flex items-center justify-between">
-        <h3 class="text-sm font-bold text-white font-mono">5. file_size</h3>
-        <span class="text-[10px] font-mono text-amber-400 uppercase">Maintainability</span>
-      </div>
-      <p class="text-xs text-slate-400">
-        Flags God-objects by capping maximum lines of code per file.
-      </p>
-      <div class="bg-black/50 border border-slate-800 rounded-lg p-3 font-mono text-xs overflow-x-auto text-slate-300">
-        <pre><code>matcher:
+      <!-- 4. file_size -->
+      <div class="bg-black/40 border border-slate-800 rounded-lg p-4 space-y-2">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white font-mono">4. file_size</h3>
+          <span class="text-[10px] font-mono text-amber-400 uppercase">Cohesion & Size</span>
+        </div>
+        <p class="text-xs text-slate-400">Requires at least one of <code class="text-slate-200 font-mono">max_lines</code> (line count limit) or <code class="text-slate-200 font-mono">max_bytes</code> (byte size limit).</p>
+        <pre class="bg-black/60 p-3 rounded border border-slate-800/80 text-xs font-mono text-slate-200 overflow-x-auto"><code>{`matcher:
   type: file_size
-  files: ["**/*.rs"]
-  max_lines: 800</code></pre>
+  files: ["src/**"]
+  max_lines: 300
+  max_bytes: 50000`}</code></pre>
+      </div>
+
+      <!-- 5. regex_pattern -->
+      <div class="bg-black/40 border border-slate-800 rounded-lg p-4 space-y-2">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white font-mono">5. regex_pattern</h3>
+          <span class="text-[10px] font-mono text-rose-400 uppercase">Banned Tokens</span>
+        </div>
+        <p class="text-xs text-slate-400">Requires <code class="text-slate-200 font-mono">pattern</code>. Scans path-guarded source files for prohibited tokens or unsafe API calls.</p>
+        <pre class="bg-black/60 p-3 rounded border border-slate-800/80 text-xs font-mono text-slate-200 overflow-x-auto"><code>{`matcher:
+  type: regex_pattern
+  files: ["**/*.ts", "**/*.js"]
+  pattern: "eval\\s*\\(|debugger"`}</code></pre>
+      </div>
+
+      <!-- 6. dependency_restriction -->
+      <div class="bg-black/40 border border-slate-800 rounded-lg p-4 space-y-2">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white font-mono">6. dependency_restriction</h3>
+          <span class="text-[10px] font-mono text-sky-400 uppercase">Supply-Chain</span>
+        </div>
+        <p class="text-xs text-slate-400">Requires <code class="text-slate-200 font-mono">disallowed_packages</code> (non-empty list of prohibited packages or <code class="text-slate-200 font-mono">wildcard-version</code>).</p>
+        <pre class="bg-black/60 p-3 rounded border border-slate-800/80 text-xs font-mono text-slate-200 overflow-x-auto"><code>{`matcher:
+  type: dependency_restriction
+  disallowed_packages:
+    - "left-pad"
+    - "moment"
+    - "wildcard-version"`}</code></pre>
       </div>
     </div>
   </div>
 
-  <!-- Testing & Validation CLI -->
+  <!-- 4. CLI & MCP Validation Workflow -->
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
     <h2 class="text-lg font-bold text-white font-mono flex items-center gap-2">
       <span class="text-amber-400">04.</span>
-      <span>Testing & Validating Rules in CI</span>
+      <span>CLI Rules Workflow & MCP Querying</span>
     </h2>
-    <p class="text-sm text-slate-300 leading-relaxed">
-      Verify rule pack validity before committing to ensure zero runtime or syntax surprises:
-    </p>
+    <div class="bg-black/60 border border-slate-800 rounded-lg p-4 font-mono text-xs space-y-1.5 text-slate-200 overflow-x-auto">
+      <pre><code>{`# 1. Generate starter .eforge/rules/custom-rules.yaml with all 6 matchers
+eforge rules init
 
-    <div class="bg-black/50 border border-slate-800 rounded-lg p-4 font-mono text-xs space-y-2 text-slate-300">
-      <div class="text-slate-400"># Validate all YAML rule files against the official schema</div>
-      <div class="text-amber-400">eforge rules validate</div>
-      <div class="text-slate-400 pt-2"># Run automated positive/negative test assertions</div>
-      <div class="text-amber-400">eforge rules test --fixtures-dir fixtures/rules</div>
+# 2. Validate rule YAML/JSON syntax and schema without scanning (exits 2 on error)
+eforge rules check
+eforge rules check .eforge/rules/custom-rules.yaml
+
+# 3. Inspect active merged rule catalog (built-in + packs + custom + overrides)
+eforge rules list
+eforge rules list --category architecture --enabled-only --format markdown
+
+# 4. Run full repository scan evaluating all active rules
+eforge scan --fail-on high`}</code></pre>
     </div>
   </div>
 </div>

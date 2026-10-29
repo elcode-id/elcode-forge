@@ -15,452 +15,662 @@
 
   const commands: CommandInfo[] = [
     {
+      name: "eforge init",
+      category: "Diagnostics",
+      summary: "Initialize eforge.config.yaml and .eforge/ workspace metadata and BLAKE3 incremental cache directory.",
+      usage: "eforge init [OPTIONS]",
+      flags: [
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--force", desc: "Overwrite existing eforge.config.yaml if present", default: "false" },
+      ],
+      examples: [
+        "eforge init",
+        "eforge init --path ./services/api",
+        "eforge init --force",
+      ],
+      exitCodes: [
+        { code: "0", desc: "Initialized eforge.config.yaml and .eforge/ directory" },
+        { code: "2", desc: "Configuration already exists (when --force is not passed)" },
+      ],
+    },
+    {
       name: "eforge doctor",
       category: "Diagnostics",
-      summary: "Rapid repository diagnostics, toolchain discovery, git status, and framework health checks.",
+      summary: "Run a fast (< 5s) repository diagnostic check evaluating file inventory, detected languages/frameworks, manifest & lockfile hygiene (Node, Python, Go, Rust, PHP), test suite presence, rules, and secret hygiene.",
       usage: "eforge doctor [OPTIONS]",
       flags: [
-        { flag: "--format <fmt>", desc: "Output format: terminal, json, markdown", default: "terminal" },
-        { flag: "--repo <path>", desc: "Path to repository root", default: "." },
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown, sarif, github", default: "terminal" },
       ],
       examples: [
         "eforge doctor",
-        "eforge doctor --format json",
-        "eforge doctor --repo ../my-project",
+        "eforge doctor --path . --format json",
+        "eforge doctor --format markdown",
       ],
       exitCodes: [
-        { code: "0", desc: "Repository is fully initialized and healthy" },
-        { code: "1", desc: "Configuration warning or missing dependency detected" },
+        { code: "0", desc: "All diagnostic checks completed with zero fatal failures" },
+        { code: "1", desc: "One or more repository checks failed or breached thresholds" },
       ],
     },
     {
       name: "eforge scan",
       category: "Diagnostics",
-      summary: "Full AST parse, import graph resolution, rule evaluations, and health score computation.",
+      summary: "Execute a full or BLAKE3 incremental polyglot architecture, dependency, declarative rule, OSV vulnerability, secret, and 8-dimension health scan.",
       usage: "eforge scan [OPTIONS]",
       flags: [
-        { flag: "--fail-on <severity>", desc: "Exit with code 1 if findings reach: critical, high, medium, low", default: "none" },
-        { flag: "--format <fmt>", desc: "Output format: terminal, json, sarif, markdown", default: "terminal" },
-        { flag: "-o, --output <path>", desc: "Write output directly to file" },
-        { flag: "--config <path>", desc: "Path to custom eforge.config.yaml" },
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown, sarif, github", default: "terminal" },
+        { flag: "--full", desc: "Force a full repository scan bypassing cache", default: "false" },
+        { flag: "--incremental", desc: "Use .eforge/metadata.json BLAKE3 content hashes to inspect changed files", default: "false" },
+        { flag: "--fail-on <SEVERITY>", desc: "Minimum finding severity to return non-zero exit code (critical|high|medium|low|info)" },
+        { flag: "-o, --output <PATH>", desc: "Optional file path to write the rendered report" },
       ],
       examples: [
         "eforge scan",
-        "eforge scan --fail-on high",
-        "eforge scan --format sarif -o results.sarif",
+        "eforge scan --incremental --fail-on high",
+        "eforge scan --format sarif -o eforge.sarif",
+        "eforge scan --format github --fail-on high",
       ],
       exitCodes: [
-        { code: "0", desc: "No findings above threshold; health score within bounds" },
-        { code: "1", desc: "Findings breached specified --fail-on severity" },
-        { code: "2", desc: "Syntax or fatal runtime error" },
+        { code: "0", desc: "Scan succeeded with no findings at or above --fail-on threshold" },
+        { code: "1", desc: "Findings met or exceeded the configured --fail-on severity threshold" },
+        { code: "2", desc: "Invalid configuration or severity threshold syntax" },
       ],
     },
     {
       name: "eforge review",
       category: "Diagnostics",
-      summary: "Git-aware change inspector analyzing staged or unstaged working-tree modifications.",
+      summary: "Analyze working-tree Git diff blast radius, direct & transitive module impact, untested file warnings, change risk level (Low|Medium|High|Critical), and findings on modified files.",
       usage: "eforge review [OPTIONS]",
       flags: [
-        { flag: "--fast", desc: "Skip full AST rebuild and use targeted diff heuristics" },
-        { flag: "--base <ref>", desc: "Git base reference to diff against", default: "HEAD" },
-        { flag: "--format <fmt>", desc: "terminal, json, markdown", default: "terminal" },
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown, sarif, github", default: "terminal" },
+        { flag: "--fast", desc: "Run fast diff-scoped mode", default: "false" },
+        { flag: "--changed", desc: "Scope analysis strictly to changed files in working tree", default: "false" },
+        { flag: "--fail-on <SEVERITY>", desc: "Minimum finding severity to return non-zero exit code (critical|high|medium|low|info)" },
       ],
       examples: [
         "eforge review --fast",
-        "eforge review --base origin/main",
+        "eforge review --fast --changed --fail-on high",
+        "eforge review --format markdown",
       ],
       exitCodes: [
-        { code: "0", desc: "Clean diff with zero new introduced violations" },
-        { code: "1", desc: "New violations or architecture regression introduced" },
+        { code: "0", desc: "Diff review passed below threshold" },
+        { code: "1", desc: "Diff findings met or exceeded --fail-on severity" },
       ],
     },
     {
       name: "eforge diff",
       category: "Diagnostics",
-      summary: "Compare architectural metrics, health score, and findings between two commits or branches.",
-      usage: "eforge diff --base <REF> --head <REF> [OPTIONS]",
+      summary: "Inspect working-tree unified diff (git diff HEAD) and affected architecture modules, or compare current repository state against a remote baseline snapshot (--remote).",
+      usage: "eforge diff [OPTIONS]",
       flags: [
-        { flag: "--base <ref>", desc: "Baseline commit, tag, or branch" },
-        { flag: "--head <ref>", desc: "Target commit, tag, or branch", default: "HEAD" },
-        { flag: "--format <fmt>", desc: "terminal, json, markdown", default: "terminal" },
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--remote", desc: "Compare findings and health score against cached remote baseline (.eforge/baseline.json)", default: "false" },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown, sarif, github", default: "terminal" },
       ],
       examples: [
-        "eforge diff --base v1.0.0 --head main",
-        "eforge diff --base origin/develop --head HEAD --format markdown",
+        "eforge diff",
+        "eforge diff --format markdown",
+        "eforge diff --remote --format json",
       ],
       exitCodes: [
-        { code: "0", desc: "Comparison completed successfully" },
+        { code: "0", desc: "Diff impact or remote baseline delta computed" },
       ],
     },
     {
       name: "eforge graph",
       category: "Architecture",
-      summary: "Export or visualize module dependencies, cyclic graphs, and cross-boundary coupling.",
+      summary: "Export the inferred polyglot module architecture graph, inter-module import edges, high-centrality modules, and Tarjan SCC circular dependency cycles.",
       usage: "eforge graph [OPTIONS]",
       flags: [
-        { flag: "--format <fmt>", desc: "Output format: terminal, json, mermaid, dot", default: "terminal" },
-        { flag: "--focus <module>", desc: "Filter graph to immediate upstream/downstream of module" },
-        { flag: "--max-depth <N>", desc: "Maximum traversal depth for dependency resolution", default: "5" },
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--format <FMT>", desc: "terminal (module list), json (ArchitectureGraph), markdown (Mermaid flowchart TD)", default: "terminal" },
       ],
       examples: [
-        "eforge graph --format mermaid",
-        "eforge graph --focus src/auth --format dot -o auth-graph.dot",
+        "eforge graph",
+        "eforge graph --format markdown",
+        "eforge graph --format json",
       ],
       exitCodes: [
-        { code: "0", desc: "Graph resolved and formatted" },
+        { code: "0", desc: "Architecture graph resolved and rendered" },
       ],
     },
     {
       name: "eforge dependencies",
       category: "Architecture",
-      summary: "Inspect manifest dependencies across Cargo, npm, pip, composer, and Go modules.",
+      summary: "Inspect package manifest dependencies, lockfile versions, open-source licenses, unused packages, duplicate declarations, and unpinned versions across npm, PyPI, Go, Cargo, and Composer.",
       usage: "eforge dependencies [OPTIONS]",
       flags: [
-        { flag: "--tree", desc: "Render nested hierarchical dependency tree" },
-        { flag: "--ecosystem <eco>", desc: "Filter ecosystem: cargo, npm, pip, composer, gomod" },
-        { flag: "--format <fmt>", desc: "terminal, json", default: "terminal" },
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown, sarif, github", default: "terminal" },
       ],
       examples: [
         "eforge dependencies",
-        "eforge dependencies --tree",
-        "eforge dependencies --ecosystem npm --format json",
+        "eforge dependencies --format json",
+        "eforge dependencies --format markdown",
       ],
       exitCodes: [
-        { code: "0", desc: "Dependencies parsed successfully" },
+        { code: "0", desc: "Dependency report generated" },
       ],
     },
     {
-      name: "eforge sbom",
+      name: "eforge onboard",
       category: "Architecture",
-      summary: "Generate an industry-standard Software Bill of Materials (SPDX or CycloneDX).",
-      usage: "eforge sbom [OPTIONS]",
+      summary: "Generate the deterministic 5-file living developer onboarding and architecture documentation bundle (architecture.md, modules.md, dependencies.md, onboarding.md, risks.md).",
+      usage: "eforge onboard [OPTIONS]",
       flags: [
-        { flag: "--format <fmt>", desc: "spdx-json, cyclonedx-json", default: "spdx-json" },
-        { flag: "-o, --output <path>", desc: "Target output file path" },
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "-o, --output <DIR>", desc: "Output directory for generated Markdown docs", default: "<path>/docs/forge" },
       ],
       examples: [
-        "eforge sbom -o sbom.spdx.json",
-        "eforge sbom --format cyclonedx-json -o sbom.cyclonedx.json",
+        "eforge onboard",
+        "eforge onboard --path . -o ./docs/architecture",
       ],
       exitCodes: [
-        { code: "0", desc: "SBOM generated with cryptographic package hashes" },
+        { code: "0", desc: "5 Markdown documentation files written deterministically" },
+      ],
+    },
+    {
+      name: "eforge docs",
+      category: "Architecture",
+      summary: "Alias for eforge onboard — regenerate deterministic architecture, module, dependency, onboarding, and risk documentation.",
+      usage: "eforge docs [OPTIONS]",
+      flags: [
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "-o, --output <DIR>", desc: "Output directory for generated Markdown docs", default: "<path>/docs/forge" },
+      ],
+      examples: [
+        "eforge docs",
+        "eforge docs -o ./docs/forge",
+      ],
+      exitCodes: [
+        { code: "0", desc: "Documentation bundle regenerated" },
       ],
     },
     {
       name: "eforge security",
       category: "Security",
-      summary: "High-speed static secret scanning, unsafe code heuristics, and vulnerability checks.",
+      summary: "Run focused secret detection (verified credentials + Shannon entropy), unsafe JS/TS/Python/PHP code pattern analysis, and polyglot OSV dependency vulnerability auditing.",
       usage: "eforge security [OPTIONS]",
       flags: [
-        { flag: "--fail-on <severity>", desc: "critical, high, medium, low", default: "high" },
-        { flag: "--format <fmt>", desc: "terminal, json, sarif", default: "terminal" },
-        { flag: "-o, --output <path>", desc: "Write findings to file" },
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown, sarif, github", default: "terminal" },
+        { flag: "--audit", desc: "Run deep dependency vulnerability audit against OSV/GHSA advisories", default: "false" },
+        { flag: "--offline", desc: "Run in offline mode using embedded and cached (.eforge/cache/osv/) advisories only", default: "false" },
+        { flag: "--fail-on <SEVERITY>", desc: "Minimum finding severity to trigger security gate failure (critical|high|medium|low|info)" },
       ],
       examples: [
         "eforge security",
-        "eforge security --fail-on critical --format sarif -o security.sarif",
+        "eforge security --audit --fail-on high",
+        "eforge security --audit --offline --format sarif",
       ],
       exitCodes: [
-        { code: "0", desc: "No security vulnerabilities or secrets found" },
-        { code: "1", desc: "Security findings breached the fail-on threshold" },
+        { code: "0", desc: "No security findings at or above threshold" },
+        { code: "4", desc: "SecurityPolicyFailure: findings breached --fail-on severity threshold" },
+      ],
+    },
+    {
+      name: "eforge sbom",
+      category: "Security",
+      summary: "Export a deterministic Software Bill of Materials (SBOM) in OASIS CycloneDX v1.5 JSON or ISO SPDX v2.3 JSON format with canonical Package URLs (PURL) and BLAKE3 serial numbers.",
+      usage: "eforge sbom [OPTIONS]",
+      flags: [
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--format <FMT>", desc: "SBOM specification format: cyclonedx, spdx", default: "cyclonedx" },
+        { flag: "-o, --output <PATH>", desc: "Optional file path to write the rendered SBOM JSON" },
+      ],
+      examples: [
+        "eforge sbom --format cyclonedx -o sbom.cdx.json",
+        "eforge sbom --format spdx -o sbom.spdx.json",
+      ],
+      exitCodes: [
+        { code: "0", desc: "SBOM generated deterministically" },
       ],
     },
     {
       name: "eforge explain",
       category: "AI",
-      summary: "Grounding-backed architecture and symbol explainer using local AST facts and optional AI.",
-      usage: "eforge explain [OPTIONS]",
+      summary: "Explain the structural role, files, outgoing imports, incoming dependents, exported symbols, and findings for the project or a specific module/file path prefix, with optional grounded AI synthesis.",
+      usage: "eforge explain [TARGET] [OPTIONS]",
       flags: [
-        { flag: "--symbol <name>", desc: "Explain a specific function, struct, or type" },
-        { flag: "--module <path>", desc: "Explain a file or module's architectural role" },
-        { flag: "--ai", desc: "Synthesize plain-language insights using configured AI provider" },
-        { flag: "--dry-run", desc: "Calculate prompt tokens and estimated cost without calling API" },
+        { flag: "[TARGET]", desc: "Optional module ID or file path prefix (defaults to '.' for full project)", default: "." },
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown, sarif, github", default: "terminal" },
+        { flag: "--ai", desc: "Augment deterministic structural facts with grounded AI synthesis", default: "false" },
+        { flag: "--provider <PROVIDER>", desc: "AI provider override: openai, anthropic, gemini, mock" },
+        { flag: "--model <MODEL>", desc: "Model identifier override (e.g. gpt-4o, qwen2.5-coder:7b)" },
+        { flag: "--dry-run", desc: "Output assembled ContextPack and token estimates without calling AI provider", default: "false" },
+        { flag: "--no-cache", desc: "Bypass .eforge/ai-cache/ response cache", default: "false" },
       ],
       examples: [
         "eforge explain",
-        "eforge explain --symbol AuthService",
-        "eforge explain --ai",
-        "eforge explain --ai --dry-run",
+        "eforge explain src/services --format markdown",
+        "eforge explain src/services --ai",
+        "eforge explain src/services --ai --dry-run",
       ],
       exitCodes: [
-        { code: "0", desc: "Explanation successfully retrieved and verified" },
+        { code: "0", desc: "Structural explanation and verified AI claims rendered" },
       ],
     },
     {
       name: "eforge ai-review",
       category: "AI",
-      summary: "Autonomous AI-powered PR reviewer grounding feedback strictly against static analysis facts.",
+      summary: "Analyze changes with deterministic diff/PR review augmented by grounded AI review items (Confirmed, Probable, Suggestion) verified via apply_deterministic_guard.",
       usage: "eforge ai-review [OPTIONS]",
       flags: [
-        { flag: "--base <ref>", desc: "Git reference to compare against", default: "origin/main" },
-        { flag: "--ai", desc: "Enable AI reasoning engine" },
-        { flag: "--dry-run", desc: "Inspect assembled context envelope and token budget without API call" },
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--base <REF>", desc: "Base Git reference for diff comparison (e.g. origin/main or HEAD~1)" },
+        { flag: "--head <REF>", desc: "Head Git reference for diff comparison (defaults to working tree)" },
+        { flag: "--fast", desc: "Run fast diff-scoped mode", default: "false" },
+        { flag: "--fail-on <SEVERITY>", desc: "Minimum deterministic finding severity to fail on (critical|high|medium|low|info)" },
+        { flag: "--provider <PROVIDER>", desc: "AI provider override: openai, anthropic, gemini, mock" },
+        { flag: "--model <MODEL>", desc: "Model identifier override" },
+        { flag: "--dry-run", desc: "Output ContextPack and token estimates without network calls", default: "false" },
+        { flag: "--no-cache", desc: "Bypass .eforge/ai-cache/ response cache", default: "false" },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown, sarif, github", default: "terminal" },
       ],
       examples: [
         "eforge ai-review --dry-run",
-        "eforge ai-review --ai --base origin/develop",
+        "eforge ai-review --base origin/develop --fast --fail-on high",
+        "eforge ai-review --provider openai --model qwen2.5-coder:7b",
       ],
       exitCodes: [
-        { code: "0", desc: "AI review generated with grounded claims" },
+        { code: "0", desc: "Review completed; deterministic findings below threshold" },
+        { code: "1", desc: "Deterministic findings breached --fail-on (AI never alters exit codes)" },
       ],
     },
     {
       name: "eforge ai status",
       category: "AI",
-      summary: "Inspect configured AI provider, model, rate limits, and budget health.",
-      usage: "eforge ai status",
+      summary: "Inspect effective AI configuration, masked credential status, daily budget, and optionally test live provider connectivity and latency (--ping).",
+      usage: "eforge ai status [OPTIONS]",
       flags: [
-        { flag: "--format <fmt>", desc: "terminal, json", default: "terminal" },
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--ping", desc: "Test live provider reachability and measure round-trip latency", default: "false" },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json", default: "terminal" },
       ],
       examples: [
         "eforge ai status",
+        "eforge ai status --ping",
+        "eforge ai status --format json",
       ],
       exitCodes: [
-        { code: "0", desc: "AI provider configuration valid and reachable" },
+        { code: "0", desc: "AI status inspected (zero network calls unless --ping is set)" },
       ],
     },
     {
       name: "eforge ai usage",
       category: "AI",
-      summary: "View cumulative token metrics, prompt/completion split, and remaining daily USD budget.",
+      summary: "Summarize AI token consumption, response cache hits, accumulated USD spend, and remaining daily budget from .eforge/ai-usage.jsonl.",
       usage: "eforge ai usage [OPTIONS]",
       flags: [
-        { flag: "--format <fmt>", desc: "terminal, json", default: "terminal" },
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json", default: "terminal" },
       ],
       examples: [
         "eforge ai usage",
         "eforge ai usage --format json",
       ],
       exitCodes: [
-        { code: "0", desc: "Usage metrics displayed" },
+        { code: "0", desc: "Usage ledger summarized safely" },
       ],
     },
     {
-      name: "eforge policy check",
+      name: "eforge rules list",
       category: "Governance",
-      summary: "Evaluate enterprise Policy-as-Code rules, constraints, and time-bounded exception waivers.",
-      usage: "eforge policy check [OPTIONS]",
+      summary: "List all registered built-in, pack-extended, and custom declarative rules with their ID, category, severity, origin pack, and enabled status (default subcommand of eforge rules).",
+      usage: "eforge rules [list] [OPTIONS]",
       flags: [
-        { flag: "--policy <path>", desc: "Path to specific policy file", default: "eforge.config.yaml" },
-        { flag: "--format <fmt>", desc: "terminal, json, markdown", default: "terminal" },
-      ],
-      examples: [
-        "eforge policy check",
-        "eforge policy check --format json",
-      ],
-      exitCodes: [
-        { code: "0", desc: "Compliant with all policy constraints" },
-        { code: "1", desc: "Policy assertion failed (health score low, forbidden license, etc.)" },
-      ],
-    },
-    {
-      name: "eforge policy validate",
-      category: "Governance",
-      summary: "Validate policy syntax, waivers expiry, and override schemas without running a full scan.",
-      usage: "eforge policy validate [OPTIONS]",
-      flags: [
-        { flag: "--policy <path>", desc: "Policy file to validate" },
-      ],
-      examples: [
-        "eforge policy validate",
-      ],
-      exitCodes: [
-        { code: "0", desc: "Policy file is syntactically valid" },
-        { code: "1", desc: "Invalid policy schema or expired waiver detected" },
-      ],
-    },
-    {
-      name: "eforge rules",
-      category: "Governance",
-      summary: "List all active built-in and custom declarative rules with severities and categories.",
-      usage: "eforge rules [OPTIONS]",
-      flags: [
-        { flag: "--category <cat>", desc: "Filter by architecture, security, style, performance, dependency" },
-        { flag: "--format <fmt>", desc: "terminal, json", default: "terminal" },
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "-c, --category <CAT>", desc: "Filter by category: architecture, quality, security, dependencies" },
+        { flag: "--enabled-only", desc: "Show only enabled rules", default: "false" },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown", default: "terminal" },
       ],
       examples: [
         "eforge rules",
-        "eforge rules --category security",
+        "eforge rules list --category architecture --enabled-only",
+        "eforge rules list --format json",
       ],
       exitCodes: [
-        { code: "0", desc: "Rule catalog retrieved" },
+        { code: "0", desc: "Rule catalog rendered" },
       ],
     },
     {
-      name: "eforge rules validate",
+      name: "eforge rules check",
       category: "Governance",
-      summary: "Validate custom YAML rule packs against the forge-rule specification schema.",
-      usage: "eforge rules validate [OPTIONS]",
+      summary: "Validate syntax and matcher invariants of declarative YAML/JSON rule files without executing a full repository scan.",
+      usage: "eforge rules check [PATH] [OPTIONS]",
       flags: [
-        { flag: "--rules-dir <path>", desc: "Directory containing custom YAML rule files", default: ".eforge/rules" },
+        { flag: "[PATH]", desc: "Optional path to a specific rule file or directory (defaults to configured paths and .eforge/rules)" },
+        { flag: "-p, --repo <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown", default: "terminal" },
       ],
       examples: [
-        "eforge rules validate",
-        "eforge rules validate --rules-dir my-rules/",
+        "eforge rules check",
+        "eforge rules check .eforge/rules/custom-rules.yaml",
       ],
       exitCodes: [
-        { code: "0", desc: "All rule files are valid" },
-        { code: "1", desc: "Rule syntax or matcher validation error" },
+        { code: "0", desc: "All declarative rule files are syntactically valid" },
+        { code: "2", desc: "ConfigurationError: invalid rule ID, unknown matcher, or missing required field" },
       ],
     },
     {
-      name: "eforge rules test",
+      name: "eforge rules init",
       category: "Governance",
-      summary: "Execute automated positive and negative test cases for custom rule definitions.",
-      usage: "eforge rules test [OPTIONS]",
+      summary: "Generate a starter declarative rule template in .eforge/rules/custom-rules.yaml with examples for all 6 deterministic matchers.",
+      usage: "eforge rules init [OPTIONS]",
       flags: [
-        { flag: "--fixtures-dir <path>", desc: "Directory with test fixtures", default: "fixtures/rules" },
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "-o, --output <PATH>", desc: "Output file path", default: "<path>/.eforge/rules/custom-rules.yaml" },
+        { flag: "--force", desc: "Force overwrite if destination file already exists", default: "false" },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown", default: "terminal" },
       ],
       examples: [
-        "eforge rules test",
+        "eforge rules init",
+        "eforge rules init --force",
       ],
       exitCodes: [
-        { code: "0", desc: "All rule test assertions passed" },
-        { code: "1", desc: "Rule failed test assertion" },
+        { code: "0", desc: "Starter custom-rules.yaml template created" },
       ],
     },
     {
       name: "eforge hook install",
       category: "Governance",
-      summary: "Install zero-latency git pre-commit or pre-push hooks to enforce gates locally.",
+      summary: "Install native sub-200ms Git hook scripts into .git/hooks/ while preserving any pre-existing foreign hooks as <hook>.forge-backup.",
       usage: "eforge hook install [OPTIONS]",
       flags: [
-        { flag: "--type <type>", desc: "pre-commit or pre-push", default: "pre-commit" },
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--hook <TYPE>", desc: "Hook type to install: pre-commit, pre-push, all", default: "all" },
+        { flag: "--force", desc: "Force overwrite of existing hook files", default: "false" },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown", default: "terminal" },
       ],
       examples: [
         "eforge hook install",
-        "eforge hook install --type pre-push",
+        "eforge hook install --hook pre-commit",
       ],
       exitCodes: [
-        { code: "0", desc: "Hook script written to .git/hooks/" },
+        { code: "0", desc: "Git hooks installed with 0o755 executable permissions" },
       ],
     },
     {
       name: "eforge hook run",
       category: "Governance",
-      summary: "Directly trigger hook verification on staged files without committing.",
-      usage: "eforge hook run [OPTIONS]",
+      summary: "Execute a Git hook lifecycle check on staged files (pre-commit) or unpushed commits (pre-push). Bypassable via FORGE_SKIP_HOOK=1.",
+      usage: "eforge hook run <HOOK> [OPTIONS]",
       flags: [
-        { flag: "--type <type>", desc: "pre-commit or pre-push", default: "pre-commit" },
+        { flag: "<HOOK>", desc: "Hook lifecycle event to execute: pre-commit or pre-push" },
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--fail-on <SEVERITY>", desc: "Minimum finding severity to fail the hook (critical|high|medium|low|info)" },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown", default: "terminal" },
       ],
       examples: [
-        "eforge hook run",
+        "eforge hook run pre-commit",
+        "eforge hook run pre-push --fail-on critical",
       ],
       exitCodes: [
-        { code: "0", desc: "Hook verification passed" },
-        { code: "1", desc: "Hook verification failed" },
+        { code: "0", desc: "Staged/unpushed changes passed verification" },
+        { code: "1", desc: "Findings exceeded fail_on threshold; commit/push blocked" },
+      ],
+    },
+    {
+      name: "eforge hook status",
+      category: "Governance",
+      summary: "Inspect the installation, backup preservation, and configuration status of Git hooks in the repository.",
+      usage: "eforge hook status [OPTIONS]",
+      flags: [
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown", default: "terminal" },
+      ],
+      examples: [
+        "eforge hook status",
+        "eforge hook status --format json",
+      ],
+      exitCodes: [
+        { code: "0", desc: "Hook status report displayed" },
+      ],
+    },
+    {
+      name: "eforge hook uninstall",
+      category: "Governance",
+      summary: "Remove ELCODE Forge Git hook scripts from .git/hooks/ and automatically restore any .forge-backup files.",
+      usage: "eforge hook uninstall [OPTIONS]",
+      flags: [
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--hook <TYPE>", desc: "Hook type to uninstall: pre-commit, pre-push, all", default: "all" },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown", default: "terminal" },
+      ],
+      examples: [
+        "eforge hook uninstall",
+        "eforge hook uninstall --hook pre-push",
+      ],
+      exitCodes: [
+        { code: "0", desc: "Hooks removed and backups restored" },
+      ],
+    },
+    {
+      name: "eforge policy check",
+      category: "Governance",
+      summary: "Assert enterprise Policy-as-Code rules, minimum health/dimension scores, secret zero-tolerance, license restrictions, circular dependency caps, and time-bounded waivers.",
+      usage: "eforge policy [check] [OPTIONS]",
+      flags: [
+        { flag: "--policy <PATH>", desc: "Optional path to an external policy file (.yaml or .json); defaults to inline policy: in eforge.config.yaml" },
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--fail-on <SEVERITY>", desc: "Minimum finding severity to fail on (critical|high|medium|low|info)" },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown", default: "terminal" },
+      ],
+      examples: [
+        "eforge policy check",
+        "eforge policy check --policy ./policies/enterprise-gate.yaml --format markdown",
+      ],
+      exitCodes: [
+        { code: "0", desc: "PolicyVerdict::Passed — all constraints satisfied" },
+        { code: "1", desc: "PolicyVerdict::Warning — warning threshold reached" },
+        { code: "2", desc: "ConfigurationError — no policy defined or invalid YAML/JSON" },
+        { code: "4", desc: "SecurityPolicyFailure — one or more policy constraints violated" },
       ],
     },
     {
       name: "eforge audit",
       category: "Compliance",
-      summary: "Execute deterministic audits mapped directly to SOC 2, ISO 27001, or OWASP Top 10.",
-      usage: "eforge audit --standard <soc2|iso27001|owasp> [OPTIONS]",
+      summary: "Export automated compliance audit reports mapping repository findings, SBOM dependencies, and architecture controls to SOC 2 Type II, OWASP Top 10 (2021), or ISO/IEC 27001:2022.",
+      usage: "eforge audit [OPTIONS]",
       flags: [
-        { flag: "--standard <std>", desc: "Standard to audit: soc2, iso27001, owasp" },
-        { flag: "--format <fmt>", desc: "terminal, markdown, json", default: "terminal" },
-        { flag: "-o, --output <path>", desc: "Export report file path" },
+        { flag: "--standard <STD>", desc: "Compliance framework standard: soc2, owasp, iso27001", default: "soc2" },
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown", default: "terminal" },
+        { flag: "-o, --output <PATH>", desc: "Optional file path to write the rendered audit report" },
       ],
       examples: [
         "eforge audit --standard soc2",
-        "eforge audit --standard iso27001 --format markdown -o iso27001.md",
-        "eforge audit --standard owasp --format json",
+        "eforge audit --standard owasp --format markdown -o owasp-audit.md",
+        "eforge audit --standard iso27001 --format json -o iso27001.json",
       ],
       exitCodes: [
-        { code: "0", desc: "All mandatory standard clauses passed" },
-        { code: "4", desc: "Audit non-compliance: one or more controls failed" },
+        { code: "0", desc: "All evaluated compliance clauses passed" },
+        { code: "4", desc: "SecurityPolicyFailure: one or more compliance clauses failed" },
       ],
     },
     {
       name: "eforge report",
       category: "Integration",
-      summary: "Generate unified single-page HTML, Markdown, or JSON diagnostic audit reports.",
+      summary: "Generate a deterministic, timestamp-free ReportBundle JSON for Web Intelligence Dashboard consumption and optionally save a commit history snapshot.",
       usage: "eforge report [OPTIONS]",
       flags: [
-        { flag: "--format <fmt>", desc: "html, markdown, json", default: "html" },
-        { flag: "-o, --output <path>", desc: "Output report file destination", default: "forge-report.html" },
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "-o, --output <PATH>", desc: "Optional file path to write the rendered ReportBundle JSON" },
+        { flag: "--hotspots <N>", desc: "Top N Git churn hotspots to include", default: "10" },
+        { flag: "--no-git", desc: "Skip Git history and working-tree diff inspection", default: "false" },
+        { flag: "--save-history", desc: "Persist an idempotent history snapshot to .eforge/history/<ts>-<sha12>.json", default: "false" },
       ],
       examples: [
-        "eforge report",
-        "eforge report --format markdown -o audit-summary.md",
+        "eforge report -o forge-report.json",
+        "eforge report --save-history -o forge-report.json",
       ],
       exitCodes: [
-        { code: "0", desc: "Report bundle rendered successfully" },
+        { code: "0", desc: "Deterministic ReportBundle JSON emitted" },
+      ],
+    },
+    {
+      name: "eforge serve",
+      category: "Integration",
+      summary: "Start the read-only local loopback HTTP server (127.0.0.1:<port>) exposing /api/v1/health, /api/v1/bundle, and /api/v1/history for live dashboard intelligence.",
+      usage: "eforge serve [OPTIONS]",
+      flags: [
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--port <PORT>", desc: "Loopback TCP port to bind (127.0.0.1:<port>)", default: "7878" },
+        { flag: "--allow-origin <ORIGIN>", desc: "Explicit allowed CORS origin (wildcard '*' is strictly forbidden)" },
+        { flag: "--static-dir <DIR>", desc: "Optional directory from which to serve compiled static dashboard assets" },
+      ],
+      examples: [
+        "eforge serve --port 7878",
+        "eforge serve --port 7878 --allow-origin http://localhost:5173",
+      ],
+      exitCodes: [
+        { code: "0", desc: "Server exited cleanly" },
       ],
     },
     {
       name: "eforge schema",
       category: "Integration",
-      summary: "Export official JSON Schemas for report bundles, SARIF converters, and configuration files.",
+      summary: "Export the canonical JSON Schema for ReportBundle and IR types (single source of truth for @elcode-forge/schema and dashboard validation).",
       usage: "eforge schema [OPTIONS]",
       flags: [
-        { flag: "-o, --output <path>", desc: "Path to write schema file" },
-        { flag: "--type <type>", desc: "bundle, config, rule, policy", default: "bundle" },
+        { flag: "-o, --output <PATH>", desc: "Optional file path to write the rendered JSON Schema" },
       ],
       examples: [
-        "eforge schema -o report.schema.json",
-        "eforge schema --type policy",
+        "eforge schema -o packages/forge-schema/report-bundle.schema.json",
       ],
       exitCodes: [
-        { code: "0", desc: "Schema output successfully" },
+        { code: "0", desc: "JSON Schema rendered deterministically" },
       ],
     },
     {
       name: "eforge mcp",
       category: "Integration",
-      summary: "Launch native Model Context Protocol (MCP) server over stdio for Cursor, Claude, Windsurf, Cline.",
-      usage: "eforge mcp",
-      flags: [],
+      summary: "Start the native Model Context Protocol (MCP) JSON-RPC 2.0 stdio server exposing 7 deterministic eforge_* tools wrapped in UntrustedEnvelope<T>.",
+      usage: "eforge mcp [OPTIONS]",
+      flags: [
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+      ],
       examples: [
-        "eforge mcp",
+        "eforge mcp --path /path/to/repo",
       ],
       exitCodes: [
-        { code: "0", desc: "Server exited cleanly upon client disconnect" },
+        { code: "0", desc: "MCP stdio server closed cleanly on EOF" },
       ],
     },
     {
       name: "eforge login",
       category: "Integration",
-      summary: "Authenticate local CLI with a self-hosted or managed Forge Server.",
-      usage: "eforge login --server <URL> --token <TOKEN>",
+      summary: "Authenticate with a remote or self-hosted ELCODE Forge Server, validate /api/v1/health, and store credentials in ~/.eforge/credentials.yaml (0o600).",
+      usage: "eforge login [OPTIONS]",
       flags: [
-        { flag: "--server <url>", desc: "URL of forge-server (e.g., https://forge.corp.internal)" },
-        { flag: "--token <token>", desc: "Personal or CI API access token" },
+        { flag: "--server <URL>", desc: "Remote server URL", default: "https://forge.elcode.id" },
+        { flag: "--token <TOKEN>", desc: "Personal Access Token or Service Account Key" },
+        { flag: "--username <USER>", desc: "Optional username or service account identifier" },
+        { flag: "--no-validate", desc: "Skip remote server /api/v1/health validation check", default: "false" },
       ],
       examples: [
-        "eforge login --server https://forge.internal --token ef_live_...",
+        "eforge login --server http://localhost:8080 --token ef_admin_key",
       ],
       exitCodes: [
-        { code: "0", desc: "Credentials verified and saved to .eforge/credentials" },
+        { code: "0", desc: "Credentials verified and saved to ~/.eforge/credentials.yaml" },
       ],
     },
     {
-      name: "eforge sync push",
+      name: "eforge logout",
       category: "Integration",
-      summary: "Push repository diagnostic baseline, SBOM, and health metrics to Forge Server.",
-      usage: "eforge sync push [OPTIONS]",
+      summary: "Remove stored credentials for a specified or default remote ELCODE Forge Server.",
+      usage: "eforge logout [OPTIONS]",
       flags: [
-        { flag: "--tag <label>", desc: "Release or pipeline tag label" },
+        { flag: "--server <URL>", desc: "Remote server URL to log out from (or default server if omitted)" },
       ],
       examples: [
-        "eforge sync push",
-        "eforge sync push --tag v1.0.0",
+        "eforge logout",
+        "eforge logout --server http://localhost:8080",
       ],
       exitCodes: [
-        { code: "0", desc: "Baseline accepted and indexed into server materialized rollups" },
+        { code: "0", desc: "Stored credentials removed" },
       ],
     },
     {
-      name: "eforge sync pull",
+      name: "eforge auth status",
       category: "Integration",
-      summary: "Download organization-wide policy rules and waivers from Forge Server.",
-      usage: "eforge sync pull",
-      flags: [],
+      summary: "Display current remote authentication status, active server, masked token, and credential store source (also supports eforge auth login / logout).",
+      usage: "eforge auth status [OPTIONS]",
+      flags: [
+        { flag: "--server <URL>", desc: "Remote server URL to inspect (or default server if omitted)" },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json", default: "terminal" },
+      ],
       examples: [
-        "eforge sync pull",
+        "eforge auth status",
+        "eforge auth status --format json",
       ],
       exitCodes: [
-        { code: "0", desc: "Policies updated locally in .eforge/remote-policy.yaml" },
+        { code: "0", desc: "Authentication status displayed with masked token" },
+      ],
+    },
+    {
+      name: "eforge push",
+      category: "Integration",
+      summary: "Upload the local repository analysis snapshot (SyncPushPayload) to a remote Forge Server (POST /api/v1/sync/push) and update the local cached baseline.",
+      usage: "eforge push [OPTIONS]",
+      flags: [
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--server <URL>", desc: "Remote server URL override" },
+        { flag: "--token <TOKEN>", desc: "API token override (defaults to EFORGE_API_TOKEN or stored credentials)" },
+        { flag: "--branch <BRANCH>", desc: "Target Git branch name (defaults to active branch or 'main')" },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown", default: "terminal" },
+      ],
+      examples: [
+        "eforge push",
+        "eforge push --branch main --format json",
+      ],
+      exitCodes: [
+        { code: "0", desc: "Snapshot pushed and indexed on Forge Server" },
+      ],
+    },
+    {
+      name: "eforge pull",
+      category: "Integration",
+      summary: "Fetch the remote baseline snapshot from Forge Server (GET /api/v1/sync/pull) and cache it locally in <repo_root>/.eforge/baseline.json.",
+      usage: "eforge pull [OPTIONS]",
+      flags: [
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--server <URL>", desc: "Remote server URL override" },
+        { flag: "--token <TOKEN>", desc: "API token override" },
+        { flag: "--branch <BRANCH>", desc: "Target Git branch name (defaults to active branch or 'main')" },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown", default: "terminal" },
+      ],
+      examples: [
+        "eforge pull",
+        "eforge pull --branch develop",
+      ],
+      exitCodes: [
+        { code: "0", desc: "Baseline snapshot saved to .eforge/baseline.json" },
+      ],
+    },
+    {
+      name: "eforge sync",
+      category: "Integration",
+      summary: "Synchronize repository state with a remote Forge Server: pull baseline, compute DeltaSummary (added/resolved findings & health shift), push updated snapshot, and enforce --fail-on.",
+      usage: "eforge sync [OPTIONS]",
+      flags: [
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--server <URL>", desc: "Remote server URL override" },
+        { flag: "--token <TOKEN>", desc: "API token override" },
+        { flag: "--branch <BRANCH>", desc: "Target Git branch name" },
+        { flag: "--fail-on <SEVERITY>", desc: "Minimum finding severity to fail on (critical|high|medium|low|info)" },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown", default: "terminal" },
+      ],
+      examples: [
+        "eforge sync",
+        "eforge sync --branch main --fail-on high --format markdown",
+      ],
+      exitCodes: [
+        { code: "0", desc: "Bidirectional sync completed and policy threshold passed" },
+        { code: "1", desc: "Findings met or exceeded --fail-on severity" },
       ],
     },
   ];
@@ -478,7 +688,8 @@
         !q ||
         cmd.name.toLowerCase().includes(q) ||
         cmd.summary.toLowerCase().includes(q) ||
-        cmd.usage.toLowerCase().includes(q);
+        cmd.usage.toLowerCase().includes(q) ||
+        cmd.flags.some((f) => f.flag.toLowerCase().includes(q) || f.desc.toLowerCase().includes(q));
       return matchesCat && matchesQuery;
     })
   );
@@ -488,10 +699,65 @@
   <!-- Header -->
   <div>
     <div class="text-xs font-mono uppercase tracking-wider text-blue-400 mb-1">Command-Line Interface</div>
-    <h1 class="text-3xl font-extrabold text-white">CLI Reference & Command Catalog</h1>
+    <h1 class="text-3xl font-extrabold text-white">CLI Reference & Command Catalog ({commands.length} Commands)</h1>
     <p class="text-slate-400 mt-2 text-base leading-relaxed">
-      Complete reference for all <code class="text-blue-300 font-mono text-sm">eforge</code> CLI commands, arguments, exit codes, and CI automation flags.
+      Complete, authoritative reference for all <code class="text-blue-300 font-mono text-sm">eforge</code> (and alias <code class="text-blue-300 font-mono text-sm">elcode-forge</code>) commands, flags, output formatters, and deterministic exit codes.
     </p>
+  </div>
+
+  <!-- Global Exit Codes & Output Formats Contract -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-5 space-y-3">
+      <div class="text-xs font-mono uppercase tracking-wider text-emerald-400 font-bold">Deterministic Exit Codes Contract (0..=4)</div>
+      <div class="space-y-1.5 text-xs font-mono">
+        <div class="flex items-center justify-between bg-black/40 px-3 py-1.5 rounded border border-slate-800">
+          <span class="text-emerald-400 font-bold">0 • Success</span>
+          <span class="text-slate-400 font-sans">Execution succeeded; zero policy violations</span>
+        </div>
+        <div class="flex items-center justify-between bg-black/40 px-3 py-1.5 rounded border border-slate-800">
+          <span class="text-amber-400 font-bold">1 • FindingsAboveThreshold</span>
+          <span class="text-slate-400 font-sans">Findings reached or exceeded --fail-on severity</span>
+        </div>
+        <div class="flex items-center justify-between bg-black/40 px-3 py-1.5 rounded border border-slate-800">
+          <span class="text-orange-400 font-bold">2 • ConfigurationError</span>
+          <span class="text-slate-400 font-sans">Invalid eforge.config.yaml, rule schema, or CLI flag</span>
+        </div>
+        <div class="flex items-center justify-between bg-black/40 px-3 py-1.5 rounded border border-slate-800">
+          <span class="text-rose-400 font-bold">3 • ExecutionError</span>
+          <span class="text-slate-400 font-sans">I/O error, path traversal block, or runtime failure</span>
+        </div>
+        <div class="flex items-center justify-between bg-black/40 px-3 py-1.5 rounded border border-slate-800">
+          <span class="text-purple-400 font-bold">4 • SecurityPolicyFailure</span>
+          <span class="text-slate-400 font-sans">Security audit, Policy-as-Code, or compliance gate failed</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-5 space-y-3">
+      <div class="text-xs font-mono uppercase tracking-wider text-blue-400 font-bold">Supported --format Output Formatters</div>
+      <div class="space-y-1.5 text-xs font-mono">
+        <div class="flex items-center justify-between bg-black/40 px-3 py-1.5 rounded border border-slate-800">
+          <span class="text-blue-300 font-bold">terminal</span>
+          <span class="text-slate-400 font-sans">TTY-aware ANSI theme, visual score meter, ASCII pipe fallback</span>
+        </div>
+        <div class="flex items-center justify-between bg-black/40 px-3 py-1.5 rounded border border-slate-800">
+          <span class="text-blue-300 font-bold">json</span>
+          <span class="text-slate-400 font-sans">Byte-for-byte deterministic pretty-printed JSON</span>
+        </div>
+        <div class="flex items-center justify-between bg-black/40 px-3 py-1.5 rounded border border-slate-800">
+          <span class="text-blue-300 font-bold">markdown</span>
+          <span class="text-slate-400 font-sans">GitHub-Flavored Markdown tables & Mermaid flowcharts</span>
+        </div>
+        <div class="flex items-center justify-between bg-black/40 px-3 py-1.5 rounded border border-slate-800">
+          <span class="text-blue-300 font-bold">sarif</span>
+          <span class="text-slate-400 font-sans">OASIS SARIF v2.1.0 JSON with CVSS v3 security-severity</span>
+        </div>
+        <div class="flex items-center justify-between bg-black/40 px-3 py-1.5 rounded border border-slate-800">
+          <span class="text-blue-300 font-bold">github</span>
+          <span class="text-slate-400 font-sans">GitHub Actions workflow annotations (::error, ::warning)</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Search & Filter Controls -->
@@ -544,12 +810,12 @@
         <!-- Flags Table -->
         {#if cmd.flags.length > 0}
           <div class="space-y-1.5">
-            <div class="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400">Flags & Options</div>
+            <div class="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400">Flags & Arguments</div>
             <div class="overflow-x-auto bg-black/30 border border-slate-800/60 rounded-lg p-2">
               <table class="w-full text-left text-xs font-mono">
                 <thead>
                   <tr class="text-slate-500 border-b border-slate-800/60 pb-1">
-                    <th class="py-1 px-2 font-medium">Option</th>
+                    <th class="py-1 px-2 font-medium">Option / Argument</th>
                     <th class="py-1 px-2 font-medium">Description</th>
                     <th class="py-1 px-2 font-medium">Default</th>
                   </tr>
@@ -558,7 +824,7 @@
                   {#each cmd.flags as flag}
                     <tr>
                       <td class="py-1.5 px-2 text-blue-300 whitespace-nowrap">{flag.flag}</td>
-                      <td class="py-1.5 px-2 text-slate-300">{flag.desc}</td>
+                      <td class="py-1.5 px-2 text-slate-300 font-sans">{flag.desc}</td>
                       <td class="py-1.5 px-2 text-slate-500">{flag.default ?? "—"}</td>
                     </tr>
                   {/each}
@@ -591,7 +857,7 @@
                   <span class="font-bold {ec.code === '0' ? 'text-emerald-400' : ec.code === '4' ? 'text-purple-400' : 'text-amber-400'}">
                     [{ec.code}]
                   </span>
-                  <span class="text-slate-300">{ec.desc}</span>
+                  <span class="text-slate-300 font-sans">{ec.desc}</span>
                 </div>
               {/each}
             </div>
