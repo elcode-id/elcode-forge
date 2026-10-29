@@ -117,6 +117,19 @@ eforge --version
 # ELCODE Forge (eforge) v0.9.0
 ```
 
+### 4. Cryptographic Provenance & SLSA Level 3 Verification
+All pre-compiled release binaries and archives are cryptographically signed using GitHub Artifact Attestations (Sigstore) and accompanied by SLSA Build Level 3 provenance. You can verify integrity before running:
+```bash
+# Verify with GitHub CLI (Sigstore Fulcio/Rekor)
+gh attestation verify eforge-v0.9.0-x86_64-unknown-linux-gnu.tar.gz --owner elcode-id
+
+# Or verify with OpenSSF slsa-verifier
+slsa-verifier verify-artifact eforge-v0.9.0-x86_64-unknown-linux-gnu.tar.gz \
+  --provenance-path multiple.intoto.jsonl \
+  --source-uri github.com/elcode-id/elcode-forge
+```
+See the complete [Verification Guide (docs/VERIFICATION_GUIDE.md)](./docs/VERIFICATION_GUIDE.md) for step-by-step instructions across Linux, macOS, and Windows.
+
 ---
 
 ## Quick Start (The Golden Path)
