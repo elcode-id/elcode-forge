@@ -2,36 +2,124 @@
   <title>SLSA Level 3 & Cryptographic Provenance | ELCODE Forge Documentation</title>
 </svelte:head>
 
-<div class="space-y-8 max-w-4xl">
+<div class="space-y-8 max-w-5xl">
   <div>
-    <div class="text-xs font-mono uppercase tracking-wider text-emerald-400 mb-1">Supply-Chain Security</div>
-    <h1 class="text-3xl font-extrabold text-white">SLSA Level 3 Build Provenance</h1>
+    <div class="text-xs font-mono uppercase tracking-wider text-emerald-400 mb-1">Zero-Trust Supply-Chain Security</div>
+    <h1 class="text-3xl font-extrabold text-white">SLSA Level 3 Build Provenance & Binary Verification</h1>
     <p class="text-slate-400 mt-2 text-base leading-relaxed">
-      Verify the cryptographic authenticity and tamper-proof build provenance of official ELCODE Forge release binaries.
+      Verify the cryptographic authenticity, Sigstore Fulcio OIDC certificate, Rekor transparency log entry, and non-forgeable SLSA Build Level 3 provenance of official ELCODE Forge release archives across Linux, macOS, and Windows.
     </p>
   </div>
 
-  <!-- Verification Methods -->
+  <!-- Verification Matrix -->
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
-    <h2 class="text-lg font-bold text-white font-mono">1. GitHub Artifact Attestation Verification</h2>
-    <p class="text-sm text-slate-300 leading-relaxed">
-      All release binaries and tarballs are signed using GitHub Artifact Attestations backed by Sigstore Fulcio and Rekor.
-    </p>
-    <div class="bg-black/50 border border-slate-800 rounded-lg p-4 font-mono text-xs text-emerald-400">
-      gh attestation verify eforge-v1.0.0-x86_64-unknown-linux-gnu.tar.gz --owner elcode-id
+    <h2 class="text-lg font-bold text-white font-mono">Verification Methods Matrix</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs font-mono">
+        <thead>
+          <tr class="border-b border-slate-800 text-slate-400">
+            <th class="py-2 pr-4">Verification Method</th>
+            <th class="py-2 px-3">Tool Required</th>
+            <th class="py-2 px-3">Assurance Level</th>
+            <th class="py-2 pl-3">Supply-Chain Threat Mitigated</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/60 text-slate-300">
+          <tr>
+            <td class="py-2.5 pr-4 font-bold text-emerald-400">1. GitHub Artifact Attestation</td>
+            <td class="py-2.5 px-3">gh (&ge; 2.49.0)</td>
+            <td class="py-2.5 px-3">Sigstore OIDC + Rekor</td>
+            <td class="py-2.5 pl-3 font-sans">Binary tampering, unauthorized release uploads, compromised keys</td>
+          </tr>
+          <tr>
+            <td class="py-2.5 pr-4 font-bold text-blue-400">2. OpenSSF SLSA-Verifier</td>
+            <td class="py-2.5 px-3">slsa-verifier</td>
+            <td class="py-2.5 px-3">SLSA Build Level 3</td>
+            <td class="py-2.5 pl-3 font-sans">CI parameter tampering, source repo/tag spoofing, rogue runner builds</td>
+          </tr>
+          <tr>
+            <td class="py-2.5 pr-4 font-bold text-amber-400">3. SHA256SUMS.txt Digest</td>
+            <td class="py-2.5 px-3">sha256sum / shasum / pwsh</td>
+            <td class="py-2.5 px-3">SHA-256 Digest</td>
+            <td class="py-2.5 pl-3 font-sans">Corrupted downloads, MITM transit modification, cache poisoning</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
+  <!-- Method 1: GitHub Artifact Attestations -->
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
-    <h2 class="text-lg font-bold text-white font-mono">2. OpenSSF SLSA-Verifier</h2>
+    <h2 class="text-lg font-bold text-white font-mono">1. GitHub Artifact Attestation Verification (<code class="text-emerald-300">gh attestation verify</code>)</h2>
     <p class="text-sm text-slate-300 leading-relaxed">
-      For strict enterprise compliance, verify the signed in-toto statement using OpenSSF <code class="text-blue-300 font-mono">slsa-verifier</code>:
+      All release archives (<code class="text-slate-200 font-mono">eforge-v*-x86_64-unknown-linux-gnu.tar.gz</code>, <code class="text-slate-200 font-mono">eforge-v*-aarch64-apple-darwin.tar.gz</code>, <code class="text-slate-200 font-mono">eforge-v*-x86_64-pc-windows-msvc.zip</code>) are signed keyless in GitHub Actions via <code class="text-slate-200 font-mono">actions/attest-build-provenance@v2</code>:
     </p>
-    <div class="bg-black/50 border border-slate-800 rounded-lg p-4 font-mono text-xs text-slate-300 overflow-x-auto">
-      <pre><code>slsa-verifier verify-artifact eforge-v1.0.0-x86_64-unknown-linux-gnu.tar.gz \
-  --provenance-path multiple.intoto.jsonl \
-  --source-uri github.com/elcode-id/elcode-forge \
-  --source-tag v1.0.0</code></pre>
+    <div class="bg-black/60 border border-slate-800 rounded-lg p-4 font-mono text-xs text-slate-200 overflow-x-auto">
+      <pre><code>{`export FORGE_VERSION="v1.0.0"
+export TARGET="x86_64-unknown-linux-gnu"
+
+# 1. Download the release archive
+gh release download "$FORGE_VERSION" \\
+  --repo elcode-id/elcode-forge \\
+  --pattern "eforge-\${FORGE_VERSION}-\${TARGET}.tar.gz"
+
+# 2. Verify cryptographic attestation against Sigstore Rekor & elcode-id owner
+gh attestation verify "eforge-\${FORGE_VERSION}-\${TARGET}.tar.gz" --owner elcode-id`}</code></pre>
+    </div>
+  </div>
+
+  <!-- Method 2: OpenSSF SLSA-Verifier -->
+  <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
+    <h2 class="text-lg font-bold text-white font-mono">2. OpenSSF SLSA Level 3 Verification (<code class="text-blue-300">slsa-verifier</code>)</h2>
+    <p class="text-sm text-slate-300 leading-relaxed">
+      Validate the non-forgeable <code class="text-blue-300 font-mono">multiple.intoto.jsonl</code> provenance statement generated by <code class="text-slate-200 font-mono">slsa-framework/slsa-github-generator</code>:
+    </p>
+    <div class="bg-black/60 border border-slate-800 rounded-lg p-4 font-mono text-xs text-slate-200 overflow-x-auto">
+      <pre><code>{`# Download both the binary archive and the signed in-toto provenance bundle
+gh release download v1.0.0 \\
+  --repo elcode-id/elcode-forge \\
+  --pattern "eforge-v1.0.0-x86_64-unknown-linux-gnu.tar.gz" \\
+  --pattern "multiple.intoto.jsonl"
+
+# Verify SLSA Build Level 3 provenance, source repository URI, and exact tag
+slsa-verifier verify-artifact eforge-v1.0.0-x86_64-unknown-linux-gnu.tar.gz \\
+  --provenance-path multiple.intoto.jsonl \\
+  --source-uri github.com/elcode-id/elcode-forge \\
+  --source-tag v1.0.0`}</code></pre>
+    </div>
+  </div>
+
+  <!-- Method 3: Cross-Platform SHA-256 Checksum & Hardened Dockerfile -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-3">
+      <h2 class="text-lg font-bold text-white font-mono">3. Cross-Platform SHA256SUMS.txt</h2>
+      <div class="bg-black/60 border border-slate-800 rounded-lg p-3.5 font-mono text-xs text-slate-200 overflow-x-auto">
+        <pre><code>{`# Linux
+sha256sum -c SHA256SUMS.txt --ignore-missing
+
+# macOS
+shasum -a 256 -c SHA256SUMS.txt --ignore-missing
+
+# Windows PowerShell
+$Exp = (Select-String "windows-msvc.zip" SHA256SUMS.txt).Line.Split(" ")[0]
+$Act = (Get-FileHash -Algorithm SHA256 eforge-v1.0.0-x86_64-pc-windows-msvc.zip).Hash.ToLower()
+if ($Exp -ne $Act) { throw "SHA256 mismatch!" }`}</code></pre>
+      </div>
+    </div>
+
+    <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-3">
+      <h2 class="text-lg font-bold text-white font-mono">4. Hardened Dockerfile Ingestion</h2>
+      <div class="bg-black/60 border border-slate-800 rounded-lg p-3.5 font-mono text-xs text-slate-200 overflow-x-auto">
+        <pre><code>{`FROM alpine:3.20 AS verifier
+RUN apk add --no-cache github-cli tar
+WORKDIR /verify
+RUN gh release download v1.0.0 --repo elcode-id/elcode-forge \\
+      --pattern "eforge-v1.0.0-x86_64-unknown-linux-gnu.tar.gz" \\
+      --pattern "SHA256SUMS.txt" && \\
+    sha256sum -c SHA256SUMS.txt --ignore-missing && \\
+    gh attestation verify eforge-v1.0.0-*.tar.gz --owner elcode-id && \\
+    tar -xzf eforge-v1.0.0-*.tar.gz`}</code></pre>
+      </div>
     </div>
   </div>
 </div>
