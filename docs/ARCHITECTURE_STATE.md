@@ -991,3 +991,16 @@
   - Gracefully degrades between cloud/server mode (`forge-server` organization and audit endpoints) and local offline file mode (computes rollups and evaluates policies directly against in-memory loaded bundles).
   - Completes **Epic #225** (Phase 10B: Multi-Repository Organization Aggregator & Enterprise Auth).
 
+
+## Issue #230 — SLSA Level 3 Build Provenance Workflow & Verification Guide (COMPLETED)
+- **Paths:** `.github/workflows/release-binaries.yml`, `docs/VERIFICATION_GUIDE.md`, `docs/SECURITY_GUIDE.md`, `README.md`.
+- **Capabilities & Implementations:**
+  - Automated SLSA Build Level 3 in-toto provenance generation via `slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0` with base64 subjects from `SHA256SUMS.txt`.
+  - GitHub Artifact Attestation generation via `actions/attest-build-provenance@v2` with Sigstore Fulcio OIDC signing and Rekor public ledger publication.
+  - Comprehensive `docs/VERIFICATION_GUIDE.md` covering `gh attestation verify <binary> --owner elcode-id`, `slsa-verifier verify-artifact <binary> --provenance-path multiple.intoto.jsonl --source-uri github.com/elcode-id/elcode-forge`, multi-platform `SHA256SUMS.txt` digests, and hardened Dockerfile/CI container ingestion patterns.
+- **Invariants:**
+  - Independent builder isolation guarantees tamper-proof build provenance.
+  - Verification uses zero binary self-verification paradoxes; consumers rely on decoupled open-source tooling (`gh`, `slsa-verifier`, `sha256sum`).
+  - Contributes to **Epic #229** (Phase 10C: Cryptographic Provenance, Scale Benchmarks & v1.0.0 GA Release).
+
+
