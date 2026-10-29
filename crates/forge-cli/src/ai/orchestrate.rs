@@ -24,6 +24,7 @@ pub struct GroundedClaim {
     /// The source identifier cited by the AI (e.g. module ID, file path, finding ID).
     pub source: String,
     /// Whether this source identifier exists in the analyzed repository facts.
+    #[serde(default)]
     pub verified: bool,
 }
 
@@ -273,7 +274,8 @@ pub fn explain_response_schema() -> serde_json::Value {
                         "text": { "type": "string" },
                         "source": { "type": "string" }
                     },
-                    "required": ["text", "source"]
+                    "required": ["text", "source"],
+                    "additionalProperties": false
                 }
             },
             "sources": {
@@ -281,7 +283,8 @@ pub fn explain_response_schema() -> serde_json::Value {
                 "items": { "type": "string" }
             }
         },
-        "required": ["summary", "responsibilities", "key_dependencies", "risks", "sources"]
+        "required": ["summary", "responsibilities", "key_dependencies", "risks", "sources"],
+        "additionalProperties": false
     })
 }
 

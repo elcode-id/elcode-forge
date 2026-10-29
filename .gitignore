@@ -10,3 +10,4 @@ build/
 .svelte-kit/
 .pnpm-store/
 test-results/
+.env

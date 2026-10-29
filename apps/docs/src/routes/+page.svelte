@@ -2,6 +2,10 @@
   <title>Overview | ELCODE Forge Documentation</title>
 </svelte:head>
 
+<script lang="ts">
+  import { base } from "$app/paths";
+</script>
+
 <div class="space-y-10">
   <!-- Hero Section -->
   <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-[#12151f] to-slate-900 border border-[#262c3f] p-8 sm:p-12">
@@ -19,22 +23,70 @@
       </p>
       <div class="flex flex-wrap gap-3 pt-4">
         <a
-          href="/policy"
+          href="{base}/cli"
           class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm transition-all shadow-lg shadow-blue-600/20"
         >
-          Explore Policy-as-Code
+          CLI Reference
         </a>
         <a
-          href="/compliance"
+          href="{base}/mcp"
+          class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm transition-all shadow-lg shadow-emerald-600/20"
+        >
+          MCP Server
+        </a>
+        <a
+          href="{base}/policy"
           class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-sm border border-slate-700 transition-all"
         >
-          Compliance Audits
+          Policy-as-Code
         </a>
       </div>
     </div>
   </div>
 
   <!-- Key Pillars Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-3">
+      <div class="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-bold">
+        💻
+      </div>
+      <h3 class="text-lg font-bold text-white">CLI Command Suite</h3>
+      <p class="text-sm text-slate-400 leading-relaxed">
+        Over 36 deterministic commands spanning repo diagnostics (<code class="text-slate-300 font-mono text-xs">doctor</code>), AST scans (<code class="text-slate-300 font-mono text-xs">scan</code>), PR reviews, and AI groundings.
+      </p>
+      <a href="{base}/cli" class="inline-flex items-center gap-1.5 text-xs font-mono text-blue-400 hover:text-blue-300">
+        Browse 36+ Commands →
+      </a>
+    </div>
+
+    <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-3">
+      <div class="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold">
+        🤖
+      </div>
+      <h3 class="text-lg font-bold text-white">Native MCP Server</h3>
+      <p class="text-sm text-slate-400 leading-relaxed">
+        Connect Cursor, Claude Desktop, Windsurf, and Cline directly to Forge's AST facts, blast-radius calculator, and security heuristics via stdio.
+      </p>
+      <a href="{base}/mcp" class="inline-flex items-center gap-1.5 text-xs font-mono text-emerald-400 hover:text-emerald-300">
+        MCP Integration Guide →
+      </a>
+    </div>
+
+    <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-3">
+      <div class="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 font-bold">
+        📐
+      </div>
+      <h3 class="text-lg font-bold text-white">Declarative Custom Rules</h3>
+      <p class="text-sm text-slate-400 leading-relaxed">
+        Enforce modular boundaries, companion test requirements, and forbidden regex patterns in pure declarative YAML with zero build latency.
+      </p>
+      <a href="{base}/rules" class="inline-flex items-center gap-1.5 text-xs font-mono text-amber-400 hover:text-amber-300">
+        Authoring Manual →
+      </a>
+    </div>
+  </div>
+
+  <!-- Second Row Grid -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
     <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-3">
       <div class="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold">
@@ -44,7 +96,7 @@
       <p class="text-sm text-slate-400 leading-relaxed">
         Declare non-negotiable architectural limits, min health scores, zero-tolerance secret rules, and time-bounded exception waivers evaluated deterministically at CI time.
       </p>
-      <a href="/policy" class="inline-flex items-center gap-1.5 text-xs font-mono text-blue-400 hover:text-blue-300">
+      <a href="{base}/policy" class="inline-flex items-center gap-1.5 text-xs font-mono text-emerald-400 hover:text-emerald-300">
         Read Specification →
       </a>
     </div>
@@ -57,20 +109,20 @@
       <p class="text-sm text-slate-400 leading-relaxed">
         Export auditable proof of compliance for SOC 2 Type II, ISO/IEC 27001:2022, and OWASP Top 10 with deterministic exit codes and structured evidence.
       </p>
-      <a href="/compliance" class="inline-flex items-center gap-1.5 text-xs font-mono text-purple-400 hover:text-purple-300">
+      <a href="{base}/compliance" class="inline-flex items-center gap-1.5 text-xs font-mono text-purple-400 hover:text-purple-300">
         Compliance Mapping →
       </a>
     </div>
 
     <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-3">
-      <div class="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 font-bold">
+      <div class="w-10 h-10 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 font-bold">
         🏢
       </div>
       <h3 class="text-lg font-bold text-white">Multi-Repo Aggregator</h3>
       <p class="text-sm text-slate-400 leading-relaxed">
         Centralize organization health with self-hostable `forge-server`, pre-aggregated materialized rollups, cross-repository vulnerability matrix, and append-only audit stream.
       </p>
-      <a href="/self-hosting" class="inline-flex items-center gap-1.5 text-xs font-mono text-amber-400 hover:text-amber-300">
+      <a href="{base}/self-hosting" class="inline-flex items-center gap-1.5 text-xs font-mono text-sky-400 hover:text-sky-300">
         Deployment Guide →
       </a>
     </div>
@@ -78,9 +130,14 @@
 
   <!-- CLI Fast Reference -->
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
-    <h2 class="text-lg font-bold text-white font-mono flex items-center gap-2">
-      <span>Command-Line Interface Quickstart</span>
-    </h2>
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-bold text-white font-mono flex items-center gap-2">
+        <span>Command-Line Interface Quickstart</span>
+      </h2>
+      <a href="{base}/cli" class="text-xs font-mono text-blue-400 hover:text-blue-300">
+        Full Catalog →
+      </a>
+    </div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
       <div class="bg-black/40 border border-slate-800 rounded-lg p-4 space-y-2">
         <div class="text-slate-400 font-bold uppercase tracking-wider text-[11px]">Primary Diagnostics & Scans</div>
