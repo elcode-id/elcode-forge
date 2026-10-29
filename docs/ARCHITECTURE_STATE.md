@@ -1063,3 +1063,15 @@
   - Synchronized `/cli` with all 34 exact `clap` CLI commands/subcommands, flags, 5 output formatters, and 5 deterministic exit codes (`0..=4`); aligned `/rules` with all 6 matchers (`dependency_restriction`, `companion: "tests/{name}.test.ts"`, `convention`) and 4 rule packs; aligned `/mcp` with the 7 `eforge_*` tools and `UntrustedEnvelope<T>`; and expanded `/policy`, `/compliance`, `/self-hosting`, and `/provenance`.
 - **Invariants:**
   - Zero TypeScript/Svelte diagnostics (`pnpm --filter docs run check`) and 100% prerendered static build (`pnpm --filter docs run build`).
+
+
+
+## Documentation Portal (`apps/docs`) Tailwind Plus Syntax Design System Overhaul (COMPLETED)
+- **Paths:** `apps/docs/tailwind.config.js`, `apps/docs/src/app.html`, `apps/docs/src/app.css`, `apps/docs/src/fonts/lexend.woff2`, `apps/docs/static/images/{blur-cyan.png, blur-indigo.png}`, `apps/docs/src/lib/navigation.ts`, `apps/docs/src/lib/components/{Logo, Button, Icon, QuickLinks, QuickLink, Callout, HeroBackground, Hero, Navigation, MobileNavigation, Search, ThemeSelector, DocsHeader, PrevNextLinks, TableOfContents}.svelte`, `apps/docs/src/routes/**/+page.svelte`.
+- **Capabilities & Implementations:**
+  - Ported the complete **Tailwind Plus Syntax** design system to SvelteKit 2 + Svelte 5 Runes with zero external npm dependencies (`pnpm install --frozen-lockfile` compatible).
+  - Implemented split `Hero.svelte` with `668x1069` circuit SVG (`HeroBackground.svelte`), `blur-cyan.png` & `blur-indigo.png` ambient glows, and interactive multi-tab frosted code window (`eforge.config.yaml`, `Terminal — eforge doctor`, `.github/workflows/eforge.yml`).
+  - Implemented 3-column `max-w-8xl` shell (`+layout.svelte`) with sticky left `Navigation.svelte`, center `DocsHeader.svelte` + `PrevNextLinks.svelte`, and sticky right `"On this page"` scroll-spy `TableOfContents.svelte`.
+  - Added instant `⌘K` / `Ctrl K` search modal (`Search.svelte`), `Light` / `Dark` / `System` `ThemeSelector.svelte`, and all 6 dual-mode radial-gradient SVG icons (`Icon.svelte`, `QuickLinks.svelte`, `Callout.svelte`).
+- **Invariants:**
+  - Zero TypeScript/Svelte diagnostics (`svelte-check found 0 errors and 0 warnings`) and clean static builds for both root and `BASE_PATH="/elcode-forge"`.

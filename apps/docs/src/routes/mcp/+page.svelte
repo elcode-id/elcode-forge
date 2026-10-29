@@ -2,20 +2,15 @@
   <title>Model Context Protocol (MCP) Server Guide | ELCODE Forge Documentation</title>
 </svelte:head>
 
-<div class="space-y-8 max-w-5xl">
-  <!-- Title -->
-  <div>
-    <div class="text-xs font-mono uppercase tracking-wider text-emerald-400 mb-1">AI Toolchain Integration</div>
-    <h1 class="text-3xl font-extrabold text-white">Native Model Context Protocol (MCP) Server (<code class="text-emerald-300 font-mono text-2xl">eforge mcp</code>)</h1>
-    <p class="text-slate-400 mt-2 text-base leading-relaxed">
-      Connect Claude Code, Claude Desktop, Cursor, Windsurf, VS Code Cline, and Google Antigravity directly to ELCODE Forge's deterministic polyglot AST graph, blast-radius calculator, and security scanners over JSON-RPC 2.0 <code class="text-emerald-300 font-mono text-sm">stdio</code> (<code class="text-slate-300 font-mono text-sm">protocolVersion: "2024-11-05"</code>).
-    </p>
-  </div>
+<div class="space-y-8">
+  <p class="lead">
+    Connect Claude Code, Claude Desktop, Cursor, Windsurf, VS Code Cline, and Google Antigravity directly to ELCODE Forge's deterministic polyglot AST graph, blast-radius calculator, and security scanners over JSON-RPC 2.0 <code>stdio</code> (<code>protocolVersion: "2024-11-05"</code>).
+  </p>
 
   <!-- 1. Architecture & JSON-RPC 2.0 Protocol -->
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
-    <h2 class="text-lg font-bold text-white font-mono flex items-center gap-2">
-      <span class="text-emerald-400">01.</span>
+    <h2 id="json-rpc" class="text-lg font-bold text-white font-mono flex items-center gap-2">
+      <span class="text-sky-400">01.</span>
       <span>JSON-RPC 2.0 Stdio Architecture</span>
     </h2>
     <p class="text-sm text-slate-300 leading-relaxed">
@@ -95,9 +90,9 @@
 
   <!-- 3. All 7 Native eforge_* MCP Tools -->
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
-    <h2 class="text-lg font-bold text-white font-mono flex items-center gap-2">
-      <span class="text-emerald-400">03.</span>
-      <span>The 7 Native <code class="text-emerald-300">eforge_*</code> MCP Tools & Schemas</span>
+    <h2 id="tools" class="text-lg font-bold text-white font-mono flex items-center gap-2">
+      <span class="text-sky-400">03.</span>
+      <span>The 7 Native <code class="text-sky-300">eforge_*</code> MCP Tools & Schemas</span>
     </h2>
     <p class="text-sm text-slate-300 leading-relaxed">
       All tools are namespaced under <code class="text-emerald-300 font-mono">eforge_*</code> with strict <code class="text-slate-200 font-mono">additionalProperties: false</code> JSON Schemas:
@@ -178,8 +173,8 @@
 
   <!-- 4. UntrustedEnvelope<T> & Prompt-Injection Defense -->
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
-    <h2 class="text-lg font-bold text-white font-mono flex items-center gap-2">
-      <span class="text-emerald-400">04.</span>
+    <h2 id="security-envelope" class="text-lg font-bold text-white font-mono flex items-center gap-2">
+      <span class="text-sky-400">04.</span>
       <span>UntrustedDataEnvelope & Prompt-Injection Signal Scanner</span>
     </h2>
     <p class="text-sm text-slate-300 leading-relaxed">

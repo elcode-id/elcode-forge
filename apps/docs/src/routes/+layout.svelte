@@ -1,139 +1,117 @@
 <script lang="ts">
   import "../app.css";
-  import type { Snippet } from "svelte";
+  import { onMount, type Snippet } from "svelte";
   import { page } from "$app/state";
   import { base } from "$app/paths";
 
+  import Logo from "$lib/components/Logo.svelte";
+  import Hero from "$lib/components/Hero.svelte";
+  import Navigation from "$lib/components/Navigation.svelte";
+  import MobileNavigation from "$lib/components/MobileNavigation.svelte";
+  import Search from "$lib/components/Search.svelte";
+  import ThemeSelector from "$lib/components/ThemeSelector.svelte";
+  import DocsHeader from "$lib/components/DocsHeader.svelte";
+  import PrevNextLinks from "$lib/components/PrevNextLinks.svelte";
+  import TableOfContents from "$lib/components/TableOfContents.svelte";
+
   let { children }: { children?: Snippet } = $props();
 
+  let isScrolled = $state(false);
+
   const isHome = $derived(
-    page.url.pathname === base || page.url.pathname === base + "/" || page.url.pathname === "/"
+    page.url.pathname === base ||
+      page.url.pathname === base + "/" ||
+      page.url.pathname === "/",
   );
 
-  const isActive = (path: string) => {
-    const target = base ? `${base}${path}` : path;
-    return page.url.pathname.startsWith(target);
-  };
+  onMount(() => {
+    const onScroll = () => {
+      isScrolled = window.scrollY > 0;
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  });
 </script>
 
-<div class="min-h-screen flex flex-col bg-[#0b0d13] text-slate-100">
-  <header class="sticky top-0 z-50 backdrop-blur-md bg-[#0b0d13]/85 border-b border-[#262c3f]">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-      <div class="flex items-center gap-5">
-        <a href="{base}/" class="flex items-center gap-3 group shrink-0">
-          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
-            ⚡
-          </div>
-          <div class="flex flex-col">
-            <span class="font-bold tracking-tight text-white flex items-center gap-2">
-              ELCODE Forge
-              <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-blue-950/80 text-blue-400 border border-blue-800/40">Docs</span>
-            </span>
-            <span class="text-[10px] text-slate-400 font-mono">v1.0.0 GA</span>
-          </div>
-        </a>
-
-        <nav class="hidden xl:flex items-center gap-1 text-xs font-medium">
-          <a
-            href="{base}/"
-            class="px-2.5 py-1.5 rounded-lg transition-colors {isHome ? 'text-white bg-slate-800/80' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'}"
-          >
-            Overview & Install
-          </a>
-          <a
-            href="{base}/configuration"
-            class="px-2.5 py-1.5 rounded-lg transition-colors {isActive('/configuration') ? 'text-white bg-slate-800/80' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'}"
-          >
-            Configuration
-          </a>
-          <a
-            href="{base}/cli"
-            class="px-2.5 py-1.5 rounded-lg transition-colors {isActive('/cli') ? 'text-white bg-slate-800/80' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'}"
-          >
-            CLI Reference
-          </a>
-          <a
-            href="{base}/rules"
-            class="px-2.5 py-1.5 rounded-lg transition-colors {isActive('/rules') ? 'text-white bg-slate-800/80' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'}"
-          >
-            Custom Rules
-          </a>
-          <a
-            href="{base}/mcp"
-            class="px-2.5 py-1.5 rounded-lg transition-colors {isActive('/mcp') ? 'text-white bg-slate-800/80' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'}"
-          >
-            MCP Server
-          </a>
-          <a
-            href="{base}/policy"
-            class="px-2.5 py-1.5 rounded-lg transition-colors {isActive('/policy') ? 'text-white bg-slate-800/80' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'}"
-          >
-            Policy-as-Code
-          </a>
-          <a
-            href="{base}/compliance"
-            class="px-2.5 py-1.5 rounded-lg transition-colors {isActive('/compliance') ? 'text-white bg-slate-800/80' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'}"
-          >
-            Security & Compliance
-          </a>
-          <a
-            href="{base}/self-hosting"
-            class="px-2.5 py-1.5 rounded-lg transition-colors {isActive('/self-hosting') ? 'text-white bg-slate-800/80' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'}"
-          >
-            Self-Hosting
-          </a>
-          <a
-            href="{base}/provenance"
-            class="px-2.5 py-1.5 rounded-lg transition-colors {isActive('/provenance') ? 'text-white bg-slate-800/80' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'}"
-          >
-            SLSA Provenance
-          </a>
-        </nav>
-      </div>
-
-      <div class="flex items-center gap-3">
-        <a
-          href="https://github.com/elcode-id/elcode-forge"
-          target="_blank"
-          rel="noreferrer"
-          class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-mono text-slate-300 transition-colors"
-        >
-          <span>GitHub</span>
-          <span class="text-slate-500">↗</span>
-        </a>
-      </div>
+<div class="flex w-full flex-col">
+  <header
+    class="sticky top-0 z-50 flex flex-none flex-wrap items-center justify-between bg-white px-4 py-5 shadow-md shadow-slate-900/5 transition duration-500 sm:px-6 lg:px-8 dark:shadow-none {isScrolled
+      ? 'dark:bg-slate-900/95 dark:backdrop-blur-sm dark:[@supports(backdrop-filter:blur(0))]:bg-slate-900/75'
+      : 'dark:bg-transparent'}"
+  >
+    <div class="mr-6 flex lg:hidden">
+      <MobileNavigation />
     </div>
-
-    <!-- Mobile & Tablet Sub-Navigation -->
-    <div class="xl:hidden flex items-center gap-2 px-4 py-2 overflow-x-auto border-t border-slate-800/60 text-xs font-mono scrollbar-none">
-      <a href="{base}/" class="px-2 py-1 rounded whitespace-nowrap {isHome ? 'text-white bg-slate-800' : 'text-slate-400'}">Overview & Install</a>
-      <a href="{base}/configuration" class="px-2 py-1 rounded whitespace-nowrap {isActive('/configuration') ? 'text-white bg-slate-800' : 'text-slate-400'}">Configuration</a>
-      <a href="{base}/cli" class="px-2 py-1 rounded whitespace-nowrap {isActive('/cli') ? 'text-white bg-slate-800' : 'text-slate-400'}">CLI Reference</a>
-      <a href="{base}/rules" class="px-2 py-1 rounded whitespace-nowrap {isActive('/rules') ? 'text-white bg-slate-800' : 'text-slate-400'}">Custom Rules</a>
-      <a href="{base}/mcp" class="px-2 py-1 rounded whitespace-nowrap {isActive('/mcp') ? 'text-white bg-slate-800' : 'text-slate-400'}">MCP Server</a>
-      <a href="{base}/policy" class="px-2 py-1 rounded whitespace-nowrap {isActive('/policy') ? 'text-white bg-slate-800' : 'text-slate-400'}">Policy-as-Code</a>
-      <a href="{base}/compliance" class="px-2 py-1 rounded whitespace-nowrap {isActive('/compliance') ? 'text-white bg-slate-800' : 'text-slate-400'}">Security & Compliance</a>
-      <a href="{base}/self-hosting" class="px-2 py-1 rounded whitespace-nowrap {isActive('/self-hosting') ? 'text-white bg-slate-800' : 'text-slate-400'}">Self-Hosting</a>
-      <a href="{base}/provenance" class="px-2 py-1 rounded whitespace-nowrap {isActive('/provenance') ? 'text-white bg-slate-800' : 'text-slate-400'}">Provenance</a>
+    <div class="relative flex grow basis-0 items-center">
+      <a href="{base}/" aria-label="Home page">
+        <Logo logomarkOnly class="h-9 w-9 lg:hidden" />
+        <Logo class="hidden lg:inline-flex" />
+      </a>
+    </div>
+    <div class="-my-5 mr-6 sm:mr-8 md:mr-0">
+      <Search />
+    </div>
+    <div
+      class="relative flex basis-0 justify-end gap-6 sm:gap-8 md:grow items-center"
+    >
+      <ThemeSelector />
+      <a
+        href="https://github.com/elcode-id/elcode-forge"
+        target="_blank"
+        rel="noreferrer"
+        class="group"
+        aria-label="GitHub"
+      >
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 16 16"
+          class="h-6 w-6 fill-slate-400 group-hover:fill-slate-500 dark:group-hover:fill-slate-300 transition-colors"
+        >
+          <path
+            d="M8 0C3.58 0 0 3.58 0 8C0 11.54 2.29 14.53 5.47 15.59C5.87 15.66 6.02 15.42 6.02 15.21C6.02 15.02 6.01 14.39 6.01 13.72C4 14.09 3.48 13.23 3.32 12.78C3.23 12.55 2.84 11.84 2.5 11.65C2.22 11.5 1.82 11.13 2.49 11.12C3.12 11.11 3.57 11.7 3.72 11.94C4.44 13.15 5.59 12.81 6.05 12.6C6.12 12.08 6.33 11.73 6.56 11.53C4.78 11.33 2.92 10.64 2.92 7.58C2.92 6.71 3.23 5.99 3.74 5.43C3.66 5.23 3.38 4.41 3.82 3.31C3.82 3.31 4.49 3.1 6.02 4.13C6.66 3.95 7.34 3.86 8.02 3.86C8.7 3.86 9.38 3.95 10.02 4.13C11.55 3.09 12.22 3.31 12.22 3.31C12.66 4.41 12.38 5.23 12.3 5.43C12.81 5.99 13.12 6.7 13.12 7.58C13.12 10.65 11.25 11.33 9.47 11.53C9.76 11.78 10.01 12.26 10.01 13.01C10.01 14.08 10 14.94 10 15.21C10 15.42 10.15 15.67 10.55 15.59C13.71 14.53 16 11.53 16 8C16 3.58 12.42 0 8 0Z"
+          />
+        </svg>
+      </a>
     </div>
   </header>
 
-  <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full">
-    {#if children}
-      {@render children()}
-    {/if}
-  </main>
+  {#if isHome}
+    <Hero />
+  {/if}
 
-  <footer class="border-t border-[#262c3f] bg-[#0b0d13] py-8 text-center text-xs text-slate-500 font-mono">
-    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-      <div>
-        ELCODE Forge (`eforge`) v1.0.0 GA — Know your code. Ship with confidence.
-      </div>
-      <div class="flex items-center gap-4 text-slate-400">
-        <a href="https://elcode.id" target="_blank" rel="noreferrer" class="hover:text-white">Studio Manifesto</a>
-        <span>•</span>
-        <a href="https://github.com/elcode-id/elcode-forge" target="_blank" rel="noreferrer" class="hover:text-white">Source Code</a>
+  <div
+    class="relative mx-auto flex w-full max-w-8xl flex-auto justify-center sm:px-2 lg:px-8 xl:px-12"
+  >
+    <div class="hidden lg:relative lg:block lg:flex-none">
+      <div
+        class="absolute inset-y-0 right-0 w-[50vw] bg-slate-50 dark:hidden"
+      ></div>
+      <div
+        class="absolute top-16 right-0 bottom-0 hidden h-12 w-px bg-gradient-to-t from-slate-800 dark:block"
+      ></div>
+      <div
+        class="absolute top-28 right-0 bottom-0 hidden w-px bg-slate-800 dark:block"
+      ></div>
+      <div
+        class="sticky top-19 -ml-0.5 h-[calc(100vh-4.75rem)] w-64 overflow-x-hidden overflow-y-auto py-16 pr-8 pl-0.5 xl:w-72 xl:pr-16"
+      >
+        <Navigation />
       </div>
     </div>
-  </footer>
+
+    <div
+      class="max-w-2xl min-w-0 flex-auto px-4 py-16 lg:max-w-none lg:pr-0 lg:pl-8 xl:px-16"
+    >
+      <article class="syntax-article syntax-prose">
+        <DocsHeader />
+        {#if children}
+          {@render children()}
+        {/if}
+      </article>
+      <PrevNextLinks />
+    </div>
+
+    <TableOfContents />
+  </div>
 </div>

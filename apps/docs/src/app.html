@@ -1,12 +1,33 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en" class="h-full antialiased dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ELCODE Forge Documentation — Enterprise Engineering Governance</title>
+    <title>ELCODE Forge — Know your code. Ship with confidence.</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      try {
+        const saved = localStorage.getItem("eforge-docs-theme");
+        const isDark =
+          saved === "dark" ||
+          (!saved && true) ||
+          (saved === "system" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches);
+        if (isDark) {
+          document.documentElement.classList.add("dark");
+        } else {
+          document.documentElement.classList.remove("dark");
+        }
+      } catch (_) {}
+    </script>
     %sveltekit.head%
   </head>
-  <body class="bg-[#0b0d13] text-slate-100 min-h-screen font-sans antialiased selection:bg-blue-600/30 selection:text-blue-200">
+  <body class="flex min-h-full bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-400 selection:bg-sky-500/20 selection:text-sky-400">
     <div style="display: contents">%sveltekit.body%</div>
   </body>
 </html>
