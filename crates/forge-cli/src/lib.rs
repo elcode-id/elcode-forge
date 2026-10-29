@@ -12,7 +12,7 @@ use std::fs;
 use std::path::Path;
 
 use clap::Parser;
-pub use cli::{AuthAction, Cli, Commands, OutputFormat, PolicyAction};
+pub use cli::{AuthAction, Cli, CliComplianceStandard, Commands, OutputFormat, PolicyAction};
 pub use exit_code::{parse_severity_threshold, ExitCode};
 pub use formatters::render_repository_report;
 pub use theme::{health_rating, render_score_meter, ColorMode, Theme};
@@ -810,5 +810,11 @@ pub fn run_cli_from_env() -> ExitCode {
                 fail_on_sev,
             )
         }
+        Some(Commands::Audit {
+            standard,
+            path,
+            format,
+            output,
+        }) => commands::audit::run_audit(&path, standard.into(), format, output.as_deref()),
     }
 }
