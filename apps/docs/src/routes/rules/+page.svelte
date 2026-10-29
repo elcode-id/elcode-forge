@@ -2,20 +2,15 @@
   <title>Declarative Custom Rules & Rule Packs Manual | ELCODE Forge Documentation</title>
 </svelte:head>
 
-<div class="space-y-8 max-w-5xl">
-  <!-- Title -->
-  <div>
-    <div class="text-xs font-mono uppercase tracking-wider text-amber-400 mb-1">Architecture & Governance</div>
-    <h1 class="text-3xl font-extrabold text-white">Declarative Custom Rules & Rule Packs Manual</h1>
-    <p class="text-slate-400 mt-2 text-base leading-relaxed">
-      Enforce custom architectural boundaries, companion test coverage, naming conventions, file size caps, prohibited regex tokens, and dependency restrictions in pure declarative YAML or JSON with zero arbitrary code execution.
-    </p>
-  </div>
+<div class="space-y-8">
+  <p class="lead">
+    Enforce custom architectural boundaries, companion test coverage, naming conventions, file size caps, prohibited regex tokens, and dependency restrictions in pure declarative YAML or JSON with zero arbitrary code execution.
+  </p>
 
   <!-- 1. Rule File Organization & Inheritance Hierarchy -->
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
-    <h2 class="text-lg font-bold text-white font-mono flex items-center gap-2">
-      <span class="text-amber-400">01.</span>
+    <h2 id="rule-packs" class="text-lg font-bold text-white font-mono flex items-center gap-2">
+      <span class="text-sky-400">01.</span>
       <span>Rule Packs & 4-Tier Inheritance Hierarchy</span>
     </h2>
     <p class="text-sm text-slate-300 leading-relaxed">
@@ -151,8 +146,8 @@ rules:
 
   <!-- 3. All 6 Deterministic Matchers -->
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-6">
-    <h2 class="text-lg font-bold text-white font-mono flex items-center gap-2">
-      <span class="text-amber-400">03.</span>
+    <h2 id="matchers" class="text-lg font-bold text-white font-mono flex items-center gap-2">
+      <span class="text-sky-400">03.</span>
       <span>The 6 Deterministic Rule Matchers</span>
     </h2>
 

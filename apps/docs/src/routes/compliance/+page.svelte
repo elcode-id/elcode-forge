@@ -2,14 +2,10 @@
   <title>Security, Supply-Chain & Compliance Audits | ELCODE Forge Documentation</title>
 </svelte:head>
 
-<div class="space-y-8 max-w-5xl">
-  <div>
-    <div class="text-xs font-mono uppercase tracking-wider text-purple-400 mb-1">Security, SBOM & Regulatory Governance</div>
-    <h1 class="text-3xl font-extrabold text-white">Security, Supply-Chain & Compliance Reference</h1>
-    <p class="text-slate-400 mt-2 text-base leading-relaxed">
-      Execute local-first OSV vulnerability audits, Shannon entropy secret detection, polyglot unsafe code scanning, CycloneDX/SPDX SBOM generation, open-source license compliance checks, and automated SOC 2 Type II, OWASP Top 10 (2021), and ISO/IEC 27001:2022 compliance reports.
-    </p>
-  </div>
+<div class="space-y-8">
+  <p class="lead">
+    Execute local-first OSV vulnerability audits, Shannon entropy secret detection, polyglot unsafe code scanning, CycloneDX/SPDX SBOM generation, open-source license compliance checks, and automated SOC 2 Type II, OWASP Top 10 (2021), and ISO/IEC 27001:2022 compliance reports.
+  </p>
 
   <!-- 1. Automated Compliance Audits (eforge audit) -->
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-6">

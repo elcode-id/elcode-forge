@@ -2,14 +2,10 @@
   <title>SLSA Level 3 & Cryptographic Provenance | ELCODE Forge Documentation</title>
 </svelte:head>
 
-<div class="space-y-8 max-w-5xl">
-  <div>
-    <div class="text-xs font-mono uppercase tracking-wider text-emerald-400 mb-1">Zero-Trust Supply-Chain Security</div>
-    <h1 class="text-3xl font-extrabold text-white">SLSA Level 3 Build Provenance & Binary Verification</h1>
-    <p class="text-slate-400 mt-2 text-base leading-relaxed">
-      Verify the cryptographic authenticity, Sigstore Fulcio OIDC certificate, Rekor transparency log entry, and non-forgeable SLSA Build Level 3 provenance of official ELCODE Forge release archives across Linux, macOS, and Windows.
-    </p>
-  </div>
+<div class="space-y-8">
+  <p class="lead">
+    Verify the cryptographic authenticity, Sigstore Fulcio OIDC certificate, Rekor transparency log entry, and non-forgeable SLSA Build Level 3 provenance of official ELCODE Forge release archives across Linux, macOS, and Windows.
+  </p>
 
   <!-- Verification Matrix -->
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">

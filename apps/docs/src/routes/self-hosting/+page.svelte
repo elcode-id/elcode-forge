@@ -2,14 +2,10 @@
   <title>Self-Hosting & Multi-Repo Aggregator (forge-server) | ELCODE Forge Documentation</title>
 </svelte:head>
 
-<div class="space-y-8 max-w-5xl">
-  <div>
-    <div class="text-xs font-mono uppercase tracking-wider text-sky-400 mb-1">Enterprise Cloud & Self-Hosting Runbook</div>
-    <h1 class="text-3xl font-extrabold text-white">Multi-Repo Aggregator & Self-Hosting (<code class="text-sky-300 font-mono text-2xl">forge-server</code>)</h1>
-    <p class="text-slate-400 mt-2 text-base leading-relaxed">
-      Deploy <code class="text-sky-300 font-mono text-sm">forge-server</code> (<code class="text-slate-300 font-mono text-sm">crates/forge-server</code>) on your own infrastructure with SQLite or PostgreSQL 16 to centralize multi-repository health rollups, cross-repo vulnerability matrices, branch trend retention, HMAC-SHA256 webhooks, and append-only RBAC audit logs.
-    </p>
-  </div>
+<div class="space-y-8">
+  <p class="lead">
+    Deploy <code>forge-server</code> (<code>crates/forge-server</code>) on your own infrastructure with SQLite or PostgreSQL 16 to centralize multi-repository health rollups, cross-repo vulnerability matrices, branch trend retention, HMAC-SHA256 webhooks, and append-only RBAC audit logs.
+  </p>
 
   <!-- 1. Architecture, RBAC & Auth Modes -->
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
