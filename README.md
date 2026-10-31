@@ -1,7 +1,7 @@
-# ELCODE Forge (`eforge`) v1.0.0
+# ELCODE Forge (`eforge`) v1.1.0
 
 > **Know your code. Ship with confidence.**  
-> Deterministic Codebase Intelligence, Architecture Analysis, Change Blast-Radius, Release Readiness & Native MCP Engine — built in Rust by **[ELCODE](https://elcode.id/)**.
+> Deterministic Codebase Intelligence, Tactile Terminal Instrument, Active Remediation, Architecture Analysis, Change Blast-Radius & Native Closed-Loop MCP Engine — built in Rust by **[ELCODE](https://elcode.id/)**.
 
 [![CI — Rust Engine](https://github.com/elcode-id/elcode-forge/actions/workflows/ci-rust.yml/badge.svg)](https://github.com/elcode-id/elcode-forge/actions/workflows/ci-rust.yml)
 [![CI — Web, Dashboard & Schemas](https://github.com/elcode-id/elcode-forge/actions/workflows/ci-web.yml/badge.svg)](https://github.com/elcode-id/elcode-forge/actions/workflows/ci-web.yml)
@@ -18,7 +18,7 @@
 
 Modern codebases grow faster than teams can map them—especially with AI-assisted coding. Most developer tools either check syntax at the single-file level (linters) or send unindexed source trees to an LLM and hope for the best.
 
-**ELCODE Forge (`eforge`)** is a **local-first, deterministic codebase intelligence layer**. Before any AI model or code reviewer looks at a repository, `eforge` builds a normalized **Intermediate Representation (IR)** of your repository's files, module boundaries, import graph, circular dependencies, npm/pnpm/Cargo manifest hygiene, Git blast radius, security/secret signals, and an **explainable 8-dimension Health Score**—and exposes it via a high-speed CLI, a zero-telemetry Web Dashboard, and a native **Model Context Protocol (MCP)** server (`eforge mcp`).
+**ELCODE Forge (`eforge`)** is a **local-first, deterministic codebase intelligence and active remediation layer**. Before any AI model or code reviewer looks at a repository, `eforge` builds a normalized **Intermediate Representation (IR)** of your repository's files, module boundaries, import graph, circular dependencies, npm/pnpm/Cargo manifest hygiene, Git blast radius, security/secret signals, and an **explainable 8-dimension Health Score**—and exposes it via a high-speed CLI, an interactive Terminal UI (`eforge ui`), a live file-save architectural radar (`eforge watch`), surgical transactional codemods (`eforge fix`), a zero-telemetry Web Dashboard, and a native **Model Context Protocol (MCP)** server (`eforge mcp`).
 
 ### The ELCODE Studio Manifesto (`elcode.id`)
 
@@ -26,11 +26,11 @@ Every architectural boundary, CLI contract, and CI/CD workflow in `elcode-forge`
 
 | # | Studio Principle | How It Manifests in `elcode-forge` |
 | :---: | :--- | :--- |
-| **`01`** | **Software should feel like an instrument, not a compromise.** | Collision-free **`eforge`** binary (`elcode-forge` alias), deterministic exit codes (`0..=4`), single-file **`eforge.config.yaml`**, and instant local execution without cloud lock-in or mandatory daemons. |
-| **`02`** | **Code quality is visible in product behavior, speed, and durability.** | **Behavior:** Zero-panic Rust engine (`unsafe_code = "forbid"`, zero `.unwrap()`/`.expect()` in library crates).<br>**Speed:** `eforge doctor` completes in **`~18–65ms`** and full workspace scans in **`< 100ms`** using `blake3` content hashing (`.eforge/`).<br>**Durability:** Strict crate DAG, canonical `ReportBundle` JSON Schema drift enforcement, and continuous supply-chain auditing (`cargo audit`). |
-| **`03`** | **We use AI as leverage, not as identity.** | **Deterministic before generative.** All AI outputs (`eforge explain --ai`, `eforge ai-review`) are grounded against the deterministic IR via `apply_deterministic_guard`, isolated inside `<untrusted_repository_data>` envelopes, and support offline local models (Ollama / LM Studio). |
-| **`04`** | **We prefer precision over decoration.** | Byte-for-byte reproducible JSON, Markdown, and OASIS SARIF v2.1.0 output (`BTreeMap`/`BTreeSet` ordering). Every finding carries explicit `severity`, `confidence`, file/line span, and mathematical 8-dimension health score deductions—zero vague scores or decorative fluff. |
-| **`05`** | **We build things worth keeping.** | Self-contained offline dashboard bundles (`eforge report`), append-only historical commit trend tracking (`.eforge/history/`), and automated living onboarding documentation (`eforge onboard`). |
+| **`01`** | **Software should feel like an instrument, not a compromise.** | Collision-free **`eforge`** binary (`elcode-forge` alias), interactive `ratatui` TUI (`eforge ui`), box-drawn `--codeframe` diagnostics, deterministic exit codes (`0..=4`), single-file **`eforge.config.yaml`**, and instant local execution without cloud lock-in. |
+| **`02`** | **Code quality is visible in product behavior, speed, and durability.** | **Behavior:** Zero-panic Rust engine (`unsafe_code = "forbid"`, zero `.unwrap()`/`.expect()` in library crates).<br>**Speed:** `eforge doctor` completes in **`~18–65ms`** and incremental `eforge watch` cycles complete in **`< 50ms`** using `blake3` file-level AST caching (`.eforge/cache/`).<br>**Durability:** Strict crate DAG, canonical `ReportBundle` JSON Schema drift enforcement, and continuous supply-chain auditing (`cargo audit`). |
+| **`03`** | **We use AI as leverage, not as identity.** | **Deterministic before generative.** All AI outputs (`eforge explain --ai`, `eforge ai-review`) and pre-flight MCP agent verifications (`eforge_verify_patch`, `eforge_get_pruned_context`) are grounded against the deterministic IR, isolated inside `<untrusted_repository_data>` envelopes, and support offline local models (Ollama / LM Studio). |
+| **`04`** | **We prefer precision over decoration.** | Byte-for-byte reproducible JSON, Markdown, and OASIS SARIF v2.1.0 output (`BTreeMap`/`BTreeSet` ordering). Every finding carries explicit `severity`, `confidence`, file/line span, visual call-chain arrows, and mathematical 8-dimension health score deductions—zero vague scores or decorative fluff. |
+| **`05`** | **We build things worth keeping.** | Transactional rollback-safe codemods (`.eforge/tx/`), self-contained offline dashboard bundles (`eforge report`), append-only historical commit trend tracking (`eforge trend`, `.eforge/history/`), and automated living onboarding documentation (`eforge onboard`). |
 
 ---
 
@@ -38,23 +38,23 @@ Every architectural boundary, CLI contract, and CI/CD workflow in `elcode-forge`
 
 | Capability | Description |
 | :--- | :--- |
-| **Fast Project Diagnosis (`eforge doctor`)** | Diagnoses repository inventory, languages, frameworks (Node/TS/JS, Python, Go, Rust), lockfile hygiene (`package-lock.json`, `pnpm-lock.yaml`, `Cargo.lock`, `go.sum`, `poetry.lock`), test suite presence, and secret exposure in **< 5 seconds** (~4-18ms on small/medium repos). |
+| **Interactive Terminal UI (`eforge ui`, `-i`)** | Launches a keyboard-driven `ratatui` terminal instrument with 4 real-time views: `[1] DAG Explorer` (fan-in/fan-out/instability), `[2] Tarjan SCC Cycles`, `[3] Blast Radius`, and `[4] Findings & Code-Frame`. Also available via `--interactive` (`-i`) on `doctor`, `scan`, and `review`. |
+| **Rich Code-Frame Diagnostics (`--codeframe`)** | Renders multi-line box-drawn source spans (`╭─[...]`, `│`, `╰──▶`), inline carets (`^`), visual call-chain hop arrows for circular dependencies, and unified diff (`-` / `+`) autofix previews directly in the terminal. |
+| **Live Architectural Radar (`eforge watch`)** | Monitors source files and leverages incremental `blake3` file-level AST caching (`.eforge/cache/file-ast-v1.json`) to re-evaluate architecture boundaries and 8-Dimension Health Score deltas in **`< 50ms`** on every file save. |
+| **Surgical Auto-Fix & Rollback (`eforge fix`)** | Generates and applies deterministic codemods (`--dry-run`, `--apply`, `--rule <id>`) with atomic transaction backups in `.eforge/tx/<tx_id>/` and instant byte-for-byte rollback (`eforge fix --rollback`). |
+| **In-Memory Refactor Simulator (`eforge simulate`)** | Simulates moving files or modules (`--move <from:to>` or `--plan <yaml>`) entirely in memory—predicting relative import rewrites, resolved/introduced Tarjan SCC cycles, and Health Score deltas before touching disk. |
+| **Temporal Evolution & Arch Blame (`eforge trend`, `eforge blame-arch`)** | Computes historical 8-Dimension Health Score evolution, architectural drift, composite hotspots (`Churn × Fan-In × Severity`), and git-blame attribution for exact commits that introduced boundary violations. |
+| **Topology & Boundary Inference (`eforge rules infer`, `eforge init --infer`)** | Analyzes module fan-in, fan-out, and instability $I = \frac{\text{FanOut}}{\text{FanIn} + \text{FanOut}}$ to classify architectural layers (`UI`, `Service`, `Domain`, `Data`, `Infra`, `Shared`), detect project archetype (`Clean / Hexagonal`, `Layered N-Tier`, `Feature-Sliced`), and synthesize custom `forbidden_imports` rules. |
+| **Smart Impacted Test Selection (`eforge review --impacted-tests`)** | Traverses reverse transitive module and file imports from a working-tree diff to select the exact subset of test files impacted by a change and outputs ready-to-run test runner commands (`vitest`, `cargo test`, `pytest`, `go test`). |
+| **Fast Project Diagnosis (`eforge doctor`)** | Diagnoses repository inventory, languages, frameworks (Node/TS/JS, Python, Go, Rust, PHP), lockfile hygiene, test suite presence, and secret exposure in **< 5 seconds** (~4–18ms on small/medium repos). |
 | **Declarative Rules & Rule Packs (`eforge rules`)** | Enforces custom architectural, quality, security, and dependency boundaries using 6 deterministic matchers (`forbidden_imports`, `required_companion`, `file_naming`, `file_size`, `regex_pattern`, `dependency_restriction`) and 4 pre-built packs (`recommended`, `strict`, `security`, `clean-architecture`). See [docs/RULES_GUIDE.md](./docs/RULES_GUIDE.md). |
-| **Architecture Graph & Cycle Detection (`eforge graph`)** | Infers logical module boundaries across TypeScript, JavaScript, Python, Go, and Rust (including `.vue`/`.svelte` SFCs and path aliases) and detects circular dependencies via **Tarjan's Strongly Connected Components (SCC)** algorithm. |
-| **Dependency Health Intelligence (`eforge dependencies`)** | Analyzes multi-ecosystem package manifests across **npm**, **PyPI**, **Go**, and **Cargo** to flag unused production dependencies (`deps/unused-dependency`), wildcard/unpinned versions (`deps/unpinned-version`), and duplicate declarations (`deps/duplicate-dependency`). |
+| **Architecture Graph & Cycle Detection (`eforge graph`)** | Infers logical module boundaries across TypeScript, JavaScript, Python, Go, Rust, and PHP (including `.vue`/`.svelte` SFCs and path aliases) and detects circular dependencies via **Tarjan's Strongly Connected Components (SCC)** algorithm. |
+| **Dependency Health Intelligence (`eforge dependencies`)** | Analyzes multi-ecosystem package manifests across **npm**, **PyPI**, **Go**, **Cargo**, and **Composer** to flag unused production dependencies (`deps/unused-dependency`), wildcard/unpinned versions (`deps/unpinned-version`), and duplicate declarations (`deps/duplicate-dependency`). |
 | **Deep Security & Vulnerability Audit (`eforge security --audit`)** | Audits dependencies across npm, PyPI, Go, Cargo, and Composer against the Open Source Vulnerabilities (OSV) database and GHSA with CVSS scores, remediation suggestions, and SARIF exports. See [docs/SECURITY_GUIDE.md](./docs/SECURITY_GUIDE.md). |
 | **Software Bill of Materials (`eforge sbom`)** | Generates NTIA-compliant **CycloneDX v1.5 JSON** and **SPDX v2.3 JSON** SBOMs with canonical Package URLs (PURL) and deterministic BLAKE3 serial numbers for polyglot codebases. |
-| **Open-Source License Compliance** | Categorizes licenses (Permissive, Weak Copyleft, Strong Copyleft, Proprietary) across all dependencies, flags viral copyleft licenses, and enforces `license.allowlist` / `license.denylist` policies. |
-| **Shannon Entropy Secret Scanner** | Identifies high-entropy API tokens ($H(X) \ge 4.5$) and verified credentials (AWS, GitHub PATs, Slack tokens, OpenAI, Anthropic) with mandatory redaction (`****REDACTED****`) and configurable path allowlists. |
-| **Git Diff & Blast-Radius Impact (`eforge review`, `eforge diff`)** | Parses unified Git diffs, traverses reverse module dependencies via BFS to separate **directly affected** vs. **transitively affected** modules, flags modified files lacking tests, and computes an explainable **Change Risk Level** (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`). |
-| **Automated Onboarding & Living Docs (`eforge onboard`, `eforge docs`)** | Generates a 5-file deterministic documentation bundle (`architecture.md`, `modules.md`, `dependencies.md`, `onboarding.md`, `risks.md`) with Mermaid `flowchart TD` diagrams in `docs/forge/`. |
-| **Project & Module Explainer (`eforge explain [target]`)** | Explains the structural role, files, outgoing imports, incoming dependents, exported symbols, and related findings for the whole repository or any specific module/file path, with optional AI synthesis (`--ai`). |
-| **Grounded AI PR Review (`eforge ai-review`)** | Combines deterministic change risk, blast radius, and rule findings with grounded AI insights classified as `Confirmed`, `Probable`, or `Suggestion` under strict deterministic guards. |
-| **AI Governance & Privacy (`eforge ai status|usage`)** | Supports local-only AI execution (Ollama, LM Studio), prompt-injection defense envelopes, in-flight secret redaction, daily USD spend ceilings, and SHA-256 caching. |
-| **Native MCP Server (`eforge mcp`)** | Exposes 7 deterministic `eforge_*` tools over JSON-RPC 2.0 stdio with `UntrustedEnvelope<T>` isolation, prompt-injection signal scanning, and dynamic rule querying (`eforge_get_rules`). |
-| **Explainable 8-Dimension Health Score** | Computes weighted scores (`0..=100`) across *Architecture (20%)*, *Security (20%)*, *Maintainability (15%)*, *Testing (15%)*, *Dependencies (10%)*, *Documentation (10%)*, *Performance (5%)*, and *CI/CD (5%)* with explicit human-readable deduction reasons. |
-| **Self-Hosted Forge Server & Team Cloud Sync (`eforge sync`, `eforge push`, `eforge pull`)** | Synchronizes repository analysis baselines to a lightweight self-hostable backend (`forge-server`) with SQLite or PostgreSQL, historical branch retention, trend analytics, and real-time HMAC-SHA256 webhooks for Slack, Discord, and custom endpoints. See [docs/SELF_HOSTING.md](./docs/SELF_HOSTING.md). |
-| **Team Intelligence & Baseline Comparison** | Multi-project portfolio switcher (`/projects`), PR baseline diff inspector (`/compare`), and delta sync across team members without vendor lock-in. |
+| **Native Closed-Loop MCP Server (`eforge mcp`)** | Exposes **11 deterministic `eforge_*` tools** over JSON-RPC 2.0 stdio—including pre-flight patch verification (`eforge_verify_patch`), refactor simulation (`eforge_simulate_refactor`), impacted test selection (`eforge_get_impacted_tests`), and graph-centrality token pruning (`eforge_get_pruned_context`)—all wrapped in `UntrustedEnvelope<T>`. |
+| **Policy-as-Code & Compliance (`eforge policy check`, `eforge audit`)** | Enforces organization-wide health scores, blast-radius thresholds, and time-bounded waivers, and exports automated **SOC 2 Type II**, **OWASP Top 10**, and **ISO/IEC 27001** compliance reports. |
+| **Self-Hosted Forge Server & Team Cloud Sync (`eforge sync`, `eforge push`, `eforge pull`)** | Synchronizes repository analysis baselines to a lightweight self-hostable backend (`forge-server`) with SQLite or PostgreSQL, historical branch retention, trend analytics, and real-time HMAC-SHA256 webhooks. See [docs/SELF_HOSTING.md](./docs/SELF_HOSTING.md). |
 
 ---
 
@@ -80,8 +80,8 @@ For detailed architectural and resolution documentation, see [docs/MULTI_LANGUAG
 No installation required—execute directly in any Node.js / JavaScript / TypeScript project:
 ```bash
 npx elcode-forge doctor
-npx elcode-forge scan
-npx elcode-forge review --fast
+npx elcode-forge scan --codeframe
+npx elcode-forge review --fast --impacted-tests
 ```
 
 ### 2. Standalone Installers (Linux, macOS & Windows)
@@ -114,17 +114,17 @@ cargo install --path crates/forge-cli
 Verify installation:
 ```bash
 eforge --version
-# ELCODE Forge (eforge) v1.0.0
+# ELCODE Forge (eforge) v1.1.0
 ```
 
 ### 4. Cryptographic Provenance & SLSA Level 3 Verification
 All pre-compiled release binaries and archives are cryptographically signed using GitHub Artifact Attestations (Sigstore) and accompanied by SLSA Build Level 3 provenance. You can verify integrity before running:
 ```bash
 # Verify with GitHub CLI (Sigstore Fulcio/Rekor)
-gh attestation verify eforge-v1.0.0-x86_64-unknown-linux-gnu.tar.gz --owner elcode-id
+gh attestation verify eforge-v1.1.0-x86_64-unknown-linux-gnu.tar.gz --owner elcode-id
 
 # Or verify with OpenSSF slsa-verifier
-slsa-verifier verify-artifact eforge-v1.0.0-x86_64-unknown-linux-gnu.tar.gz \
+slsa-verifier verify-artifact eforge-v1.1.0-x86_64-unknown-linux-gnu.tar.gz \
   --provenance-path multiple.intoto.jsonl \
   --source-uri github.com/elcode-id/elcode-forge
 ```
@@ -134,15 +134,15 @@ See the complete [Verification Guide (docs/VERIFICATION_GUIDE.md)](./docs/VERIFI
 
 ## Quick Start (The Golden Path)
 
-### 1. Initialize Configuration (`eforge init`)
-Generates a starter `eforge.config.yaml` and initializes the `.eforge/` incremental cache directory:
+### 1. Initialize Configuration & Infer Architecture (`eforge init`)
+Generates a starter `eforge.config.yaml`, initializes the `.eforge/` incremental cache directory, and optionally infers module boundary rules from your import graph:
 ```bash
-eforge init --path .
+eforge init --path . --infer
 ```
 
 ### 2. Run a Fast Diagnostic Check (`eforge doctor`)
 ```bash
-eforge doctor --path .
+eforge doctor --path . --codeframe
 ```
 ```text
 ELCODE Forge Doctor
@@ -157,8 +157,20 @@ ELCODE Forge Doctor
 Summary: 0 warning(s) in 18ms
 ```
 
-### 3. Declarative Rules Management (`eforge rules`)
+### 3. Explore Interactively or Watch in Real Time (`eforge ui` & `eforge watch`)
 ```bash
+# Launch the 4-tab interactive terminal UI (DAG, Cycles, Blast Radius, Code-Frames)
+eforge ui --path .
+
+# Start the live <50ms incremental file-save architectural radar
+eforge watch --path .
+```
+
+### 4. Declarative Rules & Topology Inference (`eforge rules`)
+```bash
+# Infer architectural archetype, layer instability, and boundary rules
+eforge rules infer --write
+
 # Initialize a starter custom rules template
 eforge rules init
 
@@ -169,10 +181,10 @@ eforge rules list
 eforge rules check .eforge/rules/custom-rules.yaml
 ```
 
-### 4. Execute a Full or Incremental Scan (`eforge scan`)
+### 5. Execute a Full or Incremental Scan (`eforge scan`)
 ```bash
-# Human-readable terminal report
-eforge scan --path .
+# Human-readable terminal report with rich box-drawn code frames
+eforge scan --path . --codeframe
 
 # Incremental scan using .eforge/metadata.json BLAKE3 hashes
 eforge scan --path . --incremental
@@ -184,16 +196,45 @@ eforge scan --path . --format sarif --output eforge.sarif
 eforge scan --path . --fail-on high --format github
 ```
 
-### 5. Focused Architecture, Dependency, Security & Explain Workflows
+### 6. Surgical Auto-Fix, Refactor Simulation & Temporal Trends (`eforge fix`, `eforge simulate`, `eforge trend`)
+```bash
+# Preview deterministic codemods with unified diff previews
+eforge fix --dry-run
+
+# Apply fixes atomically with backup in .eforge/tx/<tx_id>/ and rollback if needed
+eforge fix --apply
+eforge fix --rollback
+
+# Simulate moving a module in memory before touching disk
+eforge simulate --move src/db/client.ts:src/infra/db/client.ts
+
+# Inspect historical 8-Dimension Health Score drift & blame architectural violations
+eforge trend --commits 20
+eforge blame-arch
+```
+
+### 7. Review Working-Tree Changes & Smart Impacted Tests (`eforge review` & `eforge diff`)
+```bash
+# Fast diff-scoped review with exact impacted test selection
+eforge review --fast --impacted-tests --path .
+
+# Inspect direct and transitive module blast radius
+eforge diff --path . --format terminal
+```
+
+### 8. Focused Architecture, Dependency, Security, SBOM & Explain Workflows
 ```bash
 # Export Mermaid architecture graph
 eforge graph --path . --format markdown
 
-# Inspect npm/pnpm dependency health
+# Inspect npm/pnpm/Cargo/Go/PyPI dependency health
 eforge dependencies --path . --format terminal
 
-# Run dedicated secret & unsafe pattern security scan
-eforge security --path . --format sarif
+# Run dedicated secret, unsafe pattern & OSV vulnerability scan
+eforge security --audit --path . --format sarif
+
+# Export CycloneDX v1.5 or SPDX v2.3 Software Bill of Materials
+eforge sbom --spec cyclonedx --output sbom.cdx.json
 
 # Explain a specific module's files, imports, dependents, exports, and findings
 eforge explain src/services --path fixtures/next-app --format markdown
@@ -202,32 +243,16 @@ eforge explain src/services --path fixtures/next-app --format markdown
 eforge onboard --path .
 ```
 
-### 6. Review Working-Tree Changes & Blast Radius (`eforge review` & `eforge diff`)
-```bash
-# Fast diff-scoped review in Markdown format (ideal for PR comments)
-eforge review --fast --path . --format markdown
-
-# Inspect direct and transitive module blast radius
-eforge diff --path . --format terminal
-```
-
-### 7. Native Git Hooks & Staged-Diff Scanner (`eforge hook`)
+### 9. Native Git Hooks & Staged-Diff Scanner (`eforge hook`)
 Install zero-dependency pre-commit and pre-push hooks that review staged changes in `< 200ms`:
 ```bash
-# Install pre-commit and pre-push hooks into .git/hooks/
 eforge hook install
-
-# Check installation and backup status
 eforge hook status
-
-# Manually trigger pre-commit evaluation against staged files
 eforge hook run pre-commit
-
-# Uninstall hooks cleanly (restores pre-existing .forge-backup hooks)
 eforge hook uninstall
 ```
 
-### 8. AI-Assisted Explanations & Grounded PR Review
+### 10. AI-Assisted Explanations & Grounded PR Review
 ```bash
 # Explain architecture or modules with AI-synthesized, grounded answers
 eforge explain src/services --ai
@@ -243,57 +268,59 @@ eforge ai status --ping
 eforge ai usage
 ```
 
-### 9. Team Cloud Synchronization (`eforge push`, `eforge pull`, `eforge sync`)
+### 11. Team Cloud Synchronization (`eforge push`, `eforge pull`, `eforge sync`)
 ```bash
-# Authenticate with team or self-hosted Forge Server
 eforge login --server http://forge.internal:8080 --token YOUR_API_KEY
-
-# Push current analysis snapshot as baseline
 eforge push
-
-# Pull remote baseline to local cache
 eforge pull
-
-# Run bidirectional sync pipeline and inspect delta diff
 eforge sync
-
-# Check active server session
 eforge auth status
 ```
 
 ---
 
-## CLI Command Reference (23 Subcommands)
+## CLI Command Reference (34 Commands / 41 Subcommands)
 
 | Command | Key Flags | Description |
 | :--- | :--- | :--- |
-| `eforge init` | `--path <DIR>`, `--force` | Initializes `eforge.config.yaml` and `.eforge/` cache directory. |
-| `eforge doctor` | `--path <DIR>`, `--format <FMT>` | Runs a `< 5s` diagnostic check across inventory, manifest hygiene, tests, rules, and secrets. |
+| `eforge init` | `--path <DIR>`, `--infer` | Initializes `eforge.config.yaml` and `.eforge/`, optionally inferring custom boundary rules (`--infer`). |
+| `eforge doctor` | `--path <DIR>`, `-i, --interactive`, `--codeframe`, `--format <FMT>` | Runs a `< 5s` diagnostic check across inventory, manifest hygiene, tests, rules, and secrets. |
+| `eforge scan` | `--path <DIR>`, `--incremental`, `--full`, `-i, --interactive`, `--codeframe`, `--fail-on <SEV>`, `--format <FMT>`, `-o <FILE>` | Runs full or incremental architecture, dependency, rule, security, and 8-dimension health analysis. |
+| `eforge ui` | `--path <DIR>`, `--tab <1..=4>` | Launches the interactive `ratatui` terminal instrument (DAG Explorer, Tarjan SCC Cycles, Blast Radius, Findings & Code-Frame). |
+| `eforge watch` | `--path <DIR>`, `--debounce-ms <MS>`, `--once`, `--format <FMT>` | Live incremental architectural radar using `.eforge/cache/file-ast-v1.json` (`< 50ms` re-evaluation on file save). |
+| `eforge fix` | `--path <DIR>`, `--dry-run`, `--apply`, `--rule <ID>`, `--rollback [TX_ID]`, `--format <FMT>` | Surgical deterministic auto-fix engine with transactional backup in `.eforge/tx/<tx_id>/` and rollback. |
+| `eforge simulate` | `--path <DIR>`, `--move <FROM:TO>`, `--plan <YAML>`, `--format <FMT>` | Simulates file/module moves in memory and reports import rewrites, cycle changes, and health delta. |
+| `eforge trend` | `--path <DIR>`, `--commits <N>`, `--format <FMT>` | Evaluates temporal 8-Dimension Health Score evolution, architectural drift, and composite hotspots (`Churn × Fan-In × Severity`). |
+| `eforge blame-arch` | `--path <DIR>`, `--format <FMT>` | Attributes architectural and circular-dependency violations to the introducing Git commit and author. |
+| `eforge review` | `--path <DIR>`, `--base <REF>`, `--head <REF>`, `--fast`, `--impacted-tests`, `-i, --interactive`, `--fail-on <SEV>`, `--format <FMT>` | Computes change risk (`Low|Medium|High|Critical`), blast radius, findings, and smart impacted test selection. |
+| `eforge diff` | `--path <DIR>`, `--base <REF>`, `--head <REF>`, `--remote`, `--format <FMT>` | Parses working-tree or range diff (or `--remote` baseline) and reports direct & transitive module impact. |
 | `eforge rules [list]` | `--path <DIR>`, `--category <CAT>`, `--enabled-only`, `--format <FMT>` | Lists all active rules, categories, severities, and origin packs. |
-| `eforge rules check` | `[PATH]`, `--path <DIR>`, `--format <FMT>` | Validates rule syntax against schema with zero panics. |
-| `eforge rules init` | `--path <DIR>`, `--force` | Generates starter `.eforge/rules/custom-rules.yaml` template with examples for all 6 matchers. |
-| `eforge scan` | `--path <DIR>`, `--incremental`, `--full`, `--fail-on <SEV>`, `--format <FMT>`, `-o <FILE>` | Runs full or incremental architecture, dependency, rule, security, and 8-dimension health analysis. |
-| `eforge review` | `--path <DIR>`, `--fast`, `--changed`, `--fail-on <SEV>`, `--format <FMT>` | Computes change risk (`Low|Medium|High|Critical`), blast radius, and findings for modified files. |
-| `eforge diff` | `--path <DIR>`, `--format <FMT>` | Parses working-tree unified diff (`git diff HEAD`) and reports direct & transitive module impact. |
-| `eforge dependencies` | `--path <DIR>`, `--format <FMT>` | Inspects `package.json` / lockfile dependencies, unused packages, and version hygiene. |
-| `eforge security` | `--path <DIR>`, `--format <FMT>` | Runs focused secret detection and unsafe JS/TS/SFC pattern analysis with policy exit code evaluation. |
+| `eforge rules check` | `[RULE_PATH]`, `--path <DIR>`, `--format <FMT>` | Validates rule syntax against schema with zero panics. |
+| `eforge rules init` | `--path <DIR>`, `--force`, `--format <FMT>` | Generates starter `.eforge/rules/custom-rules.yaml` template with examples for all 6 matchers. |
+| `eforge rules infer` | `--path <DIR>`, `--write`, `--format <FMT>` | Infers architectural archetype, module layers, and `forbidden_imports` boundary rules from the import graph. |
+| `eforge policy check` | `--path <DIR>`, `--policy <FILE>`, `--fail-on <SEV>`, `--format <FMT>` | Evaluates organization Policy-as-Code constraints and time-bounded waivers. |
+| `eforge audit` | `--path <DIR>`, `--standard <soc2\|owasp\|iso27001>`, `--format <FMT>`, `-o <FILE>` | Generates automated SOC 2 Type II, OWASP Top 10, or ISO/IEC 27001 compliance audit reports. |
+| `eforge dependencies` | `--path <DIR>`, `--format <FMT>` | Inspects multi-ecosystem package manifests, unused packages, and version hygiene. |
+| `eforge security` | `--path <DIR>`, `--audit`, `--offline`, `--fail-on <SEV>`, `--format <FMT>` | Runs secret detection, unsafe pattern analysis, license check, and OSV vulnerability audit (`--audit`). |
+| `eforge sbom` | `--path <DIR>`, `--spec <cyclonedx\|spdx>`, `-o <FILE>` | Exports CycloneDX v1.5 or SPDX v2.3 JSON Software Bill of Materials. |
 | `eforge graph` | `--path <DIR>`, `--format <FMT>` | Exports the module architecture graph (`terminal`, `json`, or Mermaid `flowchart TD` in `markdown`). |
 | `eforge onboard` | `--path <DIR>`, `-o <OUT_DIR>` | Generates `architecture.md`, `modules.md`, `dependencies.md`, `onboarding.md`, and `risks.md`. |
 | `eforge docs` | `--path <DIR>`, `-o <OUT_DIR>` | Alias for `eforge onboard` to regenerate living repository documentation (`docs/forge/`). |
-| `eforge explain [target]` | `[TARGET]`, `--path <DIR>`, `--ai`, `--dry-run`, `--format <FMT>` | Explains files, imports, dependents, symbols, and findings; synthesizes answers with `--ai`. |
-| `eforge ai-review` | `--base <REF>`, `--fast`, `--fail-on <SEV>`, `--dry-run`, `--no-cache` | Grounded PR review combining blast radius with `Confirmed`, `Probable`, and `Suggestion` items. |
-| `eforge ai status` | `--ping`, `--path <DIR>` | Reports AI configuration, selected provider, model, and checks live endpoint latency with `--ping`. |
+| `eforge explain [target]` | `[TARGET]`, `--path <DIR>`, `--ai`, `--dry-run`, `--no-cache`, `--format <FMT>` | Explains files, imports, dependents, symbols, and findings; synthesizes grounded answers with `--ai`. |
+| `eforge ai-review` | `--base <REF>`, `--head <REF>`, `--fast`, `--fail-on <SEV>`, `--dry-run`, `--no-cache`, `--format <FMT>` | Grounded PR review combining blast radius with `Confirmed`, `Probable`, and `Suggestion` items. |
+| `eforge ai status` | `--ping`, `--path <DIR>`, `--format <FMT>` | Reports AI configuration, selected provider, model, and checks live endpoint latency with `--ping`. |
 | `eforge ai usage` | `--path <DIR>`, `--format <FMT>` | Reports daily token consumption, accumulated USD cost, and daily budget ceiling. |
-| `eforge login` | `--server <URL>`, `--token <KEY>` | Stores remote server endpoint and API token in `~/.eforge/credentials.yaml`. |
-| `eforge push` | `--path <DIR>`, `--server <URL>`, `--branch <NAME>`, `--format <FMT>` | Uploads local repository analysis snapshot to Forge Server. |
-| `eforge pull` | `--path <DIR>`, `--server <URL>`, `--branch <NAME>`, `--format <FMT>` | Fetches and caches remote baseline from Forge Server. |
-| `eforge sync` | `--path <DIR>`, `--server <URL>`, `--branch <NAME>`, `--format <FMT>` | Executes bidirectional delta sync against remote baseline and caches local state. |
-| `eforge auth` | `login`, `logout`, `status` | Manages authentication sessions and masked credentials. |
-| `eforge report` | `--path <DIR>`, `--output <FILE>`, `--save-history`, `--no-git` | Generates a deterministic `ReportBundle` JSON for dashboard consumption and history snapshots. |
-| `eforge serve` | `--port <PORT>`, `--path <DIR>`, `--static-dir <DIR>` | Serves a read-only, loopback-restricted HTTP API (`/api/v1/health`, `/api/v1/bundle`, `/api/v1/history`). |
-| `eforge schema` | `--out-dir <DIR>` | Exports canonical JSON Schemas for `ReportBundle` and IR types. |
-| `eforge mcp` | `--path <DIR>` | Starts the native Model Context Protocol (MCP) JSON-RPC 2.0 stdio server (`eforge_*` tools). |
-| `eforge hook` | `install`, `run <pre-commit|pre-push>`, `uninstall`, `status` | Manages native Git hooks with non-destructive backup preservation and sub-200ms staged-diff scanning. |
+| `eforge login` | `--server <URL>`, `--token <KEY>`, `--username <USER>`, `--no-validate` | Stores remote server endpoint and API token in `~/.eforge/credentials.yaml`. |
+| `eforge logout` | `--server <URL>` | Removes stored credentials for the specified or default remote server. |
+| `eforge auth status` | `--server <URL>`, `--format <FMT>` | Displays active server session and masked credentials. |
+| `eforge push` | `--path <DIR>`, `--server <URL>`, `--token <KEY>`, `--branch <NAME>`, `--format <FMT>` | Uploads local repository analysis snapshot to Forge Server. |
+| `eforge pull` | `--path <DIR>`, `--server <URL>`, `--token <KEY>`, `--branch <NAME>`, `--format <FMT>` | Fetches and caches remote baseline from Forge Server into `.eforge/baseline.json`. |
+| `eforge sync` | `--path <DIR>`, `--server <URL>`, `--token <KEY>`, `--branch <NAME>`, `--fail-on <SEV>`, `--format <FMT>` | Executes bidirectional delta sync against remote baseline and evaluates policy thresholds. |
+| `eforge report` | `--path <DIR>`, `--output <FILE>`, `--hotspots-top-n <N>`, `--save-history`, `--no-git` | Generates a deterministic `ReportBundle` JSON or standalone HTML (`--output report.html`). |
+| `eforge serve` | `--port <PORT>`, `--path <DIR>`, `--static-dir <DIR>`, `--cors-origin <ORIGIN>` | Serves a read-only, loopback-restricted HTTP API (`/api/v1/health`, `/api/v1/bundle`, `/api/v1/history`). |
+| `eforge schema` | `--output <FILE>` | Exports canonical JSON Schema for `ReportBundle` and IR types. |
+| `eforge mcp` | `--path <DIR>` | Starts the native Model Context Protocol (MCP) JSON-RPC 2.0 stdio server (11 `eforge_*` tools). |
+| `eforge hook` | `install`, `run <pre-commit\|pre-push>`, `uninstall`, `status` | Manages native Git hooks with non-destructive backup preservation and sub-200ms staged-diff scanning. |
 
 **Supported `--format` values:** `terminal` (default), `json`, `markdown`, `sarif` (SARIF v2.1.0), `github` (GitHub Actions annotations + Markdown).
 
@@ -301,46 +328,40 @@ eforge auth status
 
 ## Web Intelligence Dashboard (`apps/dashboard`)
 
-ELCODE Forge provides a local-first, zero-telemetry Web Intelligence Dashboard built with SvelteKit, TypeScript, and Tailwind CSS. The dashboard operates in two complementary modes:
+ELCODE Forge provides a local-first, zero-telemetry Web Intelligence Dashboard built with SvelteKit, TypeScript, and Tailwind CSS. The dashboard operates in three complementary modes:
 
 ### 1. Static Standalone Mode
 Generate a self-contained report bundle and load it offline into the dashboard SPA:
 ```bash
-# Export the deterministic intelligence bundle
 eforge report --path . --output report.json
-
-# Open the dashboard SPA and load the JSON bundle
 ```
 
 ### 2. Live Interactive Mode
 Run the local read-only daemon for real-time inspection, live auto-updates, and historical commit trends tracking:
 ```bash
-# Save historical commit snapshots as you work
 eforge report --save-history
-
-# Start the read-only daemon (strictly bound to 127.0.0.1)
 eforge serve --port 7878
 ```
 Connect your dashboard to `http://127.0.0.1:7878` to view:
 - **Overview:** 8-dimension health score ring, dimensions breakdown, and repository inventory.
-- **Rules Catalog (`/rules`):** Active rule inventory with category/pack filtering, violation counters, and deep links to findings.
-- **Architecture:** Interactive module dependency canvas (Cytoscape + Dagre) with circular-dependency highlighting (`#ef4444`) and deep module inspector (`eforge explain` parity). Includes a keyboard-accessible module table as an accessible non-visual alternative.
-- **Findings:** URL-synchronized filtering by severity, confidence, rule ID prefix, and file path with hostile plain-text evidence envelopes and rule definition deep links.
-- **Security:** Redacted credential leakage detector, unsafe JS/TS pattern analysis, and mitigation steps.
-- **Dependencies:** Direct vs dev packages, unpinned version warnings, and unused package flags.
-- **Changes & Blast Radius:** Git diff change risk, direct vs transitive module propagation, and churn hotspots.
-- **Trends & Evolution:** Historical health score trajectories, finding severity sparklines, and commit snapshot records.
+- **Governance (`/governance`):** Visual Policy-as-Code editor, constraint meters, live gate assertion evaluation, and active/expired waiver audit table.
+- **Architecture (`/architecture`):** Interactive module dependency canvas (Cytoscape + Dagre) with circular-dependency highlighting (`#ef4444`) and deep module inspector (`eforge explain` parity).
+- **Findings (`/findings`):** URL-synchronized filtering by severity, confidence, rule ID prefix, and file path with hostile plain-text evidence envelopes.
+- **Security (`/security`):** Redacted credential leakage detector, unsafe JS/TS pattern analysis, and mitigation steps.
+- **Dependencies (`/dependencies`):** Direct vs dev packages, unpinned version warnings, and unused package flags.
+- **Changes & Blast Radius (`/changes`):** Git diff change risk, direct vs transitive module propagation, and churn hotspots.
+- **Trends & Evolution (`/trends`):** Historical health score trajectories, finding severity sparklines, and commit snapshot records.
 
 ### 3. Team Cloud Mode
 Connect the dashboard directly to a central `forge-server` instance for team and studio intelligence:
-- **Project Switcher Portfolio Grid (`/projects`):** Monitor health trends, latest commits, finding distributions, and active branches across all repositories in your organization.
+- **Project Switcher Portfolio Grid (`/projects`):** Monitor health trends, latest commits, finding distributions, cross-repo vulnerability matrix, and audit event streams across all repositories in your organization.
 - **Pull Request Baseline Diff Inspector (`/compare`):** Side-by-side architectural diff of candidate branches against production baselines, highlighting introduced/resolved findings and regression risks.
 
 ---
 
 ## Native MCP Server (`eforge mcp`)
 
-ELCODE Forge includes a built-in, zero-configuration **Model Context Protocol (MCP)** server over JSON-RPC 2.0 stdio (`protocolVersion: "2024-11-05"`), enabling AI coding assistants (Claude Code, Claude Desktop, Cursor, Windsurf, Google Antigravity) to query deterministic codebase intelligence without hallucinating architecture boundaries.
+ELCODE Forge includes a built-in, zero-configuration **Model Context Protocol (MCP)** server over JSON-RPC 2.0 stdio (`protocolVersion: "2024-11-05"`), enabling AI coding assistants (Claude Code, Claude Desktop, Cursor, Windsurf, Google Antigravity) to query deterministic codebase intelligence and run **closed-loop pre-flight verification** before writing code to disk.
 
 ### MCP Client Configuration
 Add `eforge` to your MCP client configuration (`mcp_config.json` / `.cursor/mcp.json` / `claude_desktop_config.json`):
@@ -356,7 +377,7 @@ Add `eforge` to your MCP client configuration (`mcp_config.json` / `.cursor/mcp.
 }
 ```
 
-### Exposed `eforge_*` Tools
+### Exposed `eforge_*` Tools (11 Tools)
 
 | Tool Name | Arguments | Description |
 | :--- | :--- | :--- |
@@ -367,6 +388,10 @@ Add `eforge` to your MCP client configuration (`mcp_config.json` / `.cursor/mcp.
 | `eforge_get_change_impact` | `{ "diff_text"?: string }` | Computes direct/transitive module blast radius and change risk score for a unified diff or working tree. |
 | `eforge_explain_module` | `{ "target": string }` | Explains matched modules, files, inbound dependents, outbound dependencies, and findings for `target`. |
 | `eforge_get_rules` | `{ "category"?: string, "enabled_only"?: boolean }` | Returns active rule definitions, severity, description, remediation, and source pack. |
+| `eforge_verify_patch` | `{ "proposed_files": [{ "path": string, "content": string }] }` | **Closed-Loop Pre-Flight Gate:** Overlays proposed file edits in memory (zero disk writes) and checks whether the patch introduces new rule violations, secrets, or Tarjan SCC circular dependencies (`passed: bool`). |
+| `eforge_simulate_refactor` | `{ "moves": [{ "from": string, "to": string }] }` | **In-Memory Refactor Simulator:** Simulates moving files/modules in memory and returns required relative import rewrites, resolved/introduced cycles, and health score delta. |
+| `eforge_get_impacted_tests` | `{ "diff_text"?: string }` | **Smart Test Selector:** Maps a unified diff or working-tree changes across the reverse dependency graph to the exact test files and runner commands (`vitest`, `cargo test`, `pytest`, `go test`) that must run. |
+| `eforge_get_pruned_context` | `{ "targets": string[], "token_budget"?: number, "max_hops"?: number }` | **Graph-Centrality Context Pruner:** Builds a token-budgeted context pack around `targets` within `max_hops`, ranking neighbor modules by centrality (`FanIn + FanOut`) to maximize architectural signal per token. |
 
 ### Prompt-Injection Defense (`UntrustedEnvelope<T>`)
 Every MCP tool response is wrapped in a deterministic `UntrustedEnvelope<T>` (`trust_level: "untrusted_repository_data"`) that instructs the host LLM to treat repository text strictly as passive data and scans for prompt-injection signals (`override_previous_instructions`, `disregard_instructions`, `system_prompt_reference`, `role_hijack_attempt`, `chatml_delimiter_injection`, `command_execution_directive`, `exfiltration_directive`).
@@ -397,7 +422,7 @@ ELCODE Forge adheres to a strict principle: **Generative AI is an advisory layer
 - **Untrusted Envelopes & Prompt Injection Defense:** All repository code, AST snippets, and git diffs are strictly wrapped in `<untrusted_repository_data>` envelopes.
 - **Secret Redaction:** High-entropy credentials, private keys, and API tokens are detected and redacted (`[REDACTED_SECRET]`) prior to prompt construction.
 - **Deterministic Grounding Guard:** The `apply_deterministic_guard` engine cross-verifies all AI review items against deterministic scan findings. `Confirmed` items require verifiable finding IDs, and hallucinated paths are dropped.
-- **Cost Controls:** Pre-call context inspection (`--dry-run`), daily USD expenditure ceilings (`budget_daily_usd`), and deterministic SHA-256 prompt caching (`.eforge/ai-cache/`).
+- **Cost Controls:** Pre-call context inspection (`--dry-run`), daily USD expenditure ceilings (`budget_daily_usd`), and deterministic BLAKE3 prompt caching (`.eforge/ai-cache/`).
 
 For full details, read [docs/AI_AND_PRIVACY.md](./docs/AI_AND_PRIVACY.md).
 
@@ -434,6 +459,7 @@ rules:
     - clean-architecture
   custom_packs:
     - .eforge/rules/custom-arch.yaml
+    - .eforge/rules/inferred-architecture.yaml
 
   # Optional per-rule overrides
   quality/max-file-lines:
@@ -462,7 +488,7 @@ Designed for predictable CI/CD gates:
 | `1` | `ExitCode::FindingsAboveThreshold` | Architectural, quality, or dependency findings met or exceeded the threshold. |
 | `2` | `ExitCode::ConfigurationError` | Invalid CLI arguments or malformed `eforge.config.yaml`. |
 | `3` | `ExitCode::ExecutionError` | Unexpected I/O, filesystem, or runtime error. |
-| `4` | `ExitCode::SecurityPolicyFailure` | Security or hardcoded-secret finding met or exceeded the threshold. |
+| `4` | `ExitCode::SecurityPolicyFailure` | Security, compliance, policy, or hardcoded-secret finding met or exceeded the threshold. |
 
 ---
 
@@ -478,7 +504,7 @@ docker compose up -d
 kubectl apply -f deploy/k8s/
 ```
 
-- **Features:** Multi-branch history retention, delta sync engine (`eforge sync`), project portfolio registry, and real-time HMAC-SHA256 webhooks for Slack, Discord, and custom endpoints.
+- **Features:** Multi-branch history retention, delta sync engine (`eforge sync`), organization portfolio rollups, RBAC & JWKS auth, append-only audit logs, and real-time HMAC-SHA256 webhooks for Slack, Discord, and custom endpoints.
 - **Documentation:** Complete setup instructions, environment variables, PostgreSQL tuning, and security practices are detailed in [docs/SELF_HOSTING.md](./docs/SELF_HOSTING.md).
 
 ---
@@ -501,6 +527,7 @@ flowchart TD
     MCP --> GIT
     MCP --> RULES
     MCP --> SECURITY
+    MCP --> AI
     MCP --> CORE
     AI --> CORE
     ANALYZER --> CORE
@@ -509,15 +536,15 @@ flowchart TD
     SECURITY --> CORE
 ```
 
-- **`crates/forge-core`** — Leaf crate: Normalized IR (`Repository`, `FileNode`, `Module`, `Dependency`, `Finding`, `HealthScore`), `ForgeConfig` & `RuleOverrideConfig` loader, canonical `path_guard`, `.eforge/` BLAKE3 cache, and 8-dimension scoring engine.
-- **`crates/forge-analyzer`** — Gitignore-aware repository scanner, language/framework detector, `package.json` / `package-lock.json` / `pnpm-lock.yaml` dependency analyzer, and TS/JS + `.vue`/`.svelte` SFC import graph builder with Tarjan SCC cycle detection.
-- **`crates/forge-git`** — Unified diff parser, commit hotspot analyzer, and reverse-import BFS blast-radius calculator.
-- **`crates/forge-rules`** — Declarative custom rules engine, 6 deterministic matchers, 4 pre-built rule packs (`recommended`, `strict`, `security`, `clean-architecture`), and config extends hierarchy.
-- **`crates/forge-security`** — Redacted secret scanner and unsafe JS/TS/SFC pattern detector.
-- **`crates/forge-ai`** — Provider abstraction (`openai`, `anthropic`, `gemini`, `openai-compatible`), context pack builder, secret redaction, token budgeting, and response caching.
-- **`crates/forge-mcp`** — Native Model Context Protocol (MCP) JSON-RPC 2.0 stdio server (`eforge_*` tool namespace) and `UntrustedEnvelope<T>` prompt-injection boundary.
-- **`crates/forge-cli`** — CLI entrypoint (`eforge` & `elcode-forge`), 23 subcommands, and report formatters (`terminal`, `json`, `markdown`, `sarif`, `github`).
-- **`crates/forge-server`** — Lightweight self-hostable synchronization backend with SQLite and PostgreSQL support, historical branch retention, trend analytics, and real-time HMAC-SHA256 webhooks.
+- **`crates/forge-core`** — Leaf crate: Normalized IR (`Repository`, `FileNode`, `Module`, `Dependency`, `Finding`, `HealthScore`, `FileImportEdge`, `TextEdit`, `FixSuggestion`, `CallChainHop`), `ForgeConfig` & `PolicyDocument` loader, canonical `path_guard`, `.eforge/` BLAKE3 cache, and 8-dimension scoring engine.
+- **`crates/forge-analyzer`** — Gitignore-aware repository scanner, language/framework detector, multi-ecosystem dependency analyzer, polyglot import graph builder with Tarjan SCC cycle detection, incremental file-level AST cache (`incremental`), topology/layer inference (`inference`), and in-memory refactor simulator (`simulate`).
+- **`crates/forge-git`** — Unified diff parser, commit hotspot analyzer, reverse-import BFS blast-radius calculator, smart impacted test selector (`test_selector`), and temporal health trend & architectural blame analyzer (`temporal`).
+- **`crates/forge-rules`** — Declarative custom rules engine, 6 deterministic matchers, 4 pre-built rule packs (`recommended`, `strict`, `security`, `clean-architecture`), Policy-as-Code gate evaluator (`policy_engine`), surgical codemod planner (`autofix`), and transactional rollback manager (`tx`).
+- **`crates/forge-security`** — Redacted secret scanner, unsafe pattern detector, OSV vulnerability client, CycloneDX/SPDX SBOM generator, and SOC2/OWASP/ISO27001 compliance audit evaluator.
+- **`crates/forge-ai`** — Provider abstraction (`openai`, `anthropic`, `gemini`, `openai-compatible`), deterministic context pack builder, graph-centrality token pruner (`build_pruned_centrality_context`), secret redaction, token budgeting, and response caching.
+- **`crates/forge-mcp`** — Native Model Context Protocol (MCP) JSON-RPC 2.0 stdio server (11 `eforge_*` tools) and `UntrustedEnvelope<T>` prompt-injection boundary.
+- **`crates/forge-cli`** — CLI entrypoint (`eforge` & `elcode-forge`), 34 top-level commands (41 total with subcommands), interactive `ratatui` TUI (`ui`), rich `--codeframe` diagnostics (`codeframe`), and 5 report formatters (`terminal`, `json`, `markdown`, `sarif`, `github`).
+- **`crates/forge-server`** — Lightweight self-hostable synchronization & enterprise governance backend with SQLite and PostgreSQL support, organization portfolio rollups, RBAC/JWKS auth, and HMAC-SHA256 webhooks.
 - **`integrations/github-action`** — Composite GitHub Action (`elcode-id/forge-action`).
 - **`fixtures/`** — Curated deterministic test repositories (`fixtures/next-app`, `fixtures/vulnerable-ts-app`, `fixtures/ai-eval`, `fixtures/custom-rules-app`).
 
@@ -536,7 +563,7 @@ In alignment with ELCODE Principle `02` (*"Code quality is visible in product be
 | **CI — Forge Server & Cloud Sync** | [`.github/workflows/ci-server.yml`](./.github/workflows/ci-server.yml) | Automated SQLite backend tests, PostgreSQL container service integration tests, and CLI end-to-end sync verification. |
 | **CI — Self-Dogfooding (`eforge`)** | [`.github/workflows/eforge-dogfood.yml`](./.github/workflows/eforge-dogfood.yml) | Runs `eforge doctor`, `eforge scan --fail-on high`, `eforge review --fast`, `eforge explain --ai --dry-run`, `eforge ai-review --dry-run`, and `eforge report` against this repository itself. |
 | **CI — Security & Supply-Chain Durability** | [`.github/workflows/security-durability.yml`](./.github/workflows/security-durability.yml) | Runs `cargo audit` against the RustSec Advisory Database on `Cargo.lock` and executes `eforge security --format sarif`. |
-| **Release — Cross-Platform Binaries** | [`.github/workflows/release-binaries.yml`](./.github/workflows/release-binaries.yml) | Builds `--locked` release binaries (`eforge` & `elcode-forge`) for Linux (`x86_64`), macOS (`aarch64`), and Windows (`x86_64`) with `SHA256SUMS.txt` verification. |
+| **Release — Cross-Platform Binaries** | [`.github/workflows/release-binaries.yml`](./.github/workflows/release-binaries.yml) | Builds `--locked` release binaries (`eforge` & `elcode-forge`) for Linux (`x86_64`), macOS (`aarch64`), and Windows (`x86_64`) with `SHA256SUMS.txt` and SLSA Level 3 provenance verification. |
 
 ### Mandatory Pre-Merge Protocol
 
@@ -549,7 +576,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace --lib --bins
 
 # 2. Local Web & Schema Drift Gate
-cargo run --bin eforge -- schema --out-dir packages/forge-schema/schemas
+cargo run --bin eforge -- schema --output packages/forge-schema/schemas/report-bundle.schema.json
 git diff --exit-code packages/forge-schema/schemas
 pnpm run lint
 pnpm run check

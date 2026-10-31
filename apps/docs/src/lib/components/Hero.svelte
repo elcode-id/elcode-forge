@@ -29,7 +29,7 @@
       name: "Terminal — eforge doctor",
       lines: [
         { tokens: [{ text: "$ ", cls: "token punctuation" }, { text: "eforge", cls: "token function" }, { text: " doctor --format terminal", cls: "token keyword" }] },
-        { tokens: [{ text: "⚡ ELCODE Forge v1.0.0 GA — Polyglot Codebase Intelligence", cls: "token comment" }] },
+        { tokens: [{ text: "⚡ ELCODE Forge v1.1.0 — Polyglot Codebase Intelligence", cls: "token comment" }] },
         { tokens: [{ text: "✓ ", cls: "token unit" }, { text: "Languages: ", cls: "token keyword" }, { text: "Rust, TypeScript, Python (312 files)", cls: "token string" }] },
         { tokens: [{ text: "✓ ", cls: "token unit" }, { text: "Architecture DAG: ", cls: "token keyword" }, { text: "0 circular dependencies (Tarjan SCC)", cls: "token string" }] },
         { tokens: [{ text: "✓ ", cls: "token unit" }, { text: "Security & OSV: ", cls: "token keyword" }, { text: "0 leaked secrets, 0 critical CVEs", cls: "token string" }] },

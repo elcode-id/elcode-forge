@@ -62,6 +62,8 @@
         { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown, sarif, github", default: "terminal" },
         { flag: "--full", desc: "Force a full repository scan bypassing cache", default: "false" },
         { flag: "--incremental", desc: "Use .eforge/metadata.json BLAKE3 content hashes to inspect changed files", default: "false" },
+        { flag: "-i, --interactive", desc: "Launch interactive terminal UI mode", default: "false" },
+        { flag: "--codeframe", desc: "Render rich box-drawn multi-line source code frames", default: "false" },
         { flag: "--fail-on <SEVERITY>", desc: "Minimum finding severity to return non-zero exit code (critical|high|medium|low|info)" },
         { flag: "-o, --output <PATH>", desc: "Optional file path to write the rendered report" },
       ],
@@ -87,6 +89,8 @@
         { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown, sarif, github", default: "terminal" },
         { flag: "--fast", desc: "Run fast diff-scoped mode", default: "false" },
         { flag: "--changed", desc: "Scope analysis strictly to changed files in working tree", default: "false" },
+        { flag: "-i, --interactive", desc: "Launch interactive terminal UI mode", default: "false" },
+        { flag: "--impacted-tests", desc: "Select exact impacted test files and synthesize runner commands", default: "false" },
         { flag: "--fail-on <SEVERITY>", desc: "Minimum finding severity to return non-zero exit code (critical|high|medium|low|info)" },
       ],
       examples: [
@@ -337,6 +341,139 @@
       ],
     },
     {
+      name: "eforge ui",
+      category: "Architecture",
+      summary: "Launch the real-time interactive terminal UI (ratatui + crossterm) with 4 tabs: DAG Explorer, Tarjan SCC Cycles, Blast Radius, and Findings & Code-Frames.",
+      usage: "eforge ui [OPTIONS]",
+      flags: [
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--tab <1..=4>", desc: "Initial active tab index (1: DAG, 2: Cycles, 3: Blast Radius, 4: Findings)", default: "1" },
+      ],
+      examples: [
+        "eforge ui",
+        "eforge ui --tab 2",
+      ],
+      exitCodes: [
+        { code: "0", desc: "TUI exited cleanly on 'q' or Esc" },
+      ],
+    },
+    {
+      name: "eforge watch",
+      category: "Architecture",
+      summary: "Live incremental architectural radar leveraging .eforge/cache/file-ast-v1.json to re-evaluate health score deltas in < 50ms on file save.",
+      usage: "eforge watch [OPTIONS]",
+      flags: [
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--debounce-ms <MS>", desc: "Debounce delay before triggering re-analysis", default: "150" },
+        { flag: "--once", desc: "Execute a single watch cycle and exit (ideal for CI and scripts)", default: "false" },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown", default: "terminal" },
+      ],
+      examples: [
+        "eforge watch",
+        "eforge watch --debounce-ms 200",
+        "eforge watch --once --format json",
+      ],
+      exitCodes: [
+        { code: "0", desc: "Watch session terminated or single cycle clean" },
+      ],
+    },
+    {
+      name: "eforge fix",
+      category: "Governance",
+      summary: "Surgical deterministic auto-fix engine generating transactional codemods with atomic backup in .eforge/tx/<tx_id>/ and rollback capability.",
+      usage: "eforge fix [OPTIONS]",
+      flags: [
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--dry-run", desc: "Preview proposed codemods and unified diffs without modifying files", default: "true" },
+        { flag: "--apply", desc: "Execute codemods with transactional backup in .eforge/tx/<tx_id>/", default: "false" },
+        { flag: "--rule <ID>", desc: "Filter fixes strictly to a specific rule ID prefix" },
+        { flag: "--rollback [TX_ID]", desc: "Rollback the latest transaction or a specific transaction ID" },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown", default: "terminal" },
+      ],
+      examples: [
+        "eforge fix --dry-run",
+        "eforge fix --apply",
+        "eforge fix --apply --rule quality/max-file-lines",
+        "eforge fix --rollback",
+      ],
+      exitCodes: [
+        { code: "0", desc: "Fix plan generated or transaction applied/rolled back successfully" },
+        { code: "1", desc: "Unfixable violations remain or rollback target missing" },
+      ],
+    },
+    {
+      name: "eforge simulate",
+      category: "Architecture",
+      summary: "Simulate moving files or modules in memory, predicting relative import rewrites, Tarjan SCC cycle impact, and health score shifts before touching disk.",
+      usage: "eforge simulate [OPTIONS]",
+      flags: [
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--move <FROM:TO>", desc: "Simulate moving a single file or module path" },
+        { flag: "--plan <FILE>", desc: "Path to a YAML refactoring plan with multiple move operations" },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown", default: "terminal" },
+      ],
+      examples: [
+        "eforge simulate --move src/db/client.ts:src/infra/db/client.ts",
+        "eforge simulate --plan refactor.yaml --format json",
+      ],
+      exitCodes: [
+        { code: "0", desc: "Refactoring simulation completed successfully" },
+      ],
+    },
+    {
+      name: "eforge trend",
+      category: "Diagnostics",
+      summary: "Evaluate historical 8-Dimension Health Score evolution across Git commits, architectural drift, and composite hotspots (Churn × Fan-In × Severity).",
+      usage: "eforge trend [OPTIONS]",
+      flags: [
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--commits <N>", desc: "Number of historical commits to analyze", default: "10" },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown", default: "terminal" },
+      ],
+      examples: [
+        "eforge trend",
+        "eforge trend --commits 25 --format markdown",
+      ],
+      exitCodes: [
+        { code: "0", desc: "Health trend and composite hotspots calculated" },
+      ],
+    },
+    {
+      name: "eforge blame-arch",
+      category: "Diagnostics",
+      summary: "Attribute architectural boundary and Tarjan SCC circular-dependency violations to the introducing Git commit, author, and timestamp.",
+      usage: "eforge blame-arch [OPTIONS]",
+      flags: [
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown", default: "terminal" },
+      ],
+      examples: [
+        "eforge blame-arch",
+        "eforge blame-arch --format markdown",
+      ],
+      exitCodes: [
+        { code: "0", desc: "Architectural blame attribution resolved" },
+      ],
+    },
+    {
+      name: "eforge rules infer",
+      category: "Governance",
+      summary: "Infer architectural archetype, layer boundaries, and forbidden_imports rules from module fan-in, fan-out, and instability metrics.",
+      usage: "eforge rules infer [OPTIONS]",
+      flags: [
+        { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },
+        { flag: "--write", desc: "Write inferred rules directly to .eforge/rules/inferred-architecture.yaml", default: "false" },
+        { flag: "--format <FMT>", desc: "Output format: terminal, json, markdown", default: "terminal" },
+      ],
+      examples: [
+        "eforge rules infer",
+        "eforge rules infer --write",
+      ],
+      exitCodes: [
+        { code: "0", desc: "Topology analyzed and boundary rules inferred" },
+      ],
+    },
+    {
       name: "eforge rules check",
       category: "Governance",
       summary: "Validate syntax and matcher invariants of declarative YAML/JSON rule files without executing a full repository scan.",
@@ -548,7 +685,7 @@
     {
       name: "eforge mcp",
       category: "Integration",
-      summary: "Start the native Model Context Protocol (MCP) JSON-RPC 2.0 stdio server exposing 7 deterministic eforge_* tools wrapped in UntrustedEnvelope<T>.",
+      summary: "Start the native Model Context Protocol (MCP) JSON-RPC 2.0 stdio server exposing 11 deterministic eforge_* tools (including pre-flight patch verification) wrapped in UntrustedEnvelope<T>.",
       usage: "eforge mcp [OPTIONS]",
       flags: [
         { flag: "-p, --path <PATH>", desc: "Target repository directory", default: "." },

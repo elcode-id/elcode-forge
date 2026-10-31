@@ -44,6 +44,7 @@ export const navigation: NavSection[] = [
       { title: "Output formats & exit codes", href: "/cli#exit-codes" },
       { title: "Custom rules engine", href: "/rules", exact: true },
       { title: "6 deterministic matchers", href: "/rules#matchers" },
+      { title: "Topology inference & auto-fix", href: "/rules#inference" },
     ],
   },
   {
@@ -70,7 +71,7 @@ export const primaryPages: { title: string; section: string; href: string; descr
     section: "Introduction",
     href: "/",
     description:
-      "Install ELCODE Forge (eforge), run your first deterministic codebase scan in under 5 seconds, and understand the 8-Dimension Health Score.",
+      "Install ELCODE Forge (eforge v1.1.0), run your first deterministic codebase scan in under 5 seconds, and explore the interactive TUI and 8-Dimension Health Score.",
   },
   {
     title: "Configuration reference",
@@ -84,21 +85,21 @@ export const primaryPages: { title: string; section: string; href: string; descr
     section: "CLI & Rule Engine",
     href: "/cli",
     description:
-      "Exhaustive syntax guide for all 34 eforge CLI commands and subcommands, global flags, 5 output formatters, and deterministic exit codes (0..=4).",
+      "Exhaustive syntax guide for all 41 eforge CLI commands and subcommands (including ui, watch, fix, simulate, trend, blame-arch, and rules infer), 5 output formatters, and deterministic exit codes (0..=4).",
   },
   {
     title: "Custom rules engine",
     section: "CLI & Rule Engine",
     href: "/rules",
     description:
-      "Author deterministic YAML/JSON architectural rules using 4 built-in packs, 4-tier inheritance, and 6 AST/import/filesystem matchers.",
+      "Author deterministic YAML/JSON architectural rules using 4 built-in packs, 6 AST/import/filesystem matchers, automatic topology boundary inference (eforge rules infer), and transactional auto-fix (eforge fix).",
   },
   {
     title: "Native MCP server",
     section: "AI & Governance",
     href: "/mcp",
     description:
-      "Connect Claude Code, Cursor, Windsurf, and VS Code to eforge mcp over stdio JSON-RPC 2.0 with 7 eforge_* tools and UntrustedEnvelope isolation.",
+      "Connect Claude Code, Cursor, Windsurf, and VS Code to eforge mcp over stdio JSON-RPC 2.0 with 11 eforge_* tools (including closed-loop pre-flight patch verification) and UntrustedEnvelope isolation.",
   },
   {
     title: "Policy-as-Code gates",
@@ -132,11 +133,11 @@ export const primaryPages: { title: string; section: string; href: string; descr
 
 export const searchIndex: SearchEntry[] = [
   {
-    title: "Getting started with ELCODE Forge (eforge)",
+    title: "Getting started with ELCODE Forge (eforge v1.1.0)",
     pageTitle: "Getting started",
     sectionTitle: "Introduction",
     href: "/",
-    keywords: "overview manifesto quickstart eforge elcode-forge rust cli deterministic",
+    keywords: "overview manifesto quickstart eforge elcode-forge rust cli deterministic v1.1.0",
   },
   {
     title: "Installation (npx, curl install.sh, PowerShell, Homebrew, Cargo)",
@@ -146,11 +147,11 @@ export const searchIndex: SearchEntry[] = [
     keywords: "install npx elcode-forge brew tap cargo binstall curl powershell windows macos linux",
   },
   {
-    title: "Golden Path Quickstart (init, doctor, scan, review, report)",
+    title: "Golden Path Quickstart (init, doctor, ui, watch, scan, fix, review, report)",
     pageTitle: "Getting started",
     sectionTitle: "Introduction",
     href: "/#quickstart",
-    keywords: "quickstart init doctor scan review report sarif html",
+    keywords: "quickstart init doctor ui watch scan fix simulate trend review report sarif html",
   },
   {
     title: "Multi-Language & Ecosystem Support Matrix",
@@ -195,11 +196,32 @@ export const searchIndex: SearchEntry[] = [
     keywords: "github action ci workflow sarif pr-comment fail-on",
   },
   {
-    title: "CLI Reference — All 34 eforge Commands & Flags",
+    title: "CLI Reference — All 41 eforge Commands & Flags",
     pageTitle: "CLI command reference",
     sectionTitle: "CLI & Rule Engine",
     href: "/cli",
-    keywords: "cli doctor scan review security sbom graph hotspots dead-code duplicates fix policy audit benchmark watch mcp",
+    keywords: "cli doctor scan ui watch fix simulate trend blame-arch review security sbom graph policy audit mcp",
+  },
+  {
+    title: "Interactive Terminal UI (eforge ui & --interactive / --codeframe)",
+    pageTitle: "CLI command reference",
+    sectionTitle: "CLI & Rule Engine",
+    href: "/cli#commands",
+    keywords: "eforge ui ratatui interactive tui codeframe dag explorer tarjan scc blast radius",
+  },
+  {
+    title: "Live Architectural Radar (eforge watch) & Surgical Auto-Fix (eforge fix)",
+    pageTitle: "CLI command reference",
+    sectionTitle: "CLI & Rule Engine",
+    href: "/cli#commands",
+    keywords: "eforge watch incremental blake3 cache eforge fix dry-run apply rollback transaction",
+  },
+  {
+    title: "In-Memory Refactor Simulator (eforge simulate) & Temporal Graph (eforge trend, eforge blame-arch)",
+    pageTitle: "CLI command reference",
+    sectionTitle: "CLI & Rule Engine",
+    href: "/cli#commands",
+    keywords: "eforge simulate move refactor plan eforge trend hotspots eforge blame-arch git blame",
   },
   {
     title: "Output Formats (terminal, json, markdown, sarif, github) & Exit Codes (0..=4)",
@@ -223,6 +245,13 @@ export const searchIndex: SearchEntry[] = [
     keywords: "matchers forbidden_imports required_companion file_naming file_size regex_pattern dependency_restriction",
   },
   {
+    title: "Topology & Boundary Inference (eforge rules infer & eforge init --infer)",
+    pageTitle: "Custom rules engine",
+    sectionTitle: "CLI & Rule Engine",
+    href: "/rules#inference",
+    keywords: "eforge rules infer init --infer topology layer instability fan-in fan-out clean architecture",
+  },
+  {
     title: "Native MCP Server (eforge mcp) & IDE Setup (Claude, Cursor, Windsurf, VS Code)",
     pageTitle: "Native MCP server",
     sectionTitle: "AI & Governance",
@@ -230,11 +259,11 @@ export const searchIndex: SearchEntry[] = [
     keywords: "mcp server stdio claude cursor windsurf vscode json-rpc",
   },
   {
-    title: "7 eforge_* MCP Tools (project_info, get_architecture, get_dependencies, get_findings, get_change_impact, explain_module, get_rules)",
+    title: "11 eforge_* MCP Tools (including verify_patch, simulate_refactor, get_impacted_tests, get_pruned_context)",
     pageTitle: "Native MCP server",
     sectionTitle: "AI & Governance",
     href: "/mcp#tools",
-    keywords: "eforge_project_info eforge_get_architecture eforge_get_dependencies eforge_get_findings eforge_get_change_impact eforge_explain_module eforge_get_rules",
+    keywords: "eforge_project_info eforge_get_architecture eforge_get_dependencies eforge_get_findings eforge_get_change_impact eforge_explain_module eforge_get_rules eforge_verify_patch eforge_simulate_refactor eforge_get_impacted_tests eforge_get_pruned_context",
   },
   {
     title: "UntrustedEnvelope<T> & 7 Prompt-Injection Detectors",
@@ -272,4 +301,3 @@ export const searchIndex: SearchEntry[] = [
     keywords: "slsa provenance attestation cosign gh attestation verify sha256sums supply chain",
   },
 ];
-
