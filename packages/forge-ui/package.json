@@ -1,6 +1,6 @@
 {
   "name": "@elcode-forge/ui",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Shared UI design tokens and accessible Svelte 5 component primitives for ELCODE Forge",
   "type": "module",
   "main": "src/index.ts",

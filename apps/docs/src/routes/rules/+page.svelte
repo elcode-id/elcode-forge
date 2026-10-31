@@ -257,4 +257,63 @@ eforge rules list --category architecture --enabled-only --format markdown
 eforge scan --fail-on high`}</code></pre>
     </div>
   </div>
+
+  <!-- 5. Topology & Boundary Inference -->
+  <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
+    <h2 id="inference" class="text-lg font-bold text-white font-mono flex items-center gap-2">
+      <span class="text-sky-400">05.</span>
+      <span>Topology & Boundary Inference (<code class="text-sky-300">eforge rules infer</code>)</span>
+    </h2>
+    <p class="text-sm text-slate-300 leading-relaxed">
+      ELCODE Forge analyzes the polyglot import graph using graph-theoretic metrics to automatically discover your project's architectural structure, layer instability, and boundary rules:
+    </p>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
+      <div class="bg-black/40 border border-slate-800 rounded-lg p-3.5 space-y-1.5">
+        <div class="text-emerald-400 font-bold uppercase text-[11px]">Layer Classification</div>
+        <p class="text-slate-400 font-sans">Classifies modules into UI, Service, Domain, Persistence, Infrastructure, and Shared layers using path semantics and coupling metrics.</p>
+      </div>
+      <div class="bg-black/40 border border-slate-800 rounded-lg p-3.5 space-y-1.5">
+        <div class="text-blue-400 font-bold uppercase text-[11px]">Instability Metric (I)</div>
+        <p class="text-slate-400 font-sans">Computes Martin's metric <code>I = FanOut / (FanIn + FanOut)</code> to verify that stable abstractions do not depend on unstable modules.</p>
+      </div>
+      <div class="bg-black/40 border border-slate-800 rounded-lg p-3.5 space-y-1.5">
+        <div class="text-purple-400 font-bold uppercase text-[11px]">Archetype Detection</div>
+        <p class="text-slate-400 font-sans">Identifies Clean / Hexagonal, Layered N-Tier, or Feature-Sliced architectures and recommends tailored <code>forbidden_imports</code> rules.</p>
+      </div>
+    </div>
+    <div class="bg-black/60 border border-slate-800 rounded-lg p-4 font-mono text-xs text-slate-200 overflow-x-auto">
+      <pre><code>{`# Inspect inferred archetype and layer instability
+eforge rules infer
+
+# Export inferred boundary rules directly to rules pack
+eforge rules infer --write
+
+# Or initialize a new project with automatic inference
+eforge init --infer`}</code></pre>
+    </div>
+  </div>
+
+  <!-- 6. Surgical Auto-Fix & Transactional Rollback -->
+  <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
+    <h2 id="auto-fix" class="text-lg font-bold text-white font-mono flex items-center gap-2">
+      <span class="text-emerald-400">06.</span>
+      <span>Surgical Auto-Fix & Transactional Rollback (<code class="text-emerald-300">eforge fix</code>)</span>
+    </h2>
+    <p class="text-sm text-slate-300 leading-relaxed">
+      Fix violations deterministically with byte-for-byte post-write BLAKE3 verification and atomic transaction records in <code class="text-slate-200 font-mono">.eforge/tx/&lt;tx_id&gt;/</code>:
+    </p>
+    <div class="bg-black/60 border border-slate-800 rounded-lg p-4 font-mono text-xs space-y-1.5 text-slate-200 overflow-x-auto">
+      <pre><code>{`# 1. Preview codemods with unified diff previews without touching disk
+eforge fix --dry-run
+
+# 2. Apply fixes atomically with pre-write file backups in .eforge/tx/
+eforge fix --apply
+
+# 3. Scope fixes strictly to a specific rule ID
+eforge fix --apply --rule quality/max-file-lines
+
+# 4. Rollback transaction cleanly if needed
+eforge fix --rollback`}</code></pre>
+    </div>
+  </div>
 </div>

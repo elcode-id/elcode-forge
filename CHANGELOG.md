@@ -5,6 +5,43 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [1.1.0] — 2026-10-31 (Tactile Instrument, Active Remediation & Graph Heuristics)
+
+### Summary of v1.1.0 Release
+ELCODE Forge `v1.1.0` elevates `eforge` from a passive diagnostic scanner into an active, tactile engineering instrument across 3 pillars: **High-Craft Terminal DX**, **Active Remediation & Temporal Graph**, and **Graph-Theoretic Heuristics & Closed-Loop Agentic MCP**.
+
+---
+
+### Pillar 1: High-Craft DX ("Tactile Instrument" in the Terminal)
+- **Interactive Terminal UI (`eforge ui` & `--interactive` / `-i` on `doctor`, `scan`, `review`)**:
+  - Real-time `ratatui` + `crossterm` terminal dashboard with 4 interactive tabs (`[1] DAG Explorer`, `[2] Tarjan SCC Cycles`, `[3] Blast Radius`, `[4] Findings & Code-Frame`), search filtering (`/`), and full snapshot support (`render_ui_snapshot`) for non-TTY CI environments.
+- **Rich Code-Frame Diagnostic Formatter (`--codeframe` on `doctor` and `scan`)**:
+  - Box-drawn multi-line source spans (`╭─[...]`, `│`, `╰──▶`), inline carets (`^`), visual call-chain arrows for Tarjan SCC circular dependencies, and unified diff (`-` / `+`) autofix previews.
+- **Live Incremental Architectural Radar (`eforge watch`)**:
+  - Sub-50ms incremental `blake3` file-level AST caching (`.eforge/cache/file-ast-v1.json`) that re-parses only modified files on save and computes real-time 8-Dimension Health Score deltas (`--once` supported for deterministic single-cycle verification).
+
+### Pillar 2: Deep Engineering (Active Remediation & Temporal Graph)
+- **Surgical Auto-Fix & Transactional Rollback (`eforge fix`)**:
+  - Deterministic codemod planner and transactional applier (`--dry-run`, `--apply`, `--rule <id>`, `--rollback [tx_id]`) with atomic backups in `.eforge/tx/<tx_id>/` (`manifest.json` + `.bak` payloads) and `blake3` post-write verification.
+- **In-Memory Refactoring Simulator (`eforge simulate`)**:
+  - Zero-disk-write simulation of file/module moves (`--move <from:to>` or `--plan <yaml>`) predicting relative import rewrites, resolved/introduced Tarjan SCC cycles, and Health Score deltas before touching disk.
+- **Temporal Graph Evolution & Architectural Blame (`eforge trend` & `eforge blame-arch`)**:
+  - `eforge trend`: Evaluates historical 8-Dimension Health Score trajectories, architectural drift, and composite hotspot rankings (`Churn × Fan-In × Severity`).
+  - `eforge blame-arch`: Pinpoints the exact Git commit, author, and timestamp that introduced architectural boundary or circular dependency violations.
+
+### Pillar 3: Intelligent Heuristics (Graph-Theoretic Inference & Closed-Loop Agentic MCP)
+- **Topology & Boundary Inference (`eforge rules infer` & `eforge init --infer`)**:
+  - Automatically classifies module layers (`UI / Presentation`, `Application / Service`, `Domain / Core`, `Data / Persistence`, `Infrastructure`, `Shared / Utility`) using fan-in, fan-out, and instability metrics $I = \frac{\text{FanOut}}{\text{FanIn} + \text{FanOut}}$, detects project archetype (`Clean / Hexagonal`, `Layered N-Tier`, `Feature-Sliced / Modular`, `Monolithic / Coupled`), and synthesizes custom `forbidden_imports` rules (`--write` to export `.eforge/rules/inferred-architecture.yaml`).
+- **Smart Impacted Test Selection (`eforge review --impacted-tests`)**:
+  - Maps working-tree or range diffs through reverse transitive module and file import graphs directly to the exact test files and runner command (`vitest`, `cargo test`, `pytest`, `go test`) required to verify a change.
+- **4 New Closed-Loop Agentic MCP Tools (`eforge mcp` — 11 Total Tools)**:
+  - `eforge_verify_patch`: Pre-flight verification of proposed in-memory file edits against Policy-as-Code and Tarjan SCC before an AI agent writes to disk.
+  - `eforge_simulate_refactor`: Zero-disk-write module move simulation over MCP.
+  - `eforge_get_impacted_tests`: Deterministic test target selection from a diff or working tree.
+  - `eforge_get_pruned_context`: Token-budgeted context packing ranked by graph centrality (`FanIn + FanOut`) within $N$ hops.
+
+---
+
 ## [1.0.0] — 2026-10-29 (General Availability Release)
 
 ### Summary of v1.0.0 GA Milestone
