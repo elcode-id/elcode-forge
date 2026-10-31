@@ -352,5 +352,51 @@ policy:
     step-summary: "true"        # Appends Markdown report to $GITHUB_STEP_SUMMARY`}</code></pre>
     </div>
   </div>
+
+  <!-- 7. Node.js & package.json Scripts Integration -->
+  <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
+    <h2 id="package-scripts" class="text-lg font-bold text-white font-mono flex items-center gap-2">
+      <span class="text-emerald-400">07.</span>
+      <span>Node.js, package.json Scripts & Programmatic API Integration</span>
+    </h2>
+    <p class="text-sm text-slate-300 leading-relaxed">
+      In JavaScript and TypeScript projects, install <code class="text-emerald-300 font-mono">elcode-forge</code> as a devDependency to wire deterministic governance, watch radar, and pre-commit hooks into standard npm scripts:
+    </p>
+
+    <div class="bg-black/60 border border-slate-800 rounded-lg p-4 font-mono text-xs overflow-x-auto text-slate-200">
+      <pre><code>{`// package.json
+{
+  "devDependencies": {
+    "elcode-forge": "^1.1.0"
+  },
+  "scripts": {
+    "doctor": "eforge doctor",
+    "scan": "eforge scan --codeframe --fail-on high",
+    "review": "eforge review --fast --impacted-tests",
+    "watch": "eforge watch",
+    "fix": "eforge fix --apply",
+    "infer": "eforge rules infer",
+    "audit": "eforge security --audit",
+    "precommit": "eforge hook run pre-commit"
+  }
+}`}</code></pre>
+    </div>
+
+    <p class="text-xs text-slate-400 leading-relaxed">
+      You can also import the programmatic helper functions (<code class="text-slate-200 font-mono">execute()</code>, <code class="text-slate-200 font-mono">getBinary()</code>) directly in custom Node.js build pipelines:
+    </p>
+
+    <div class="bg-black/60 border border-slate-800 rounded-lg p-4 font-mono text-xs overflow-x-auto text-slate-200">
+      <pre><code>{`const { execute } = require('elcode-forge');
+
+async function checkArchitecture() {
+  const result = await execute(['scan', '--format', 'json']);
+  if (result.status !== 0) {
+    console.error('Violations detected:', result.stderr);
+    process.exit(1);
+  }
+}`}</code></pre>
+    </div>
+  </div>
 </div>
 
