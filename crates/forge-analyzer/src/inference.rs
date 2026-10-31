@@ -57,8 +57,12 @@ impl ArchitecturalArchetype {
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::LayeredArchitecture => "Layered Architecture (Presentation -> Service -> Data)",
-            Self::CleanHexagonal => "Clean / Hexagonal Architecture (Adapters -> Application -> Domain)",
-            Self::WorkspaceDag => "Multi-Package Workspace DAG (Leaf Core -> Domain Crates -> CLI/Apps)",
+            Self::CleanHexagonal => {
+                "Clean / Hexagonal Architecture (Adapters -> Application -> Domain)"
+            }
+            Self::WorkspaceDag => {
+                "Multi-Package Workspace DAG (Leaf Core -> Domain Crates -> CLI/Apps)"
+            }
             Self::ModularMonolith => "Modular Monolith (Feature-Sliced Modules)",
             Self::FlatService => "Standard Modular Service",
         }
@@ -244,7 +248,8 @@ pub fn infer_topology_and_boundaries(
                 forbidden_targets.push(i.root_path.clone());
             }
         }
-        if let (Some(first_dom), Some(first_forb)) = (domain_mods.first(), forbidden_targets.first())
+        if let (Some(first_dom), Some(first_forb)) =
+            (domain_mods.first(), forbidden_targets.first())
         {
             let slug = sanitize_slug(&first_dom.name);
             let violations = first_dom
@@ -265,8 +270,9 @@ pub fn infer_topology_and_boundaries(
                     "Domain module '{}' must remain independent of UI and outer adapter layers.",
                     first_dom.id
                 ),
-                remediation: "Depend on domain interfaces/traits rather than concrete outer adapters."
-                    .to_string(),
+                remediation:
+                    "Depend on domain interfaces/traits rather than concrete outer adapters."
+                        .to_string(),
                 confidence_pct: 92,
                 current_violations: violations,
             });
@@ -318,12 +324,7 @@ pub fn infer_topology_and_boundaries(
     }
 }
 
-fn classify_module_layer(
-    mod_id: &str,
-    mod_name: &str,
-    ca: usize,
-    ce: usize,
-) -> ArchitecturalLayer {
+fn classify_module_layer(mod_id: &str, mod_name: &str, ca: usize, ce: usize) -> ArchitecturalLayer {
     let lower_id = mod_id.to_ascii_lowercase();
     let lower_name = mod_name.to_ascii_lowercase();
 
@@ -496,7 +497,10 @@ mod tests {
         let Ok(g) = graph else { return };
 
         let report = infer_topology_and_boundaries(&summary.files, &g);
-        assert_eq!(report.archetype, ArchitecturalArchetype::LayeredArchitecture);
+        assert_eq!(
+            report.archetype,
+            ArchitecturalArchetype::LayeredArchitecture
+        );
         assert!(!report.module_metrics.is_empty());
         assert!(!report.inferred_rules.is_empty());
         assert!(report

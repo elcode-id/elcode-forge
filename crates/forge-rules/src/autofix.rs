@@ -92,7 +92,10 @@ fn build_unused_dep_fix(repo_root: &Path, finding: &Finding) -> Option<FixSugges
             let line_num = idx as u32 + 1;
             return Some(FixSuggestion {
                 rule_id: finding.rule_id.clone(),
-                title: format!("Remove unused dependency '{pkg_name}' from {}", loc.file_path),
+                title: format!(
+                    "Remove unused dependency '{pkg_name}' from {}",
+                    loc.file_path
+                ),
                 description: format!(
                     "Deletes unused package entry '{pkg_name}' from manifest {}.",
                     loc.file_path
@@ -222,7 +225,10 @@ fn build_forbidden_import_fix(repo_root: &Path, finding: &Finding) -> Option<Fix
     let mut matched_line_num = None;
     let mut matched_line_text = String::new();
 
-    if let Some(line) = content.lines().nth(target_line_hint.saturating_sub(1) as usize) {
+    if let Some(line) = content
+        .lines()
+        .nth(target_line_hint.saturating_sub(1) as usize)
+    {
         if line.trim_start().starts_with("import ") || line.trim_start().starts_with("use ") {
             matched_line_num = Some(target_line_hint);
             matched_line_text = line.to_string();
