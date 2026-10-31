@@ -270,7 +270,7 @@ fn apply_edits_to_single_file(
 
     // Sort edits bottom-up by start_line descending so line indices remain valid
     let mut sorted_edits: Vec<&&TextEdit> = edits.to_vec();
-    sorted_edits.sort_by(|a, b| b.start_line.cmp(&a.start_line));
+    sorted_edits.sort_by_key(|a| std::cmp::Reverse(a.start_line));
 
     for edit in sorted_edits {
         let start_idx = edit.start_line.saturating_sub(1) as usize;
