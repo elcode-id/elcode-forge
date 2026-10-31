@@ -837,6 +837,13 @@
     Complete, authoritative reference for all {commands.length} <code>eforge</code> (and alias <code>elcode-forge</code>) commands, flags, output formatters, and deterministic exit codes.
   </p>
 
+  <div class="bg-sky-500/10 border border-sky-500/20 rounded-xl p-4 flex items-start gap-3 text-xs text-slate-300">
+    <div class="text-sky-400 font-bold uppercase font-mono mt-0.5 whitespace-nowrap">NPX / Zero-Install Parity:</div>
+    <div class="leading-relaxed">
+      Every single command below can be executed directly without installation or Rust toolchain via <code class="text-sky-300 font-mono">npx elcode-forge &lt;command&gt;</code> (or <code class="text-sky-300 font-mono">pnpm dlx elcode-forge</code> / <code class="text-sky-300 font-mono">bunx elcode-forge</code>). All flags, formats, exit codes, and MCP tools are 100% identical.
+    </div>
+  </div>
+
   <!-- Global Exit Codes & Output Formats Contract -->
   <h2 id="exit-codes">Output Formats &amp; Deterministic Exit Codes (0..=4)</h2>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">

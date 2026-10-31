@@ -77,12 +77,35 @@ For detailed architectural and resolution documentation, see [docs/MULTI_LANGUAG
 ## Installation & Distribution
 
 ### 1. Zero-Install Execution via npx (Node.js)
-No installation required—execute directly in any Node.js / JavaScript / TypeScript project:
+No installation or Rust toolchain required—**100% of ELCODE Forge features (all 41 CLI commands/subcommands and 11 MCP tools)** run directly via `npx`, `pnpm dlx`, or `bunx` in any repository:
 ```bash
-npx elcode-forge doctor
-npx elcode-forge scan --codeframe
+# Core diagnostics & full scan
+npx elcode-forge doctor --codeframe
+npx elcode-forge scan --codeframe --fail-on high
+
+# Tactile instrument & live radar
+npx elcode-forge ui
+npx elcode-forge watch
+
+# Active remediation & in-memory simulation
+npx elcode-forge fix --dry-run
+npx elcode-forge simulate --move src/db/client.ts:src/infra/db/client.ts
+
+# Topology & layer boundary inference
+npx elcode-forge rules infer --write
+
+# Change review & smart impacted test selection
 npx elcode-forge review --fast --impacted-tests
+
+# Security audit, SBOM & Policy gates
+npx elcode-forge security --audit
+npx elcode-forge sbom --spec cyclonedx
+npx elcode-forge policy check
+
+# Native closed-loop MCP server for AI coding agents
+npx elcode-forge mcp
 ```
+*(Also installable globally via `npm install -g elcode-forge` or as a project devDependency via `pnpm add -D elcode-forge`.)*
 
 ### 2. Standalone Installers (Linux, macOS & Windows)
 **POSIX (Linux & macOS):**

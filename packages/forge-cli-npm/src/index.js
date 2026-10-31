@@ -399,6 +399,18 @@ async function ensureBinary(version, opts = {}) {
 }
 
 /**
+ * Returns the path to the verified native `eforge` executable, downloading if necessary.
+ *
+ * @param {string} [version] Specific version override (defaults to package version)
+ * @param {object} [opts={}] Options passed to ensureBinary
+ * @returns {Promise<string>}
+ */
+async function getBinary(version, opts = {}) {
+  const targetVersion = version || require('../package.json').version;
+  return ensureBinary(targetVersion, opts);
+}
+
+/**
  * Runs the native `eforge` binary forwarding all arguments and inheriting stdio.
  *
  * @param {string[]} [argv=process.argv.slice(2)]
@@ -421,6 +433,44 @@ async function runCli(argv = process.argv.slice(2), opts = {}) {
   return res.status ?? 0;
 }
 
+/**
+ * Programmatic execution helper for Node.js / TypeScript scripts.
+ * Runs `eforge` with arguments and returns status, stdout, and stderr as strings or buffers.
+ *
+ * @param {string[]} [args=[]] CLI arguments (e.g. ['doctor', '--format', 'json'])
+ * @param {object} [options={}] Child process execution options
+ * @param {string} [options.cwd] Working directory
+ * @param {NodeJS.ProcessEnv} [options.env] Environment variables
+ * @param {string|Buffer} [options.input] Input to pass to stdin
+ * @param {string} [options.encoding='utf8'] Output encoding (default 'utf8')
+ * @returns {Promise<{ status: number, stdout: string, stderr: string }>}
+ */
+async function execute(args = [], options = {}) {
+  const pkgJson = require('../package.json');
+  const binaryPath = await ensureBinary(pkgJson.version, options);
+
+  const { encoding = 'utf8', cwd, env = process.env, input, timeout } = options;
+
+  const res = child_process.spawnSync(binaryPath, args, {
+    cwd,
+    env,
+    input,
+    encoding,
+    timeout,
+    maxBuffer: 32 * 1024 * 1024,
+  });
+
+  if (res.error) {
+    throw res.error;
+  }
+
+  return {
+    status: res.status ?? 0,
+    stdout: res.stdout || '',
+    stderr: res.stderr || '',
+  };
+}
+
 module.exports = {
   resolveTarget,
   getCacheDir,
@@ -431,5 +481,7 @@ module.exports = {
   fetchText,
   extractArchive,
   ensureBinary,
+  getBinary,
   runCli,
+  execute,
 };
