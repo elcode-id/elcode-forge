@@ -1077,7 +1077,14 @@
   - Zero TypeScript/Svelte diagnostics (`svelte-check found 0 errors and 0 warnings`) and clean static builds for both root and `BASE_PATH="/elcode-forge"`.
 
 
-## ELCODE Forge v1.1 Blueprint — Tactile Instrument, Active Remediation & Graph Heuristics (COMPLETED)
+## ELCODE Forge v1.1.0 Release, Documentation & Release Tag (COMPLETED)
+- **Release PRs:** [#252](https://github.com/elcode-id/elcode-forge/pull/252) (`feat/forge-v1.1.0-release-docs -> develop`), [#253](https://github.com/elcode-id/elcode-forge/pull/253) (`develop -> main`).
+- **Release Tag:** `v1.1.0` (pushed to `origin/v1.1.0`).
+- **Version Bump:** Synchronized monorepo to `1.1.0` across `Cargo.toml`, `Cargo.lock`, root `package.json`, `packages/*`, `apps/*`, `packaging/homebrew/eforge.rb`, and `CHANGELOG.md`.
+- **Documentation Updated:**
+  - `README.md`: Reflects all 3 v1.1 pillars, 34 CLI commands (41 with subcommands), and 11 native `eforge_*` MCP tools.
+  - `apps/docs`: Synchronized Hero banner, quickstart guide, `/cli` (all 34 command cards + new flags), `/mcp` (all 11 `eforge_*` tools), `/rules` (topology inference & transactional autofix), `/provenance`, and `$lib/navigation.ts` search index.
+- **Invariants:** Clean static documentation build (`pnpm --filter docs run build`) and 100% green CI gate across all workflows prior to merge and release tagging.
 - **Crates Modified:** `forge-core`, `forge-analyzer`, `forge-git`, `forge-rules`, `forge-ai`, `forge-mcp`, `forge-cli`
 - **Public Types & Functions Added:**
   - `forge_core::ir`: `FileImportEdge`, `TextEdit`, `FixSuggestion`, `CallChainHop`.
