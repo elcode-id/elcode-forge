@@ -1075,3 +1075,28 @@
   - Added instant `⌘K` / `Ctrl K` search modal (`Search.svelte`), `Light` / `Dark` / `System` `ThemeSelector.svelte`, and all 6 dual-mode radial-gradient SVG icons (`Icon.svelte`, `QuickLinks.svelte`, `Callout.svelte`).
 - **Invariants:**
   - Zero TypeScript/Svelte diagnostics (`svelte-check found 0 errors and 0 warnings`) and clean static builds for both root and `BASE_PATH="/elcode-forge"`.
+
+
+## ELCODE Forge v1.1 Blueprint — Tactile Instrument, Active Remediation & Graph Heuristics (COMPLETED)
+- **Crates Modified:** `forge-core`, `forge-analyzer`, `forge-git`, `forge-rules`, `forge-ai`, `forge-mcp`, `forge-cli`
+- **Public Types & Functions Added:**
+  - `forge_core::ir`: `FileImportEdge`, `TextEdit`, `FixSuggestion`, `CallChainHop`.
+  - `forge_analyzer`:
+    - `incremental`: `FileAstCache`, `CachedFileAst`, `RawImportSpan`, `IncrementalAnalysisResult`, `analyze_architecture_incremental`, `extract_file_import_edges`, `trace_cycle_call_chains`.
+    - `inference`: `ArchitecturalLayer`, `ArchitecturalArchetype`, `ModuleTopologyMetrics`, `InferredBoundaryRule`, `TopologyInferenceReport`, `infer_topology_and_boundaries`.
+    - `simulate`: `RefactorOperation`, `RefactorPlanFile`, `ImportRewritePreview`, `SimulationReport`, `parse_refactor_plan`, `simulate_refactor`, `compute_relative_import_specifier`.
+  - `forge_git`:
+    - `test_selector`: `ImpactedTestsReport`, `compute_impacted_tests`, `synthesize_test_commands`.
+    - `temporal`: `CompositeHotspotEntry`, `TrendCommitPoint`, `HealthTrendReport`, `ArchBlameEntry`, `compute_composite_hotspots`, `analyze_health_trend`, `blame_architecture_violations`.
+  - `forge_rules`:
+    - `autofix`: `FixPlan`, `generate_fix_plan`, `build_suggestion_for_finding`.
+    - `tx`: `TransactionFileBackup`, `TransactionRecord`, `tx_root_dir`, `list_transactions`, `apply_fix_plan_transactional`, `rollback_transaction`.
+  - `forge_ai::context`: `PrunedModuleNode`, `PrunedCentralityContext`, `build_pruned_centrality_context`.
+  - `forge_mcp::tools`: Added 4 closed-loop agentic MCP tools (`eforge_verify_patch`, `eforge_simulate_refactor`, `eforge_get_impacted_tests`, `eforge_get_pruned_context` — 11 total `eforge_*` MCP tools).
+  - `forge_cli`:
+    - Subcommands: `eforge ui`, `eforge watch`, `eforge fix`, `eforge simulate`, `eforge trend`, `eforge blame-arch`, `eforge rules infer`.
+    - Flags: `--interactive` (`-i`) on `doctor`/`scan`/`review`, `--codeframe` on `doctor`/`scan`, `--impacted-tests` on `review`, `--infer` on `init`.
+- **Invariants:**
+  - Zero schema drift against `packages/forge-schema/report-bundle.schema.json`.
+  - All `eforge fix --apply` writes are backed up atomically in `.eforge/tx/<tx_id>/` with byte-for-byte rollback support (`eforge fix --rollback`).
+  - All 11 MCP tools remain strictly read-only on disk and wrap repository data in `UntrustedEnvelope<T>`.

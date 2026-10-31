@@ -113,6 +113,54 @@ pub struct Repository {
     pub health: Option<HealthScore>,
 }
 
+/// File-granular import dependency edge with source line/column provenance.
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
+pub struct FileImportEdge {
+    pub from_file: String,
+    pub to_file: String,
+    pub from_module: String,
+    pub to_module: String,
+    pub raw_specifier: String,
+    pub line: u32,
+    pub column: u32,
+}
+
+/// Deterministic surgical text replacement span within a repository file.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct TextEdit {
+    pub file_path: String,
+    pub start_line: u32,
+    pub end_line: u32,
+    pub original_text: String,
+    pub replacement_text: String,
+    pub description: String,
+}
+
+/// Deterministic auto-fix suggestion attached to a rule or hygiene finding.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct FixSuggestion {
+    pub rule_id: String,
+    pub title: String,
+    pub description: String,
+    pub edits: Vec<TextEdit>,
+    pub is_safe_automated: bool,
+}
+
+/// Single hop in a multi-file call chain or circular dependency trace.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct CallChainHop {
+    pub from_file: String,
+    pub to_file: String,
+    pub from_module: String,
+    pub to_module: String,
+    pub line: u32,
+    pub column: u32,
+    pub raw_specifier: String,
+    pub is_feedback_arc_candidate: bool,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

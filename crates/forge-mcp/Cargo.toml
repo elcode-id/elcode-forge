@@ -10,6 +10,7 @@ authors.workspace = true
 
 [dependencies]
 forge-core.workspace = true
+forge-ai.workspace = true
 forge-analyzer.workspace = true
 forge-git.workspace = true
 forge-rules.workspace = true

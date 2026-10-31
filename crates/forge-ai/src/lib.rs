@@ -17,8 +17,9 @@ pub mod usage;
 pub use budget::{compute_cost_usd, enforce_daily_budget, preflight_check};
 pub use cache::ResponseCache;
 pub use context::{
-    build_context, sections_from_repository, CodeSnippet, ContextInput, ContextPack,
-    ContextSection, SectionKind,
+    build_context, build_pruned_centrality_context, sections_from_repository, CodeSnippet,
+    ContextInput, ContextPack, ContextSection, PrunedCentralityContext, PrunedModuleNode,
+    SectionKind,
 };
 pub use factory::{build_provider, mask_secret};
 pub use mock::MockProvider;

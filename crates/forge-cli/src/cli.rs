@@ -94,6 +94,9 @@ pub enum Commands {
         /// Overwrite existing `eforge.config.yaml` if present.
         #[arg(long)]
         force: bool,
+        /// Infer architectural topology, module layers, and boundary rules from the import graph.
+        #[arg(long)]
+        infer: bool,
     },
     /// Run a fast (<5s) repository diagnostic check (`eforge doctor`).
     Doctor {
@@ -103,6 +106,12 @@ pub enum Commands {
         /// Output format (`terminal`, `json`, `markdown`, `sarif`, `github`).
         #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
         format: OutputFormat,
+        /// Launch interactive terminal UI (`eforge ui`) after diagnostic analysis.
+        #[arg(long, short = 'i')]
+        interactive: bool,
+        /// Render rich multi-line source code frames, circular call-chain hops, and auto-fix previews.
+        #[arg(long)]
+        codeframe: bool,
     },
     /// Execute a full or incremental architecture, dependency, rule, and security scan.
     Scan {
@@ -124,6 +133,12 @@ pub enum Commands {
         /// Optional file path to write the rendered report.
         #[arg(long, short = 'o')]
         output: Option<PathBuf>,
+        /// Launch interactive terminal UI (`eforge ui --tab findings`) after scanning.
+        #[arg(long, short = 'i')]
+        interactive: bool,
+        /// Render rich multi-line source code frames, circular call-chain hops, and auto-fix previews.
+        #[arg(long)]
+        codeframe: bool,
     },
     /// Analyze working-tree diff blast radius, change risk, and findings on modified files.
     Review {
@@ -142,6 +157,101 @@ pub enum Commands {
         /// Minimum finding severity to return non-zero exit code (`critical|high|medium|low|info`).
         #[arg(long)]
         fail_on: Option<String>,
+        /// Launch interactive terminal UI (`eforge ui --tab blast`) to explore blast radius.
+        #[arg(long, short = 'i')]
+        interactive: bool,
+        /// Compute Tier 1/2/3 impacted test files via reverse-import BFS and synthesize runner commands.
+        #[arg(long)]
+        impacted_tests: bool,
+    },
+    /// Launch the interactive Tactile Terminal UI (`eforge ui`) to explore DAG, cycles, blast radius, and findings.
+    Ui {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Initial tab (`dag`, `cycles`, `blast`, `findings`).
+        #[arg(long, value_enum, default_value_t = crate::tui::TuiTab::Dag)]
+        tab: crate::tui::TuiTab,
+        /// Render a single frame and exit immediately (useful for CI and headless verification).
+        #[arg(long)]
+        once: bool,
+    },
+    /// Run the Live Architectural Radar (`eforge watch`) with `<50ms` incremental BLAKE3 AST feedback.
+    Watch {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Polling/debounce interval in milliseconds.
+        #[arg(long, default_value_t = 30)]
+        debounce_ms: u64,
+        /// Execute a single incremental radar tick and exit.
+        #[arg(long)]
+        once: bool,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Generate or apply deterministic surgical auto-fixes (`eforge fix`) with transactional rollback.
+    Fix {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Preview surgical fixes without modifying disk (default when `--apply` is omitted).
+        #[arg(long)]
+        dry_run: bool,
+        /// Atomically apply fixes to disk after creating a `.eforge/tx/<tx_id>/` backup.
+        #[arg(long)]
+        apply: bool,
+        /// Optional rule ID filter (e.g. `arch/no-direct-db-in-ui`).
+        #[arg(long)]
+        rule: Option<String>,
+        /// Roll back the most recent transaction (or a specific `<tx_id>`).
+        #[arg(long)]
+        rollback: Option<Option<String>>,
+        /// List recorded transactions in `.eforge/tx/`.
+        #[arg(long)]
+        list_tx: bool,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Simulate file/module moves in memory (`eforge simulate`) to preview DAG, cycle, and import rewrites before mutating disk.
+    Simulate {
+        #[command(subcommand)]
+        action: Option<SimulateAction>,
+        /// Path to a YAML/JSON refactoring plan file.
+        #[arg(long)]
+        plan: Option<PathBuf>,
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Analyze temporal 8-Dimension Health Score evolution, architectural drift, and composite hotspots (`Churn × BlastRadius`).
+    Trend {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Number of recent commits/snapshots to analyze.
+        #[arg(long, default_value_t = 10)]
+        commits: usize,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Attribute architectural violations and circular dependencies to their introducing Git commits (`eforge blame-arch`).
+    #[command(name = "blame-arch")]
+    BlameArch {
+        /// Optional file or module path filter.
+        target: Option<String>,
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
     },
     /// Analyze changes with deterministic diff/PR review augmented by structured AI review items.
     #[command(name = "ai-review")]
@@ -326,7 +436,7 @@ pub enum Commands {
         #[arg(long)]
         static_dir: Option<PathBuf>,
     },
-    /// Manage architectural, quality, and security rules (`list`, `check`, `init`).
+    /// Manage architectural, quality, and security rules (`list`, `check`, `init`, `infer`).
     Rules {
         #[command(subcommand)]
         action: Option<RulesAction>,
@@ -470,6 +580,18 @@ pub enum Commands {
     },
 }
 
+/// Subcommands available under `eforge simulate`.
+#[derive(Debug, Clone, Subcommand)]
+pub enum SimulateAction {
+    /// Simulate moving a file or module directory from `<from>` to `<to>`.
+    Mv {
+        /// Source relative file or module path (e.g. `src/db/client.ts` or `src/db`).
+        from: String,
+        /// Destination relative file or module path (e.g. `src/services/client.ts` or `src/infra/db`).
+        to: String,
+    },
+}
+
 /// Subcommands available under `eforge policy`.
 #[derive(Debug, Subcommand)]
 pub enum PolicyAction {
@@ -591,6 +713,21 @@ pub enum RulesAction {
         /// Force overwrite if destination file already exists.
         #[arg(long)]
         force: bool,
+        /// Output format (`terminal`, `json`, `markdown`).
+        #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
+        format: OutputFormat,
+    },
+    /// Infer architectural layers, instability metrics, and custom boundary rules from the import graph.
+    Infer {
+        /// Target repository directory.
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+        /// Output file path (defaults to `<path>/.eforge/rules/inferred-architecture.yaml` when `--write` is set).
+        #[arg(long, short = 'o')]
+        output: Option<PathBuf>,
+        /// Write inferred boundary rules YAML to disk.
+        #[arg(long)]
+        write: bool,
         /// Output format (`terminal`, `json`, `markdown`).
         #[arg(long, value_enum, default_value_t = OutputFormat::Terminal)]
         format: OutputFormat,

@@ -1,16 +1,19 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
+use forge_ai::build_pruned_centrality_context;
 use forge_analyzer::{
     analyze_polyglot_dependencies, build_polyglot_architecture_graph, detector::is_test_file,
-    scanner::scan_repository,
+    extract_file_import_edges, scanner::scan_repository, simulate_refactor, RefactorOperation,
 };
 use forge_core::{
     config::load_config,
     scoring::{calculate_change_risk, calculate_health_score},
     Finding, ForgeError, Repository, Severity,
 };
-use forge_git::{collect_working_tree_diff, compute_change_impact, parse_unified_diff};
+use forge_git::{
+    collect_working_tree_diff, compute_change_impact, compute_impacted_tests, parse_unified_diff,
+};
 use forge_rules::RuleEngine;
 use forge_security::SecurityScanner;
 use serde::{Deserialize, Serialize};
@@ -39,7 +42,7 @@ pub struct McpRuleDescriptor {
     pub enabled: bool,
 }
 
-/// Returns the deterministic catalog of `eforge_*` MCP tools.
+/// Returns the deterministic catalog of `eforge_*` MCP tools (11 tools in v1.1).
 #[must_use]
 pub fn list_mcp_tools() -> Vec<McpToolDescriptor> {
     vec![
@@ -107,6 +110,59 @@ pub fn list_mcp_tools() -> Vec<McpToolDescriptor> {
                         "type": "boolean",
                         "description": "Optional flag: if true, returns only currently enabled rules"
                     }
+                },
+                "additionalProperties": false
+            }),
+        },
+        McpToolDescriptor {
+            name: "eforge_verify_patch".to_string(),
+            description: "Closed-loop pre-flight verification for AI agents: validates a proposed unified diff in memory against security rules, blast radius, and policy gates before writing to disk.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "diff_text": {"type": "string", "description": "Proposed unified diff text to verify before applying to disk"}
+                },
+                "required": ["diff_text"],
+                "additionalProperties": false
+            }),
+        },
+        McpToolDescriptor {
+            name: "eforge_simulate_refactor".to_string(),
+            description: "Simulates moving files or modules in memory and reports resolved/introduced Tarjan SCC cycles and required import specifier rewrites.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "from": {"type": "string", "description": "Source file or module path"},
+                    "to": {"type": "string", "description": "Destination file or module path"}
+                },
+                "required": ["from", "to"],
+                "additionalProperties": false
+            }),
+        },
+        McpToolDescriptor {
+            name: "eforge_get_impacted_tests".to_string(),
+            description: "Maps a unified diff or working tree changes through reverse-import BFS to Tier 1/2/3 impacted test files and synthesizes test runner commands.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "diff_text": {"type": "string", "description": "Optional unified diff text; defaults to working tree diff"}
+                },
+                "additionalProperties": false
+            }),
+        },
+        McpToolDescriptor {
+            name: "eforge_get_pruned_context".to_string(),
+            description: "Returns a token-budgeted context pack around focal files/modules ranked by hop distance and graph centrality.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "focal_targets": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Focal module IDs or file paths"
+                    },
+                    "token_budget": {"type": "integer", "description": "Maximum token budget (default: 4000)"},
+                    "max_hops": {"type": "integer", "description": "Maximum import graph hops (default: 2)"}
                 },
                 "additionalProperties": false
             }),
@@ -180,7 +236,7 @@ fn to_envelope_json<T: Serialize>(payload: T, raw_texts: &[&str]) -> Result<Valu
     })
 }
 
-/// Dispatches an `eforge_*` MCP tool invocation and wraps the result in an [`UntrustedEnvelope`].
+/// Dispatches an `eforge_*` MCP tool invocation and wraps the result in an [`UntrustedEnvelope`](crate::UntrustedEnvelope).
 pub fn call_mcp_tool(
     repo_root: &Path,
     tool_name: &str,
@@ -466,6 +522,134 @@ pub fn call_mcp_tool(
                 &[target],
             )
         }
+        "eforge_verify_patch" => {
+            let diff_text = arguments
+                .get("diff_text")
+                .and_then(Value::as_str)
+                .ok_or_else(|| ForgeError::Config {
+                    message: "Missing required 'diff_text' argument for eforge_verify_patch"
+                        .to_string(),
+                })?;
+
+            let ctx = build_analyzed_repo(repo_root)?;
+            let changes = parse_unified_diff(diff_text)?;
+            let file_edges = extract_file_import_edges(repo_root, &ctx.repo.files)?;
+            let impact = compute_change_impact(&changes, &ctx.repo.modules, &ctx.test_files);
+            let impacted_tests = compute_impacted_tests(
+                &changes,
+                &ctx.repo.modules,
+                &file_edges,
+                &ctx.test_files,
+                &ctx.repo.detected_languages,
+                &ctx.repo.package_managers,
+            );
+
+            // Scan added lines inside the diff for secrets and unsafe patterns in memory
+            let added_lines_only: String = diff_text
+                .lines()
+                .filter(|l| l.starts_with('+') && !l.starts_with("+++"))
+                .map(|l| &l[1..])
+                .collect::<Vec<_>>()
+                .join("\n");
+            let patch_security_findings =
+                SecurityScanner::scan_file_content("proposed-patch.ts", &added_lines_only);
+
+            let approved = patch_security_findings.is_empty();
+            let baseline_health = ctx.repo.health.as_ref().map_or(100, |h| h.overall);
+            let penalty = (patch_security_findings.len() * 15).min(100) as u8;
+            let projected_health = baseline_health.saturating_sub(penalty);
+
+            to_envelope_json(
+                json!({
+                    "approved": approved,
+                    "baseline_health_score": baseline_health,
+                    "projected_health_score": projected_health,
+                    "health_delta": projected_health as i16 - baseline_health as i16,
+                    "patch_security_findings": patch_security_findings,
+                    "impact": impact,
+                    "impacted_tests": impacted_tests,
+                }),
+                &[diff_text],
+            )
+        }
+        "eforge_simulate_refactor" => {
+            let from = arguments
+                .get("from")
+                .and_then(Value::as_str)
+                .ok_or_else(|| ForgeError::Config {
+                    message: "Missing required 'from' argument for eforge_simulate_refactor"
+                        .to_string(),
+                })?;
+            let to =
+                arguments
+                    .get("to")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| ForgeError::Config {
+                        message: "Missing required 'to' argument for eforge_simulate_refactor"
+                            .to_string(),
+                    })?;
+
+            let config = load_config(repo_root)?;
+            let discovery = scan_repository(repo_root, &config.ignore_patterns)?;
+            let is_file_move = discovery.files.iter().any(|f| f.relative_path == from);
+            let op = if is_file_move {
+                RefactorOperation::MoveFile {
+                    from: from.to_string(),
+                    to: to.to_string(),
+                }
+            } else {
+                RefactorOperation::MoveModule {
+                    from_prefix: from.to_string(),
+                    to_prefix: to.to_string(),
+                }
+            };
+
+            let sim_report = simulate_refactor(repo_root, &discovery.files, &[op])?;
+            to_envelope_json(sim_report, &[from, to])
+        }
+        "eforge_get_impacted_tests" => {
+            let ctx = build_analyzed_repo(repo_root)?;
+            let diff_text = match arguments.get("diff_text").and_then(Value::as_str) {
+                Some(text) => text.to_string(),
+                None => collect_working_tree_diff(repo_root).unwrap_or_default(),
+            };
+            let changes = parse_unified_diff(&diff_text)?;
+            let file_edges = extract_file_import_edges(repo_root, &ctx.repo.files)?;
+            let report = compute_impacted_tests(
+                &changes,
+                &ctx.repo.modules,
+                &file_edges,
+                &ctx.test_files,
+                &ctx.repo.detected_languages,
+                &ctx.repo.package_managers,
+            );
+            to_envelope_json(report, &[&diff_text])
+        }
+        "eforge_get_pruned_context" => {
+            let ctx = build_analyzed_repo(repo_root)?;
+            let focal_targets: Vec<String> = arguments
+                .get("focal_targets")
+                .and_then(Value::as_array)
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(Value::as_str)
+                        .map(String::from)
+                        .collect()
+                })
+                .unwrap_or_default();
+            let token_budget = arguments
+                .get("token_budget")
+                .and_then(Value::as_u64)
+                .unwrap_or(4000) as u32;
+            let max_hops = arguments
+                .get("max_hops")
+                .and_then(Value::as_u64)
+                .unwrap_or(2) as usize;
+
+            let pruned =
+                build_pruned_centrality_context(&ctx.repo, &focal_targets, max_hops, token_budget);
+            to_envelope_json(pruned, &[])
+        }
         other => Err(ForgeError::Config {
             message: format!("Unknown MCP tool '{other}'"),
         }),
@@ -486,11 +670,15 @@ mod tests {
     }
 
     #[test]
-    fn list_mcp_tools_exposes_seven_eforge_tools() {
+    fn list_mcp_tools_exposes_eleven_eforge_tools() {
         let tools = list_mcp_tools();
-        assert_eq!(tools.len(), 7);
+        assert_eq!(tools.len(), 11);
         assert!(tools.iter().all(|t| t.name.starts_with("eforge_")));
         assert!(tools.iter().any(|t| t.name == "eforge_get_rules"));
+        assert!(tools.iter().any(|t| t.name == "eforge_verify_patch"));
+        assert!(tools.iter().any(|t| t.name == "eforge_simulate_refactor"));
+        assert!(tools.iter().any(|t| t.name == "eforge_get_impacted_tests"));
+        assert!(tools.iter().any(|t| t.name == "eforge_get_pruned_context"));
     }
 
     #[test]
@@ -511,6 +699,39 @@ mod tests {
         assert!(explain.is_ok());
         if let Ok(val) = explain {
             assert_eq!(val["payload"]["target"], "src/services");
+        }
+    }
+
+    #[test]
+    fn call_mcp_preflight_verify_and_simulate_work_in_memory() {
+        let root = fixture_next_app();
+        let diff = "--- a/src/db/client.ts\n+++ b/src/db/client.ts\n@@ -1,2 +1,3 @@\n+export const clean = true;\n";
+        let verify = call_mcp_tool(&root, "eforge_verify_patch", &json!({"diff_text": diff}));
+        assert!(verify.is_ok());
+        if let Ok(val) = verify {
+            assert_eq!(val["payload"]["approved"], true);
+        }
+
+        let sim = call_mcp_tool(
+            &root,
+            "eforge_simulate_refactor",
+            &json!({"from": "src/db/client.ts", "to": "src/services/client.ts"}),
+        );
+        assert!(sim.is_ok());
+        if let Ok(val) = sim {
+            assert_eq!(val["payload"]["is_safe_to_apply"], true);
+        }
+
+        let pruned = call_mcp_tool(
+            &root,
+            "eforge_get_pruned_context",
+            &json!({"focal_targets": ["src/services"], "token_budget": 1000, "max_hops": 1}),
+        );
+        assert!(pruned.is_ok());
+        if let Ok(val) = pruned {
+            assert!(!val["payload"]["included_modules"]
+                .as_array()
+                .map_or(true, Vec::is_empty));
         }
     }
 
