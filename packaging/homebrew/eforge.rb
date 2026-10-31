@@ -1,7 +1,7 @@
 class Eforge < Formula
   desc "Know your code. Ship with confidence. Instant architectural intelligence for codebases"
   homepage "https://elcode.id/"
-  version "0.6.0"
+  version "1.1.0"
   license "MIT"
 
   on_macos do

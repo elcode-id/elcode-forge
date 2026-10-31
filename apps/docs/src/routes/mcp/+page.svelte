@@ -78,7 +78,11 @@
         "eforge_get_findings",
         "eforge_get_change_impact",
         "eforge_explain_module",
-        "eforge_get_rules"
+        "eforge_get_rules",
+        "eforge_verify_patch",
+        "eforge_simulate_refactor",
+        "eforge_get_impacted_tests",
+        "eforge_get_pruned_context"
       ]
     }
   }
@@ -92,7 +96,7 @@
   <div class="bg-[#12151f] border border-[#262c3f] rounded-xl p-6 space-y-4">
     <h2 id="tools" class="text-lg font-bold text-white font-mono flex items-center gap-2">
       <span class="text-sky-400">03.</span>
-      <span>The 7 Native <code class="text-sky-300">eforge_*</code> MCP Tools & Schemas</span>
+      <span>The 11 Native <code class="text-sky-300">eforge_*</code> MCP Tools & Schemas</span>
     </h2>
     <p class="text-sm text-slate-300 leading-relaxed">
       All tools are namespaced under <code class="text-emerald-300 font-mono">eforge_*</code> with strict <code class="text-slate-200 font-mono">additionalProperties: false</code> JSON Schemas:
@@ -168,6 +172,46 @@
           Resolves active architectural, quality, security, and dependency rule definitions with pack inheritance (<code class="text-slate-200 font-mono">builtin</code>, <code class="text-slate-200 font-mono">pack:*</code>, <code class="text-slate-200 font-mono">custom:*</code>), remediation text, and enabled status without running a full AST scan.
         </p>
       </div>
+      <div class="bg-black/40 border border-slate-800 rounded-lg p-4 space-y-2">
+        <div class="flex items-center justify-between">
+          <code class="text-emerald-300 font-mono font-bold text-sm">8. eforge_verify_patch</code>
+          <code class="text-xs font-mono text-slate-400">Arguments: {JSON.stringify({ proposed_files: [{ path: "string", content: "string" }] })}</code>
+        </div>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          <strong>Closed-Loop Pre-Flight Gate:</strong> Overlays proposed file modifications in memory (zero disk writes) and verifies whether the candidate patch introduces new rule violations, leaked credentials, or Tarjan SCC circular dependencies (<code class="text-slate-200 font-mono">passed: boolean</code>).
+        </p>
+      </div>
+
+      <div class="bg-black/40 border border-slate-800 rounded-lg p-4 space-y-2">
+        <div class="flex items-center justify-between">
+          <code class="text-emerald-300 font-mono font-bold text-sm">9. eforge_simulate_refactor</code>
+          <code class="text-xs font-mono text-slate-400">Arguments: {JSON.stringify({ moves: [{ from: "string", to: "string" }] })}</code>
+        </div>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          <strong>In-Memory Refactoring Simulator:</strong> Simulates moving files or modules without touching disk, computing required relative import rewrites, introduced or resolved cyclic dependencies, and health score shifts.
+        </p>
+      </div>
+
+      <div class="bg-black/40 border border-slate-800 rounded-lg p-4 space-y-2">
+        <div class="flex items-center justify-between">
+          <code class="text-emerald-300 font-mono font-bold text-sm">10. eforge_get_impacted_tests</code>
+          <code class="text-xs font-mono text-slate-400">Arguments: {JSON.stringify({ diff_text: "string?" })}</code>
+        </div>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          <strong>Smart Test Selector:</strong> Analyzes reverse transitive module and file import graphs from a unified diff or working tree to identify the exact subset of test files affected, returning runnable test runner commands (<code class="text-slate-200 font-mono">vitest</code>, <code class="text-slate-200 font-mono">cargo test</code>, <code class="text-slate-200 font-mono">pytest</code>, <code class="text-slate-200 font-mono">go test</code>).
+        </p>
+      </div>
+
+      <div class="bg-black/40 border border-slate-800 rounded-lg p-4 space-y-2">
+        <div class="flex items-center justify-between">
+          <code class="text-emerald-300 font-mono font-bold text-sm">11. eforge_get_pruned_context</code>
+          <code class="text-xs font-mono text-slate-400">Arguments: {JSON.stringify({ targets: ["string"], token_budget: 4000, max_hops: 2 })}</code>
+        </div>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          <strong>Graph-Centrality Context Pruner:</strong> Builds a token-budgeted architectural context pack around target modules/files within N hops, ranking neighbor nodes by graph centrality (<code class="text-slate-200 font-mono">FanIn + FanOut</code>) to maximize useful architecture signals per LLM prompt token.
+        </p>
+      </div>
+
     </div>
   </div>
 

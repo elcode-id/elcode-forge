@@ -59,7 +59,7 @@
 </script>
 
 <p class="lead">
-  <strong>ELCODE Forge (<code>eforge</code>)</strong> is a local-first, deterministic codebase intelligence layer, polyglot architecture analyzer, security &amp; supply-chain scanner, Policy-as-Code gate, and native Model Context Protocol (MCP) server built in Rust by <a href="https://elcode.id" target="_blank" rel="noreferrer">ELCODE</a>.
+  <strong>ELCODE Forge (<code>eforge</code> v1.1.0)</strong> is a local-first, deterministic codebase intelligence layer, tactile terminal instrument (<code>eforge ui</code> &amp; <code>eforge watch</code>), active remediation engine (<code>eforge fix</code> &amp; <code>eforge simulate</code>), polyglot architecture analyzer, Policy-as-Code gate, and native Model Context Protocol (MCP) server built in Rust by <a href="https://elcode.id" target="_blank" rel="noreferrer">ELCODE</a>.
 </p>
 
 <QuickLinks>
@@ -79,13 +79,13 @@
     title="CLI & Custom Rules Engine"
     icon="plugins"
     href="{base}/cli"
-    description="Explore all 34 CLI commands, 5 output formatters, exit codes, and 6 deterministic architectural rule matchers."
+    description="Explore all 41 CLI commands & subcommands, interactive TUI, surgical auto-fix, and 6 deterministic rule matchers."
   />
   <QuickLink
     title="MCP Server & Governance"
     icon="theming"
     href="{base}/mcp"
-    description="Connect Claude Code, Cursor, and Windsurf to eforge mcp and enforce organization-wide Policy-as-Code gates."
+    description="Connect Claude Code, Cursor, and Windsurf to 11 eforge_* MCP tools with closed-loop pre-flight patch verification."
   />
 </QuickLinks>
 
@@ -135,9 +135,9 @@
 <h3 id="install-npx">1. Zero-Install via Node / npx / pnpm / bun</h3>
 
 <pre><code># Run directly without global installation
-npx elcode-forge doctor
-pnpm dlx elcode-forge scan
-bunx elcode-forge review --fast
+npx elcode-forge doctor --codeframe
+pnpm dlx elcode-forge scan --codeframe
+bunx elcode-forge review --fast --impacted-tests
 
 # Or install globally via npm/pnpm
 npm install -g elcode-forge</code></pre>
@@ -148,7 +148,7 @@ npm install -g elcode-forge</code></pre>
 curl -fsSL https://raw.githubusercontent.com/elcode-id/elcode-forge/main/scripts/install.sh | sh
 
 # Pin a specific release version or custom directory:
-EFORGE_VERSION=v1.0.0 EFORGE_INSTALL_DIR=/usr/local/bin \
+EFORGE_VERSION=v1.1.0 EFORGE_INSTALL_DIR=/usr/local/bin \
   curl -fsSL https://raw.githubusercontent.com/elcode-id/elcode-forge/main/scripts/install.sh | sh</code></pre>
 
 <h3 id="install-windows">3. Windows PowerShell Installer</h3>
@@ -178,41 +178,46 @@ cargo build --release --locked --bin eforge
 <h2 id="quickstart">Golden Path Quickstart (Under 60 Seconds)</h2>
 
 <p>
-  Follow these 6 commands in any Git repository to initialize configuration, run a sub-5-second architectural health diagnosis, audit your working diff, and generate a self-contained HTML intelligence portal.
+  Follow these steps in any Git repository to initialize configuration with automatic boundary inference, explore the interactive terminal UI, run surgical auto-fixes, and audit your working diff.
 </p>
 
-<h3 id="step-1-init">Step 1 — Initialize Configuration</h3>
+<h3 id="step-1-init">Step 1 — Initialize Configuration &amp; Infer Architecture Boundaries</h3>
 
-<pre><code>eforge init
-# Creates eforge.config.yaml with auto-detected language presets</code></pre>
+<pre><code>eforge init --infer
+# Creates eforge.config.yaml, initializes .eforge/, and infers custom layer boundary rules</code></pre>
 
-<h3 id="step-2-doctor">Step 2 — Run 5-Second Repository Diagnosis</h3>
+<h3 id="step-2-doctor">Step 2 — Run 5-Second Repository Diagnosis with Rich Code-Frames</h3>
 
-<pre><code>eforge doctor
-# Outputs Health Score (0-100), Letter Grade (A+..F), 8 dimension scores, and top risks</code></pre>
+<pre><code>eforge doctor --codeframe
+# Outputs Health Score (0-100), 8 dimension scores, and multi-line box-drawn diagnostic spans</code></pre>
 
-<h3 id="step-3-scan">Step 3 — Full Architecture, Rule &amp; Security Scan</h3>
+<h3 id="step-3-ui-watch">Step 3 — Explore in Interactive TUI or Live Architectural Radar</h3>
 
-<pre><code>eforge scan --fail-on high --output .eforge/report-bundle.json
-# Evaluates import graph, circular dependencies (Tarjan SCC), rules, and secret/OSV checks</code></pre>
+<pre><code>eforge ui
+# Launches the 4-tab ratatui TUI (DAG Explorer, Tarjan SCC Cycles, Blast Radius, Code-Frames)
 
-<h3 id="step-4-review">Step 4 — Review Uncommitted Changes or Pull Request Diff</h3>
+eforge watch
+# Starts the &lt;50ms incremental file-save architectural radar backed by .eforge/cache/</code></pre>
 
-<pre><code>eforge review --base origin/main --fail-on high
-# Computes transitive blast radius, risk score (0-100), and diff-scoped findings</code></pre>
+<h3 id="step-4-scan-fix">Step 4 — Full Scan, Surgical Auto-Fix &amp; Refactor Simulation</h3>
 
-<h3 id="step-5-report">Step 5 — Generate Interactive HTML Report &amp; Living Docs</h3>
+<pre><code>eforge scan --codeframe --fail-on high
+eforge fix --dry-run
+eforge simulate --move src/db/client.ts:src/infra/db/client.ts
+# Evaluates rules, previews transactional codemods, and simulates module moves in memory</code></pre>
 
-<pre><code>eforge report --html .eforge/report.html --living-docs docs/forge
-# Exports offline-capable dark-mode HTML report + docs/forge/ARCHITECTURE.md & ONBOARDING.md</code></pre>
+<h3 id="step-5-review">Step 5 — Review Uncommitted Changes &amp; Smart Impacted Tests</h3>
 
-<h3 id="step-6-mcp">Step 6 — Start the Native MCP Server for AI Agents</h3>
+<pre><code>eforge review --base origin/main --impacted-tests --fail-on high
+# Computes transitive blast radius, risk score, and exact test files/commands to execute</code></pre>
+
+<h3 id="step-6-mcp">Step 6 — Start the Native Closed-Loop MCP Server for AI Agents</h3>
 
 <pre><code>eforge mcp
-# Starts JSON-RPC 2.0 stdio server exposing 7 eforge_* tools to Claude Code, Cursor, or Windsurf</code></pre>
+# Starts JSON-RPC 2.0 stdio server exposing 11 eforge_* tools to Claude Code, Cursor, or Windsurf</code></pre>
 
-<Callout title="Deterministic Execution & Caching" type="warning">
-  Identical repository state + identical <code>eforge.config.yaml</code> is guaranteed to produce byte-for-byte identical JSON/SARIF output and identical Health/Risk scores. Incremental file-level <code>blake3</code> hashes are persisted in <code>.eforge/cache/</code> for sub-second repeat scans.
+<Callout title="Deterministic Execution & Incremental AST Caching" type="warning">
+  Identical repository state + identical <code>eforge.config.yaml</code> is guaranteed to produce byte-for-byte identical JSON/SARIF output and identical Health/Risk scores. Incremental file-level <code>blake3</code> AST entries are persisted in <code>.eforge/cache/file-ast-v1.json</code> for sub-50ms watch cycles.
 </Callout>
 
 <hr />

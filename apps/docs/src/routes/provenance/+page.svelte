@@ -51,7 +51,7 @@
       All release archives (<code class="text-slate-200 font-mono">eforge-v*-x86_64-unknown-linux-gnu.tar.gz</code>, <code class="text-slate-200 font-mono">eforge-v*-aarch64-apple-darwin.tar.gz</code>, <code class="text-slate-200 font-mono">eforge-v*-x86_64-pc-windows-msvc.zip</code>) are signed keyless in GitHub Actions via <code class="text-slate-200 font-mono">actions/attest-build-provenance@v2</code>:
     </p>
     <div class="bg-black/60 border border-slate-800 rounded-lg p-4 font-mono text-xs text-slate-200 overflow-x-auto">
-      <pre><code>{`export FORGE_VERSION="v1.0.0"
+      <pre><code>{`export FORGE_VERSION="v1.1.0"
 export TARGET="x86_64-unknown-linux-gnu"
 
 # 1. Download the release archive
@@ -72,16 +72,16 @@ gh attestation verify "eforge-\${FORGE_VERSION}-\${TARGET}.tar.gz" --owner elcod
     </p>
     <div class="bg-black/60 border border-slate-800 rounded-lg p-4 font-mono text-xs text-slate-200 overflow-x-auto">
       <pre><code>{`# Download both the binary archive and the signed in-toto provenance bundle
-gh release download v1.0.0 \\
+gh release download v1.1.0 \\
   --repo elcode-id/elcode-forge \\
-  --pattern "eforge-v1.0.0-x86_64-unknown-linux-gnu.tar.gz" \\
+  --pattern "eforge-v1.1.0-x86_64-unknown-linux-gnu.tar.gz" \\
   --pattern "multiple.intoto.jsonl"
 
 # Verify SLSA Build Level 3 provenance, source repository URI, and exact tag
-slsa-verifier verify-artifact eforge-v1.0.0-x86_64-unknown-linux-gnu.tar.gz \\
+slsa-verifier verify-artifact eforge-v1.1.0-x86_64-unknown-linux-gnu.tar.gz \\
   --provenance-path multiple.intoto.jsonl \\
   --source-uri github.com/elcode-id/elcode-forge \\
-  --source-tag v1.0.0`}</code></pre>
+  --source-tag v1.1.0`}</code></pre>
     </div>
   </div>
 
@@ -98,7 +98,7 @@ shasum -a 256 -c SHA256SUMS.txt --ignore-missing
 
 # Windows PowerShell
 $Exp = (Select-String "windows-msvc.zip" SHA256SUMS.txt).Line.Split(" ")[0]
-$Act = (Get-FileHash -Algorithm SHA256 eforge-v1.0.0-x86_64-pc-windows-msvc.zip).Hash.ToLower()
+$Act = (Get-FileHash -Algorithm SHA256 eforge-v1.1.0-x86_64-pc-windows-msvc.zip).Hash.ToLower()
 if ($Exp -ne $Act) { throw "SHA256 mismatch!" }`}</code></pre>
       </div>
     </div>
@@ -109,12 +109,12 @@ if ($Exp -ne $Act) { throw "SHA256 mismatch!" }`}</code></pre>
         <pre><code>{`FROM alpine:3.20 AS verifier
 RUN apk add --no-cache github-cli tar
 WORKDIR /verify
-RUN gh release download v1.0.0 --repo elcode-id/elcode-forge \\
-      --pattern "eforge-v1.0.0-x86_64-unknown-linux-gnu.tar.gz" \\
+RUN gh release download v1.1.0 --repo elcode-id/elcode-forge \\
+      --pattern "eforge-v1.1.0-x86_64-unknown-linux-gnu.tar.gz" \\
       --pattern "SHA256SUMS.txt" && \\
     sha256sum -c SHA256SUMS.txt --ignore-missing && \\
-    gh attestation verify eforge-v1.0.0-*.tar.gz --owner elcode-id && \\
-    tar -xzf eforge-v1.0.0-*.tar.gz`}</code></pre>
+    gh attestation verify eforge-v1.1.0-*.tar.gz --owner elcode-id && \\
+    tar -xzf eforge-v1.1.0-*.tar.gz`}</code></pre>
       </div>
     </div>
   </div>
