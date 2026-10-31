@@ -12,6 +12,8 @@ const {
   parseSha256Sums,
   verifyChecksum,
   runCli,
+  execute,
+  getBinary,
 } = require('../src/index.js');
 
 describe('elcode-forge — Platform & Resolution', () => {
@@ -106,6 +108,50 @@ f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2 *eforge-v0.6.0-
         env: { ...process.env, EFORGE_BINARY_PATH: localBinary },
       });
       expect(exitCode).toBe(0);
+
+      // Programmatic execute() API
+      const result = await execute(['--version'], {
+        env: { ...process.env, EFORGE_BINARY_PATH: localBinary },
+      });
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('eforge');
+
+      // getBinary() API
+      const resolved = await getBinary(undefined, {
+        env: { ...process.env, EFORGE_BINARY_PATH: localBinary },
+      });
+      expect(resolved).toBe(localBinary);
+    }
+  });
+
+  it('runs various CLI commands programmatically via execute()', async () => {
+    const repoRoot = path.resolve(__dirname, '../../..');
+    const binaryExt = process.platform === 'win32' ? '.exe' : '';
+    const localBinary = path.join(repoRoot, 'target', 'debug', `eforge${binaryExt}`);
+
+    if (fs.existsSync(localBinary)) {
+      // 1. Doctor command
+      const docResult = await execute(['doctor', '--format', 'json'], {
+        cwd: repoRoot,
+        env: { ...process.env, EFORGE_BINARY_PATH: localBinary },
+      });
+      expect(docResult.status).toBe(0);
+      expect(docResult.stdout).toContain('inventory');
+
+      // 2. Rules check command
+      const rulesResult = await execute(['rules', 'check'], {
+        cwd: repoRoot,
+        env: { ...process.env, EFORGE_BINARY_PATH: localBinary },
+      });
+      expect(rulesResult.status).toBe(0);
+
+      // 3. MCP tool listing / help
+      const mcpResult = await execute(['mcp', '--help'], {
+        cwd: repoRoot,
+        env: { ...process.env, EFORGE_BINARY_PATH: localBinary },
+      });
+      expect(mcpResult.status).toBe(0);
+      expect(mcpResult.stdout).toContain('Model Context Protocol');
     }
   });
 });

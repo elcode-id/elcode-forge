@@ -134,10 +134,35 @@
 
 <h3 id="install-npx">1. Zero-Install via Node / npx / pnpm / bun</h3>
 
-<pre><code># Run directly without global installation
+<p>
+  No installation or Rust toolchain required—<strong>100% of ELCODE Forge features (all 41 CLI commands/subcommands and 11 MCP tools)</strong> run directly via <code>npx</code>, <code>pnpm dlx</code>, or <code>bunx</code>:
+</p>
+
+<pre><code># Core diagnostics & full scan
 npx elcode-forge doctor --codeframe
-pnpm dlx elcode-forge scan --codeframe
-bunx elcode-forge review --fast --impacted-tests
+npx elcode-forge scan --codeframe --fail-on high
+
+# Interactive TUI & live radar
+npx elcode-forge ui
+npx elcode-forge watch
+
+# Active remediation & in-memory simulation
+npx elcode-forge fix --dry-run
+npx elcode-forge simulate --move src/db/client.ts:src/infra/db/client.ts
+
+# Topology & layer boundary inference
+npx elcode-forge rules infer --write
+
+# Change review & smart impacted test selection
+npx elcode-forge review --fast --impacted-tests
+
+# Security audit, SBOM & Policy gates
+npx elcode-forge security --audit
+npx elcode-forge sbom --spec cyclonedx
+npx elcode-forge policy check
+
+# Native closed-loop MCP server for AI coding agents
+npx elcode-forge mcp
 
 # Or install globally via npm/pnpm
 npm install -g elcode-forge</code></pre>
