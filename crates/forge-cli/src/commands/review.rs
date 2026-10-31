@@ -1,4 +1,4 @@
-//! `eforge review` command — PR/change risk, blast radius, and diff-scoped review report.
+//! `eforge review` command — PR/change risk, blast radius, impacted test selection, and diff-scoped review report.
 
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -230,6 +230,80 @@ pub fn render_review_report(
                 }
             }
             Ok(out)
+        }
+    }
+}
+
+/// Computes the Tier 1/2/3 impacted test suite and recommended runner commands for `eforge review --impacted-tests`.
+pub fn execute_review_impacted_tests(
+    repo_root: &Path,
+    diff_input: Option<&str>,
+) -> Result<forge_git::ImpactedTestsReport, ForgeError> {
+    let config = load_config(repo_root)?;
+    let discovery = forge_analyzer::scanner::scan_repository(repo_root, &config.ignore_patterns)?;
+    let graph = forge_analyzer::build_polyglot_architecture_graph(repo_root, &discovery.files)?;
+    let file_edges = forge_analyzer::extract_file_import_edges(repo_root, &discovery.files)?;
+    let diff_text = match diff_input {
+        Some(raw) => raw.to_string(),
+        None => forge_git::collect_working_tree_diff(repo_root).unwrap_or_default(),
+    };
+    let changes = forge_git::parse_unified_diff(&diff_text)?;
+    let test_files: BTreeSet<String> = discovery
+        .files
+        .iter()
+        .filter(|f| forge_analyzer::detector::is_test_file(&f.relative_path))
+        .map(|f| f.relative_path.clone())
+        .collect();
+
+    Ok(forge_git::compute_impacted_tests(
+        &changes,
+        &graph.modules,
+        &file_edges,
+        &test_files,
+        &discovery.languages,
+        &discovery.package_managers,
+    ))
+}
+
+/// Renders an [`forge_git::ImpactedTestsReport`] appendix for `eforge review --impacted-tests`.
+#[must_use]
+pub fn render_impacted_tests_appendix(
+    report: &forge_git::ImpactedTestsReport,
+    format: OutputFormat,
+) -> String {
+    match format {
+        OutputFormat::Json | OutputFormat::Sarif => {
+            serde_json::to_string_pretty(report).unwrap_or_default()
+        }
+        OutputFormat::Markdown | OutputFormat::Github => {
+            let mut md = String::from("\n## Smart Impacted Test Selection\n\n");
+            md.push_str(&format!(
+                "- **Total Selected Tests:** {}\n- **Tier 1 (Modified):** `{}`\n- **Tier 2 (Direct Importers/Companions):** `{}`\n- **Tier 3 (Transitive Blast Radius):** `{}`\n\n",
+                report.all_selected_tests.len(),
+                report.tier1_modified_tests.join(", "),
+                report.tier2_direct_tests.join(", "),
+                report.tier3_transitive_tests.join(", ")
+            ));
+            for cmd in &report.recommended_commands {
+                md.push_str(&format!("```bash\n{cmd}\n```\n"));
+            }
+            md
+        }
+        OutputFormat::Terminal => {
+            let mut out = String::from("\nSmart Impacted Test Selection:\n");
+            out.push_str(&format!(
+                "  Selected Test Files ({}): {}\n",
+                report.all_selected_tests.len(),
+                if report.all_selected_tests.is_empty() {
+                    "none".to_string()
+                } else {
+                    report.all_selected_tests.join(", ")
+                }
+            ));
+            for cmd in &report.recommended_commands {
+                out.push_str(&format!("  Recommended Runner: {cmd}\n"));
+            }
+            out
         }
     }
 }

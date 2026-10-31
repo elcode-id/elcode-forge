@@ -26,8 +26,8 @@ pub use config::{
 };
 pub use error::ForgeError;
 pub use ir::{
-    Confidence, Dependency, DimensionScore, FileNode, Finding, HealthScore, Module, Repository,
-    Severity, SourceLocation,
+    CallChainHop, Confidence, Dependency, DimensionScore, FileImportEdge, FileNode, Finding,
+    FixSuggestion, HealthScore, Module, Repository, Severity, SourceLocation, TextEdit,
 };
 pub use path_guard::resolve_safe_path;
 pub use policy::{

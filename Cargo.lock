@@ -642,6 +642,7 @@ dependencies = [
 name = "forge-mcp"
 version = "1.0.0"
 dependencies = [
+ "forge-ai",
  "forge-analyzer",
  "forge-core",
  "forge-git",

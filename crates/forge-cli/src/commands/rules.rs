@@ -1,4 +1,4 @@
-//! `eforge rules` command — rule listing, syntax verification, and template initialization.
+//! `eforge rules` command — rule listing, syntax verification, template initialization, and topology inference.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -582,6 +582,100 @@ pub fn render_rules_init(
             "✓ Generated starter rules template at {} ({} rules configured)\n",
             report.created_path, report.starter_rules_count
         )),
+    }
+}
+
+/// Executes `eforge rules infer` using graph-theoretic topology and boundary inference.
+pub fn run_rules_infer(
+    repo_root: &Path,
+    output: Option<&Path>,
+    write_to_disk: bool,
+) -> Result<forge_analyzer::TopologyInferenceReport, ForgeError> {
+    let config = load_config(repo_root)?;
+    let discovery = forge_analyzer::scanner::scan_repository(repo_root, &config.ignore_patterns)?;
+    let graph = forge_analyzer::build_polyglot_architecture_graph(repo_root, &discovery.files)?;
+    let report = forge_analyzer::infer_topology_and_boundaries(&discovery.files, &graph);
+
+    if write_to_disk || output.is_some() {
+        let dest = match output {
+            Some(p) if p.is_absolute() => p.to_path_buf(),
+            Some(p) => repo_root.join(p),
+            None => repo_root
+                .join(".eforge")
+                .join("rules")
+                .join("inferred-architecture.yaml"),
+        };
+        if let Some(parent) = dest.parent() {
+            fs::create_dir_all(parent).map_err(|source| ForgeError::Io {
+                path: parent.to_path_buf(),
+                source,
+            })?;
+        }
+        fs::write(&dest, &report.generated_rules_yaml)
+            .map_err(|source| ForgeError::Io { path: dest, source })?;
+    }
+
+    Ok(report)
+}
+
+/// Renders a [`forge_analyzer::TopologyInferenceReport`] in `format`.
+pub fn render_rules_infer(
+    report: &forge_analyzer::TopologyInferenceReport,
+    format: OutputFormat,
+) -> Result<String, ForgeError> {
+    match format {
+        OutputFormat::Json | OutputFormat::Sarif => {
+            serde_json::to_string_pretty(report).map_err(|e| ForgeError::Serialization {
+                message: e.to_string(),
+            })
+        }
+        OutputFormat::Markdown | OutputFormat::Github => {
+            let mut md = String::new();
+            md.push_str("# ELCODE Forge Topology & Boundary Inference\n\n");
+            md.push_str(&format!(
+                "- **Detected Archetype:** {}\n- **Recommended Packs:** `{}`\n- **Inferred Rules:** {}\n\n",
+                report.archetype_label,
+                report.recommended_packs.join(", "),
+                report.inferred_rules.len()
+            ));
+            md.push_str("```yaml\n");
+            md.push_str(&report.generated_rules_yaml);
+            md.push_str("```\n");
+            Ok(md)
+        }
+        OutputFormat::Terminal => {
+            let mut out = String::new();
+            out.push_str("============================================================\n");
+            out.push_str(" ELCODE Forge — Topology & Boundary Inference\n");
+            out.push_str("============================================================\n");
+            out.push_str(&format!("Detected Archetype: {}\n", report.archetype_label));
+            out.push_str(&format!(
+                "Recommended Packs:  {}\n\n",
+                report.recommended_packs.join(", ")
+            ));
+            out.push_str("Module Topology & Instability Metrics:\n");
+            for m in &report.module_metrics {
+                out.push_str(&format!(
+                    "  • {:<24} [Ca: {:>2} | Ce: {:>2} | I: {:>4.2} | Layer: {}]\n",
+                    m.module_id,
+                    m.afferent_coupling_ca,
+                    m.efferent_coupling_ce,
+                    m.instability_index,
+                    m.inferred_layer.as_str()
+                ));
+            }
+            out.push_str(&format!(
+                "\nSynthesized Boundary Rules ({}):\n",
+                report.inferred_rules.len()
+            ));
+            for r in &report.inferred_rules {
+                out.push_str(&format!(
+                    "  ✓ [{}% confidence] {} — {}\n",
+                    r.confidence_pct, r.id, r.description
+                ));
+            }
+            Ok(out)
+        }
     }
 }
 

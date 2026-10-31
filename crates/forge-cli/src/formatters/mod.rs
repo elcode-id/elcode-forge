@@ -1,5 +1,6 @@
 //! Output formatters (`terminal`, `json`, `markdown`, `sarif`, `github`) for `eforge`.
 
+pub mod codeframe;
 pub mod json;
 pub mod markdown;
 pub mod sarif;
