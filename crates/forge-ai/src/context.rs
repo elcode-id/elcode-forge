@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use forge_core::error::ForgeError;
 use forge_core::ir::{Repository, Severity};
@@ -312,6 +313,163 @@ pub fn sections_from_repository(repo: &Repository, focus: Option<&str>) -> Vec<C
     }
 
     sections
+}
+
+/// A module node selected by graph-centrality context pruning.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PrunedModuleNode {
+    pub module_id: String,
+    pub hop_distance: usize,
+    pub centrality_score: usize,
+    pub files: Vec<String>,
+    pub exports: Vec<String>,
+    pub imports: Vec<String>,
+    pub active_findings: Vec<String>,
+}
+
+/// Token-budgeted, graph-centrality-ranked context pack for AI agents (`eforge_get_pruned_context`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PrunedCentralityContext {
+    pub focal_targets: Vec<String>,
+    pub token_budget: u32,
+    pub estimated_tokens_used: u32,
+    pub included_modules: Vec<PrunedModuleNode>,
+    pub pruned_modules: Vec<String>,
+}
+
+/// Builds a token-efficient [`PrunedCentralityContext`] around `focal_targets` by traversing
+/// both forward (`imports`) and reverse (`imported_by`) edges up to `max_hops`, ranking
+/// candidate modules by `(hop_distance::asc, centrality_score::desc, id::asc)` and pruning
+/// modules once `token_budget` is reached.
+#[must_use]
+#[allow(clippy::collapsible_if)]
+pub fn build_pruned_centrality_context(
+    repo: &Repository,
+    focal_targets: &[String],
+    max_hops: usize,
+    token_budget: u32,
+) -> PrunedCentralityContext {
+    let mut in_deg: BTreeMap<&str, usize> = BTreeMap::new();
+    let mut adj: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
+
+    for m in &repo.modules {
+        in_deg.entry(m.id.as_str()).or_insert(0);
+        for imp in &m.imports {
+            *in_deg.entry(imp.as_str()).or_insert(0) += 1;
+            adj.entry(m.id.as_str()).or_default().insert(imp.as_str());
+            adj.entry(imp.as_str()).or_default().insert(m.id.as_str());
+        }
+    }
+
+    let mut hop_map: BTreeMap<&str, usize> = BTreeMap::new();
+    let mut queue: VecDeque<(&str, usize)> = VecDeque::new();
+
+    for target in focal_targets {
+        let norm = target.trim().trim_end_matches('/');
+        for m in &repo.modules {
+            if m.id == norm
+                || m.root_path == norm
+                || m.files.iter().any(|f| f == norm || f.starts_with(norm))
+                || norm.starts_with(&format!("{}/", m.root_path))
+            {
+                if !hop_map.contains_key(m.id.as_str()) {
+                    hop_map.insert(m.id.as_str(), 0);
+                    queue.push_back((m.id.as_str(), 0));
+                }
+            }
+        }
+    }
+
+    if queue.is_empty() {
+        for m in &repo.modules {
+            hop_map.insert(m.id.as_str(), 1);
+        }
+    } else {
+        while let Some((curr, dist)) = queue.pop_front() {
+            if dist >= max_hops {
+                continue;
+            }
+            if let Some(neighbors) = adj.get(curr) {
+                for &next in neighbors {
+                    if !hop_map.contains_key(next) {
+                        hop_map.insert(next, dist + 1);
+                        queue.push_back((next, dist + 1));
+                    }
+                }
+            }
+        }
+    }
+
+    let mut candidates: Vec<PrunedModuleNode> = Vec::new();
+    let mut out_of_range: Vec<String> = Vec::new();
+
+    for m in &repo.modules {
+        let Some(&hop) = hop_map.get(m.id.as_str()) else {
+            out_of_range.push(m.id.clone());
+            continue;
+        };
+        let ca = in_deg.get(m.id.as_str()).copied().unwrap_or(0);
+        let ce = m.imports.len();
+        let centrality = (ca * 2) + ce;
+
+        let active_findings: Vec<String> = repo
+            .findings
+            .iter()
+            .filter(|f| {
+                f.location.as_ref().is_some_and(|loc| {
+                    m.files.contains(&loc.file_path)
+                        || loc.file_path.starts_with(&format!("{}/", m.root_path))
+                })
+            })
+            .map(|f| format!("[{:?}] {}: {}", f.severity, f.rule_id, f.title))
+            .collect();
+
+        candidates.push(PrunedModuleNode {
+            module_id: m.id.clone(),
+            hop_distance: hop,
+            centrality_score: centrality,
+            files: if hop == 0 {
+                m.files.clone()
+            } else {
+                m.files.iter().take(5).cloned().collect()
+            },
+            exports: m.exports.clone(),
+            imports: m.imports.clone(),
+            active_findings,
+        });
+    }
+
+    candidates.sort_by(|a, b| {
+        a.hop_distance
+            .cmp(&b.hop_distance)
+            .then_with(|| b.centrality_score.cmp(&a.centrality_score))
+            .then_with(|| a.module_id.cmp(&b.module_id))
+    });
+
+    let mut included_modules = Vec::new();
+    let mut pruned_modules = out_of_range;
+    let mut used_tokens = 0u32;
+
+    for node in candidates {
+        let serialized = serde_json::to_string(&node).unwrap_or_default();
+        let node_tokens = estimate_tokens(&serialized).max(16);
+        if used_tokens.saturating_add(node_tokens) <= token_budget || included_modules.is_empty() {
+            used_tokens = used_tokens.saturating_add(node_tokens);
+            included_modules.push(node);
+        } else {
+            pruned_modules.push(node.module_id);
+        }
+    }
+
+    pruned_modules.sort();
+
+    PrunedCentralityContext {
+        focal_targets: focal_targets.to_vec(),
+        token_budget,
+        estimated_tokens_used: used_tokens,
+        included_modules,
+        pruned_modules,
+    }
 }
 
 #[cfg(test)]

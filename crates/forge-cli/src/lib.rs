@@ -7,12 +7,15 @@ pub mod exit_code;
 pub mod formatters;
 pub mod serve;
 pub mod theme;
+pub mod tui;
 
 use std::fs;
 use std::path::Path;
 
 use clap::Parser;
-pub use cli::{AuthAction, Cli, CliComplianceStandard, Commands, OutputFormat, PolicyAction};
+pub use cli::{
+    AuthAction, Cli, CliComplianceStandard, Commands, OutputFormat, PolicyAction, SimulateAction,
+};
 pub use exit_code::{parse_severity_threshold, ExitCode};
 pub use formatters::render_repository_report;
 pub use theme::{health_rating, render_score_meter, ColorMode, Theme};
@@ -30,16 +33,27 @@ pub fn run_cli_from_env() -> ExitCode {
             println!("{}", version_banner());
             ExitCode::Success
         }
-        Some(Commands::Init { path, .. }) => match commands::init::run_init(&path) {
-            Ok(cfg_path) => {
-                println!("Initialized ELCODE Forge at {}", cfg_path.display());
-                ExitCode::Success
+        Some(Commands::Init { path, force, infer }) => {
+            match commands::init::run_init_with_options(&path, force, infer) {
+                Ok(cfg_path) => {
+                    println!("Initialized ELCODE Forge at {}", cfg_path.display());
+                    if infer {
+                        println!(
+                            "Generated inferred architectural boundary rules at {}",
+                            path.join(".eforge")
+                                .join("rules")
+                                .join("inferred-architecture.yaml")
+                                .display()
+                        );
+                    }
+                    ExitCode::Success
+                }
+                Err(err) => {
+                    eprintln!("Error: {err}");
+                    ExitCode::ExecutionError
+                }
             }
-            Err(err) => {
-                eprintln!("Error: {err}");
-                ExitCode::ExecutionError
-            }
-        },
+        }
         Some(Commands::Rules {
             action,
             path,
@@ -156,6 +170,41 @@ pub fn run_cli_from_env() -> ExitCode {
                         }
                         Err(err) => {
                             eprintln!("Error initializing rules template: {err}");
+                            ExitCode::ExecutionError
+                        }
+                    }
+                }
+                cli::RulesAction::Infer {
+                    path: infer_path,
+                    output,
+                    write,
+                    format: infer_format,
+                } => {
+                    let active_path = if infer_path != Path::new(".") {
+                        infer_path
+                    } else {
+                        path
+                    };
+                    let active_format = if infer_format != cli::OutputFormat::Terminal {
+                        infer_format
+                    } else {
+                        format
+                    };
+                    match commands::rules::run_rules_infer(&active_path, output.as_deref(), write) {
+                        Ok(report) => {
+                            match commands::rules::render_rules_infer(&report, active_format) {
+                                Ok(rendered) => {
+                                    println!("{rendered}");
+                                    ExitCode::Success
+                                }
+                                Err(err) => {
+                                    eprintln!("Error formatting rules infer report: {err}");
+                                    ExitCode::ExecutionError
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            eprintln!("Error inferring architectural rules: {err}");
                             ExitCode::ExecutionError
                         }
                     }
@@ -308,22 +357,56 @@ pub fn run_cli_from_env() -> ExitCode {
                 }
             }
         }
-        Some(Commands::Doctor { path, format }) => match commands::doctor::run_doctor(&path) {
-            Ok(report) => match commands::doctor::render_doctor_report(&report, format) {
-                Ok(rendered) => {
-                    println!("{rendered}");
-                    ExitCode::Success
-                }
+        Some(Commands::Doctor {
+            path,
+            format,
+            interactive,
+            codeframe,
+        }) => {
+            if interactive {
+                return match tui::run_tui(&path, tui::TuiTab::Dag, false) {
+                    Ok(rendered) => {
+                        println!("{rendered}");
+                        ExitCode::Success
+                    }
+                    Err(err) => {
+                        eprintln!("Error running interactive UI: {err}");
+                        ExitCode::ExecutionError
+                    }
+                };
+            }
+            match commands::doctor::run_doctor(&path) {
+                Ok(report) => match commands::doctor::render_doctor_report(&report, format) {
+                    Ok(mut rendered) => {
+                        if codeframe && format == OutputFormat::Terminal {
+                            let opts = commands::scan::ScanOptions {
+                                repo_root: path.clone(),
+                                incremental: true,
+                                format,
+                            };
+                            if let Ok((repo, _)) = commands::scan::execute_scan(&opts) {
+                                rendered.push('\n');
+                                rendered.push_str(&formatters::codeframe::render_codeframe_report(
+                                    &path,
+                                    &repo,
+                                    &Theme::default(),
+                                ));
+                            }
+                        }
+                        println!("{rendered}");
+                        ExitCode::Success
+                    }
+                    Err(err) => {
+                        eprintln!("Error formatting doctor report: {err}");
+                        ExitCode::ExecutionError
+                    }
+                },
                 Err(err) => {
-                    eprintln!("Error formatting doctor report: {err}");
+                    eprintln!("Error running doctor: {err}");
                     ExitCode::ExecutionError
                 }
-            },
-            Err(err) => {
-                eprintln!("Error running doctor: {err}");
-                ExitCode::ExecutionError
             }
-        },
+        }
         Some(Commands::Scan {
             path,
             format,
@@ -331,9 +414,23 @@ pub fn run_cli_from_env() -> ExitCode {
             incremental,
             fail_on,
             output,
+            interactive,
+            codeframe,
         }) => {
+            if interactive {
+                return match tui::run_tui(&path, tui::TuiTab::Findings, false) {
+                    Ok(rendered) => {
+                        println!("{rendered}");
+                        ExitCode::Success
+                    }
+                    Err(err) => {
+                        eprintln!("Error running interactive UI: {err}");
+                        ExitCode::ExecutionError
+                    }
+                };
+            }
             let opts = commands::scan::ScanOptions {
-                repo_root: path,
+                repo_root: path.clone(),
                 incremental: incremental && !full,
                 format,
             };
@@ -347,7 +444,20 @@ pub fn run_cli_from_env() -> ExitCode {
                             return ExitCode::ConfigurationError;
                         }
                     }
-                    match render_repository_report(&repo, format) {
+                    let rendered_res = if codeframe && format == OutputFormat::Terminal {
+                        render_repository_report(&repo, format).map(|mut base| {
+                            base.push('\n');
+                            base.push_str(&formatters::codeframe::render_codeframe_report(
+                                &path,
+                                &repo,
+                                &Theme::default(),
+                            ));
+                            base
+                        })
+                    } else {
+                        render_repository_report(&repo, format)
+                    };
+                    match rendered_res {
                         Ok(rendered) => {
                             if let Some(out_path) = output {
                                 if let Err(err) = fs::write(&out_path, &rendered) {
@@ -380,29 +490,179 @@ pub fn run_cli_from_env() -> ExitCode {
             fast,
             changed,
             fail_on,
-        }) => match commands::review::execute_review(&path, None, fast || changed) {
-            Ok((report, mut exit_code)) => {
-                if let Some(raw_thresh) = fail_on {
-                    if let Some(sev) = parse_severity_threshold(&raw_thresh) {
-                        exit_code = ExitCode::evaluate_findings(&report.findings, Some(sev));
-                    } else {
-                        eprintln!("Invalid --fail-on severity: {raw_thresh}");
-                        return ExitCode::ConfigurationError;
-                    }
-                }
-                match commands::review::render_review_report(&report, format) {
+            interactive,
+            impacted_tests,
+        }) => {
+            if interactive {
+                return match tui::run_tui(&path, tui::TuiTab::Blast, false) {
                     Ok(rendered) => {
                         println!("{rendered}");
-                        exit_code
+                        ExitCode::Success
                     }
                     Err(err) => {
-                        eprintln!("Error formatting review report: {err}");
+                        eprintln!("Error running interactive UI: {err}");
                         ExitCode::ExecutionError
                     }
+                };
+            }
+            match commands::review::execute_review(&path, None, fast || changed) {
+                Ok((report, mut exit_code)) => {
+                    if let Some(raw_thresh) = fail_on {
+                        if let Some(sev) = parse_severity_threshold(&raw_thresh) {
+                            exit_code = ExitCode::evaluate_findings(&report.findings, Some(sev));
+                        } else {
+                            eprintln!("Invalid --fail-on severity: {raw_thresh}");
+                            return ExitCode::ConfigurationError;
+                        }
+                    }
+                    match commands::review::render_review_report(&report, format) {
+                        Ok(mut rendered) => {
+                            if impacted_tests {
+                                if let Ok(tests_rep) =
+                                    commands::review::execute_review_impacted_tests(&path, None)
+                                {
+                                    rendered.push_str(
+                                        &commands::review::render_impacted_tests_appendix(
+                                            &tests_rep, format,
+                                        ),
+                                    );
+                                }
+                            }
+                            println!("{rendered}");
+                            exit_code
+                        }
+                        Err(err) => {
+                            eprintln!("Error formatting review report: {err}");
+                            ExitCode::ExecutionError
+                        }
+                    }
+                }
+                Err(err) => {
+                    eprintln!("Error running review: {err}");
+                    ExitCode::ExecutionError
                 }
             }
+        }
+        Some(Commands::Ui { path, tab, once }) => match tui::run_tui(&path, tab, once) {
+            Ok(rendered) => {
+                println!("{rendered}");
+                ExitCode::Success
+            }
             Err(err) => {
-                eprintln!("Error running review: {err}");
+                eprintln!("Error running TUI: {err}");
+                ExitCode::ExecutionError
+            }
+        },
+        Some(Commands::Watch {
+            path,
+            debounce_ms,
+            once,
+            format,
+        }) => match commands::watch::run_watch(&path, debounce_ms, once, format) {
+            Ok(rendered) => {
+                println!("{rendered}");
+                ExitCode::Success
+            }
+            Err(err) => {
+                eprintln!("Error running watch radar: {err}");
+                ExitCode::ExecutionError
+            }
+        },
+        Some(Commands::Fix {
+            path,
+            dry_run,
+            apply,
+            rule,
+            rollback,
+            list_tx,
+            format,
+        }) => {
+            let _ = dry_run;
+            let rollback_ref = rollback.as_ref().map(|opt| opt.as_deref());
+            match commands::fix::execute_fix(&path, apply, rule.as_deref(), rollback_ref, list_tx) {
+                Ok(report) => match commands::fix::render_fix_report(&report, format) {
+                    Ok(rendered) => {
+                        println!("{rendered}");
+                        ExitCode::Success
+                    }
+                    Err(err) => {
+                        eprintln!("Error formatting fix report: {err}");
+                        ExitCode::ExecutionError
+                    }
+                },
+                Err(err) => {
+                    eprintln!("Error running fix: {err}");
+                    ExitCode::ExecutionError
+                }
+            }
+        }
+        Some(Commands::Simulate {
+            action,
+            plan,
+            path,
+            format,
+        }) => {
+            let mv_pair = action
+                .as_ref()
+                .map(|SimulateAction::Mv { from, to }| (from.as_str(), to.as_str()));
+            match commands::simulate::execute_simulate(&path, mv_pair, plan.as_deref()) {
+                Ok(report) => match commands::simulate::render_simulation_report(&report, format) {
+                    Ok(rendered) => {
+                        println!("{rendered}");
+                        if report.is_safe_to_apply {
+                            ExitCode::Success
+                        } else {
+                            ExitCode::FindingsAboveThreshold
+                        }
+                    }
+                    Err(err) => {
+                        eprintln!("Error formatting simulation report: {err}");
+                        ExitCode::ExecutionError
+                    }
+                },
+                Err(err) => {
+                    eprintln!("Error running refactoring simulation: {err}");
+                    ExitCode::ExecutionError
+                }
+            }
+        }
+        Some(Commands::Trend {
+            path,
+            commits,
+            format,
+        }) => match commands::trend::execute_trend(&path, commits) {
+            Ok(report) => match commands::trend::render_trend_report(&report, format) {
+                Ok(rendered) => {
+                    println!("{rendered}");
+                    ExitCode::Success
+                }
+                Err(err) => {
+                    eprintln!("Error formatting trend report: {err}");
+                    ExitCode::ExecutionError
+                }
+            },
+            Err(err) => {
+                eprintln!("Error running trend analysis: {err}");
+                ExitCode::ExecutionError
+            }
+        },
+        Some(Commands::BlameArch {
+            target,
+            path,
+            format,
+        }) => match commands::trend::execute_blame_arch(&path, target.as_deref()) {
+            Ok(entries) => match commands::trend::render_blame_arch_report(&entries, format) {
+                Ok(rendered) => {
+                    println!("{rendered}");
+                    ExitCode::Success
+                }
+                Err(err) => {
+                    eprintln!("Error formatting architectural blame report: {err}");
+                    ExitCode::ExecutionError
+                }
+            },
+            Err(err) => {
+                eprintln!("Error running blame-arch: {err}");
                 ExitCode::ExecutionError
             }
         },

@@ -6,6 +6,8 @@ pub mod detector;
 pub mod go_imports;
 pub mod go_manifest;
 pub mod graph;
+pub mod incremental;
+pub mod inference;
 pub mod package_json;
 pub mod php_imports;
 pub mod python_imports;
@@ -13,6 +15,7 @@ pub mod python_manifest;
 pub mod rust_imports;
 pub mod rust_manifest;
 pub mod scanner;
+pub mod simulate;
 pub mod ts_imports;
 
 pub use composer_manifest::{
@@ -36,6 +39,14 @@ pub use graph::{
     build_polyglot_architecture_graph_cached, build_python_architecture_graph,
     build_rust_architecture_graph, build_ts_architecture_graph, infer_rust_module_boundary,
     ArchitectureGraph,
+};
+pub use incremental::{
+    analyze_architecture_incremental, extract_file_import_edges, trace_cycle_call_chains,
+    CachedFileAst, FileAstCache, IncrementalAnalysisResult, RawImportSpan, FILE_AST_CACHE_FILENAME,
+};
+pub use inference::{
+    infer_topology_and_boundaries, ArchitecturalArchetype, ArchitecturalLayer,
+    InferredBoundaryRule, ModuleTopologyMetrics, TopologyInferenceReport,
 };
 pub use package_json::{parse_package_json, ParsedManifest};
 pub use php_imports::{
@@ -61,3 +72,7 @@ pub use rust_manifest::{
     read_cargo_lock_versions, ParsedCargoDeps, ParsedRustWorkspace,
 };
 pub use scanner::{scan_repository, DiscoverySummary};
+pub use simulate::{
+    compute_relative_import_specifier, parse_refactor_plan, simulate_refactor,
+    ImportRewritePreview, RefactorOperation, RefactorPlanFile, SimulationReport,
+};

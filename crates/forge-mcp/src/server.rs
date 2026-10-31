@@ -196,7 +196,7 @@ mod tests {
         assert!(list_resp.is_some());
         if let Some(raw) = list_resp {
             let v: Value = serde_json::from_str(&raw).unwrap_or(Value::Null);
-            assert_eq!(v["result"]["tools"].as_array().map_or(0, Vec::len), 7);
+            assert_eq!(v["result"]["tools"].as_array().map_or(0, Vec::len), 11);
         }
     }
 
