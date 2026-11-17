@@ -1,5 +1,9 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
+use std::fs;
 use std::path::{Component, Path, PathBuf};
+
+use forge_core::FileNode;
+use serde::{Deserialize, Serialize};
 
 /// Candidate TypeScript/JavaScript/SFC extensions tried when resolving extensionless imports.
 const TS_JS_EXTENSIONS: &[&str] = &[
@@ -112,6 +116,221 @@ pub fn extract_ts_imports_and_exports(source: &str) -> (Vec<String>, Vec<String>
     (imports.into_iter().collect(), exports.into_iter().collect())
 }
 
+/// Configured path mappings loaded from `tsconfig.json` or `jsconfig.json`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TsConfigPaths {
+    pub base_url: Option<String>,
+    pub paths: BTreeMap<String, Vec<String>>,
+}
+
+#[derive(Deserialize)]
+struct TsConfigRoot {
+    #[serde(default, rename = "compilerOptions")]
+    compiler_options: Option<TsCompilerOptions>,
+}
+
+#[derive(Deserialize)]
+struct TsCompilerOptions {
+    #[serde(default, rename = "baseUrl")]
+    base_url: Option<String>,
+    #[serde(default)]
+    paths: Option<BTreeMap<String, Vec<String>>>,
+}
+
+pub fn strip_jsonc_comments_and_trailing_commas(jsonc: &str) -> String {
+    let stripped = strip_comments(jsonc);
+    let mut out = String::with_capacity(stripped.len());
+    let chars: Vec<char> = stripped.chars().collect();
+    let mut i = 0;
+    let mut in_str = false;
+    let mut escaped = false;
+
+    while i < chars.len() {
+        let c = chars[i];
+        if in_str {
+            if escaped {
+                escaped = false;
+            } else if c == '\\' {
+                escaped = true;
+            } else if c == '"' {
+                in_str = false;
+            }
+            out.push(c);
+            i += 1;
+        } else if c == '"' {
+            in_str = true;
+            out.push(c);
+            i += 1;
+        } else if c == ',' {
+            let mut j = i + 1;
+            while j < chars.len() && chars[j].is_whitespace() {
+                j += 1;
+            }
+            if j < chars.len() && (chars[j] == '}' || chars[j] == ']') {
+                i += 1;
+            } else {
+                out.push(c);
+                i += 1;
+            }
+        } else {
+            out.push(c);
+            i += 1;
+        }
+    }
+
+    out
+}
+
+impl TsConfigPaths {
+    /// Loads path mappings from `tsconfig.json` or `jsconfig.json` inside `dir`.
+    pub fn load(dir: &Path) -> Option<Self> {
+        let candidate_files = ["tsconfig.json", "jsconfig.json"];
+        for file_name in candidate_files {
+            let path = dir.join(file_name);
+            if path.is_file() {
+                if let Ok(raw) = fs::read_to_string(&path) {
+                    let cleaned = strip_jsonc_comments_and_trailing_commas(&raw);
+                    if let Ok(root) = serde_json::from_str::<TsConfigRoot>(&cleaned) {
+                        if let Some(opts) = root.compiler_options {
+                            let mut base_url = opts.base_url;
+                            if let Some(ref b) = base_url {
+                                let norm =
+                                    b.trim_start_matches("./").trim_end_matches('/').to_string();
+                                base_url = if norm.is_empty() || norm == "." {
+                                    None
+                                } else {
+                                    Some(norm)
+                                };
+                            }
+                            let paths = opts.paths.unwrap_or_default();
+                            return Some(Self { base_url, paths });
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Resolves potential candidate relative file paths for `specifier` according to configured
+    /// `paths` and `baseUrl`.
+    pub fn resolve_candidates(&self, specifier: &str, project_dir: Option<&str>) -> Vec<String> {
+        let mut candidates = Vec::new();
+
+        for (pattern, targets) in &self.paths {
+            if let Some(prefix) = pattern.strip_suffix('*') {
+                if let Some(remainder) = specifier.strip_prefix(prefix) {
+                    for target in targets {
+                        let target_base = target.strip_suffix('*').unwrap_or(target);
+                        let candidate_path = format!("{target_base}{remainder}");
+                        let candidate_path = candidate_path.trim_start_matches("./");
+
+                        let full_candidate = match &self.base_url {
+                            Some(base) if !candidate_path.starts_with(base) => {
+                                format!("{base}/{candidate_path}")
+                            }
+                            _ => candidate_path.to_string(),
+                        };
+
+                        if let Some(proj) = project_dir {
+                            if !full_candidate.starts_with(proj) {
+                                candidates.push(format!("{proj}/{full_candidate}"));
+                            }
+                        }
+                        candidates.push(full_candidate);
+                    }
+                }
+            } else if pattern == specifier {
+                for target in targets {
+                    let candidate_path = target.trim_start_matches("./");
+                    let full_candidate = match &self.base_url {
+                        Some(base) if !candidate_path.starts_with(base) => {
+                            format!("{base}/{candidate_path}")
+                        }
+                        _ => candidate_path.to_string(),
+                    };
+                    if let Some(proj) = project_dir {
+                        if !full_candidate.starts_with(proj) {
+                            candidates.push(format!("{proj}/{full_candidate}"));
+                        }
+                    }
+                    candidates.push(full_candidate);
+                }
+            }
+        }
+
+        candidates
+    }
+}
+
+/// Project-wide collection of TS configurations covering the root and any monorepo subprojects.
+#[derive(Debug, Clone, Default)]
+pub struct ProjectTsConfigs {
+    pub root: Option<TsConfigPaths>,
+    pub subprojects: BTreeMap<String, TsConfigPaths>,
+}
+
+impl ProjectTsConfigs {
+    pub fn load_for_repo(repo_root: &Path, files: &[FileNode]) -> Self {
+        let mut subprojects = BTreeMap::new();
+
+        for file in files {
+            let rel = &file.relative_path;
+            if (rel.ends_with("/tsconfig.json") || rel.ends_with("/jsconfig.json"))
+                && (rel.starts_with("apps/") || rel.starts_with("packages/"))
+            {
+                let parts: Vec<&str> = rel.split('/').collect();
+                if parts.len() >= 2 {
+                    let sub_key = format!("{}/{}", parts[0], parts[1]);
+                    if let std::collections::btree_map::Entry::Vacant(e) =
+                        subprojects.entry(sub_key)
+                    {
+                        let sub_dir = repo_root.join(e.key());
+                        if let Some(sub_cfg) = TsConfigPaths::load(&sub_dir) {
+                            e.insert(sub_cfg);
+                        }
+                    }
+                }
+            }
+        }
+
+        Self {
+            root: TsConfigPaths::load(repo_root),
+            subprojects,
+        }
+    }
+
+    pub fn get_for_file(&self, file_path: &str) -> Option<&TsConfigPaths> {
+        let parts: Vec<&str> = file_path.split('/').collect();
+        if parts.len() >= 2 && (parts[0] == "apps" || parts[0] == "packages") {
+            let sub_key = format!("{}/{}", parts[0], parts[1]);
+            if let Some(sub_cfg) = self.subprojects.get(&sub_key) {
+                return Some(sub_cfg);
+            }
+        }
+        self.root.as_ref()
+    }
+}
+
+/// Helper that checks `base_candidate` directly in `known_files`, and then tries candidate extensions.
+fn find_candidate_with_extensions(
+    base_candidate: &str,
+    known_files: &BTreeSet<String>,
+) -> Option<String> {
+    if known_files.contains(base_candidate) {
+        return Some(base_candidate.to_string());
+    }
+
+    for suffix in TS_JS_EXTENSIONS {
+        let candidate = format!("{base_candidate}{suffix}");
+        if known_files.contains(&candidate) {
+            return Some(candidate);
+        }
+    }
+
+    None
+}
+
 /// Resolves a relative (`./`, `../`) or `@/` aliased specifier from `importer_rel_path` against
 /// the set of `known_files` in the repository.
 pub fn resolve_import_specifier(
@@ -119,25 +338,73 @@ pub fn resolve_import_specifier(
     specifier: &str,
     known_files: &BTreeSet<String>,
 ) -> Option<String> {
-    let base_candidate = if let Some(stripped) = specifier.strip_prefix("@/") {
-        format!("src/{stripped}")
-    } else if specifier.starts_with("./") || specifier.starts_with("../") {
+    resolve_import_specifier_with_paths(importer_rel_path, specifier, known_files, None)
+}
+
+/// Resolves a relative, alias, or tsconfig-mapped import specifier from `importer_rel_path` against
+/// the set of `known_files` in the repository.
+pub fn resolve_import_specifier_with_paths(
+    importer_rel_path: &str,
+    specifier: &str,
+    known_files: &BTreeSet<String>,
+    tsconfig: Option<&TsConfigPaths>,
+) -> Option<String> {
+    // 1. Relative imports (`./...`, `../...`)
+    if specifier.starts_with("./") || specifier.starts_with("../") {
         let importer_dir = Path::new(importer_rel_path)
             .parent()
             .unwrap_or_else(|| Path::new(""));
-        normalize_joined_path(importer_dir, Path::new(specifier))?
-    } else {
+        if let Some(base_candidate) = normalize_joined_path(importer_dir, Path::new(specifier)) {
+            if let Some(found) = find_candidate_with_extensions(&base_candidate, known_files) {
+                return Some(found);
+            }
+        }
         return None;
-    };
-
-    if known_files.contains(&base_candidate) {
-        return Some(base_candidate);
     }
 
-    for suffix in TS_JS_EXTENSIONS {
-        let candidate = format!("{base_candidate}{suffix}");
-        if known_files.contains(&candidate) {
-            return Some(candidate);
+    // Determine subproject directory if file is inside a monorepo
+    let parts: Vec<&str> = importer_rel_path.split('/').collect();
+    let project_dir = if parts.len() >= 2 && (parts[0] == "apps" || parts[0] == "packages") {
+        Some(format!("{}/{}", parts[0], parts[1]))
+    } else {
+        None
+    };
+
+    // 2. Custom tsconfig.json path mappings
+    if let Some(tc) = tsconfig {
+        let candidates = tc.resolve_candidates(specifier, project_dir.as_deref());
+        for cand in candidates {
+            if let Some(found) = find_candidate_with_extensions(&cand, known_files) {
+                return Some(found);
+            }
+        }
+    }
+
+    // 3. Fallback standard framework conventions: `@/*`, `~/*`, `$lib/*`
+    let mut convention_candidates = Vec::new();
+
+    if let Some(stripped) = specifier.strip_prefix("@/") {
+        convention_candidates.push(format!("src/{stripped}"));
+        if let Some(ref proj) = project_dir {
+            convention_candidates.push(format!("{proj}/src/{stripped}"));
+        }
+    } else if let Some(stripped) = specifier.strip_prefix("~/") {
+        convention_candidates.push(format!("src/{stripped}"));
+        convention_candidates.push(stripped.to_string());
+        if let Some(ref proj) = project_dir {
+            convention_candidates.push(format!("{proj}/src/{stripped}"));
+            convention_candidates.push(format!("{proj}/{stripped}"));
+        }
+    } else if let Some(stripped) = specifier.strip_prefix("$lib/") {
+        convention_candidates.push(format!("src/lib/{stripped}"));
+        if let Some(ref proj) = project_dir {
+            convention_candidates.push(format!("{proj}/src/lib/{stripped}"));
+        }
+    }
+
+    for cand in convention_candidates {
+        if let Some(found) = find_candidate_with_extensions(&cand, known_files) {
+            return Some(found);
         }
     }
 
@@ -157,6 +424,9 @@ pub fn extract_npm_package_name(specifier: &str) -> Option<String> {
         || trimmed.starts_with('.')
         || trimmed.starts_with('/')
         || trimmed.starts_with("@/")
+        || trimmed.starts_with("~/")
+        || trimmed.starts_with("$lib")
+        || trimmed.starts_with("$app")
         || trimmed.starts_with("node:")
     {
         return None;
@@ -537,5 +807,107 @@ const greeting = "Selamat Datang 🇮🇩";
         assert!(!stripped.contains("Halo Dunia 🇮🇩"));
         assert!(stripped.contains("https://api.example.com/v1/auth"));
         assert!(stripped.contains("Selamat Datang 🇮🇩"));
+    }
+
+    #[test]
+    fn test_strip_jsonc_comments_and_trailing_commas() {
+        let jsonc = r#"
+// Top-level comment
+{
+  /* Compiler options comment */
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@app/*": ["src/app/*"],
+      "$lib/*": ["src/lib/*"],
+    },
+  },
+}
+"#;
+        let cleaned = strip_jsonc_comments_and_trailing_commas(jsonc);
+        let parsed = serde_json::from_str::<serde_json::Value>(&cleaned);
+        assert!(parsed.is_ok(), "Failed to parse cleaned JSONC: {}", cleaned);
+    }
+
+    #[test]
+    fn test_tsconfig_paths_and_sveltekit_lib_resolution() {
+        let mut known = BTreeSet::new();
+        known.insert("src/app/routes/Home.tsx".to_string());
+        known.insert("src/lib/Button.svelte".to_string());
+        known.insert("src/utils/math.ts".to_string());
+        known.insert("apps/dashboard/src/app/Header.tsx".to_string());
+        known.insert("apps/dashboard/src/lib/Card.svelte".to_string());
+
+        let mut paths_map = BTreeMap::new();
+        paths_map.insert("@app/*".to_string(), vec!["src/app/*".to_string()]);
+
+        let tsconfig = TsConfigPaths {
+            base_url: None,
+            paths: paths_map,
+        };
+
+        // 1. Custom tsconfig alias @app/*
+        assert_eq!(
+            resolve_import_specifier_with_paths(
+                "src/pages/index.tsx",
+                "@app/routes/Home",
+                &known,
+                Some(&tsconfig)
+            )
+            .as_deref(),
+            Some("src/app/routes/Home.tsx")
+        );
+
+        // 2. SvelteKit $lib/*
+        assert_eq!(
+            resolve_import_specifier_with_paths(
+                "src/routes/page.svelte",
+                "$lib/Button.svelte",
+                &known,
+                None
+            )
+            .as_deref(),
+            Some("src/lib/Button.svelte")
+        );
+
+        // 3. Nuxt/Vite ~/ alias
+        assert_eq!(
+            resolve_import_specifier_with_paths(
+                "src/routes/page.svelte",
+                "~/utils/math",
+                &known,
+                None
+            )
+            .as_deref(),
+            Some("src/utils/math.ts")
+        );
+
+        // 4. Monorepo subproject with tsconfig & $lib
+        assert_eq!(
+            resolve_import_specifier_with_paths(
+                "apps/dashboard/src/pages/index.tsx",
+                "@app/Header",
+                &known,
+                Some(&tsconfig)
+            )
+            .as_deref(),
+            Some("apps/dashboard/src/app/Header.tsx")
+        );
+
+        assert_eq!(
+            resolve_import_specifier_with_paths(
+                "apps/dashboard/src/pages/index.svelte",
+                "$lib/Card.svelte",
+                &known,
+                None
+            )
+            .as_deref(),
+            Some("apps/dashboard/src/lib/Card.svelte")
+        );
+
+        // Verify npm package extractor ignores $lib, $app, ~/
+        assert_eq!(extract_npm_package_name("$lib/Button.svelte"), None);
+        assert_eq!(extract_npm_package_name("$app/environment"), None);
+        assert_eq!(extract_npm_package_name("~/utils/math"), None);
     }
 }

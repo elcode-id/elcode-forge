@@ -11,7 +11,7 @@ use crate::python_imports::{
 };
 use crate::ts_imports::{
     extract_npm_package_name, extract_sfc_script_content, extract_ts_imports_and_exports,
-    resolve_import_specifier,
+    resolve_import_specifier_with_paths, ProjectTsConfigs,
 };
 
 /// Inferred architecture graph for repositories.
@@ -54,6 +54,8 @@ pub fn build_ts_architecture_graph(
         .map(|f| f.relative_path.clone())
         .collect();
 
+    let ts_configs = ProjectTsConfigs::load_for_repo(repo_root, files);
+
     let mut module_map: BTreeMap<String, ModuleAccumulator> = BTreeMap::new();
     let mut external_imports = BTreeSet::new();
 
@@ -91,10 +93,15 @@ pub fn build_ts_architecture_graph(
             }
         }
 
+        let tsconfig = ts_configs.get_for_file(&file.relative_path);
+
         for spec in raw_imports {
-            if let Some(target_file) =
-                resolve_import_specifier(&file.relative_path, &spec, &known_files)
-            {
+            if let Some(target_file) = resolve_import_specifier_with_paths(
+                &file.relative_path,
+                &spec,
+                &known_files,
+                tsconfig,
+            ) {
                 let (target_mod_id, _) = infer_module_boundary(&target_file);
                 if target_mod_id != source_mod_id {
                     if let Some(acc) = module_map.get_mut(&source_mod_id) {
@@ -621,7 +628,10 @@ pub fn build_polyglot_architecture_graph_cached(
 /// Examples:
 /// - `"src/components/UserCard.tsx"` -> `("src/components", "components")`
 /// - `"src/index.ts"` -> `("src", "src")`
-fn infer_module_boundary(relative_path: &str) -> (String, String) {
+/// - `"apps/dashboard/src/components/UserCard.tsx"` -> `("apps/dashboard/src/components", "components")`
+/// - `"apps/dashboard/src/index.ts"` -> `("apps/dashboard/src", "dashboard")`
+/// - `"packages/forge-ui/Button.tsx"` -> `("packages/forge-ui", "forge-ui")`
+pub fn infer_module_boundary(relative_path: &str) -> (String, String) {
     let parts: Vec<&str> = relative_path.split('/').collect();
     if let Some(src_idx) = parts.iter().position(|&p| p == "src") {
         if parts.len() >= src_idx + 3 {
@@ -630,7 +640,11 @@ fn infer_module_boundary(relative_path: &str) -> (String, String) {
             return (id, name);
         } else if parts.len() >= src_idx + 2 {
             let id = parts[..=src_idx].join("/");
-            let name = parts[src_idx].to_string();
+            let name = if src_idx > 0 {
+                parts[src_idx - 1].to_string()
+            } else {
+                parts[src_idx].to_string()
+            };
             return (id, name);
         }
     }
@@ -651,7 +665,7 @@ fn infer_module_boundary(relative_path: &str) -> (String, String) {
 /// - `"src/my_app/routers/items.py"` -> `("src/my_app/routers", "routers")`
 /// - `"src/services/user.py"` -> `("src/services", "services")`
 /// - `"main.py"` -> `("root", "root")`
-fn infer_python_module_boundary(relative_path: &str) -> (String, String) {
+pub fn infer_python_module_boundary(relative_path: &str) -> (String, String) {
     let parts: Vec<&str> = relative_path.split('/').collect();
     if let Some(src_idx) = parts.iter().position(|&p| p == "src") {
         if parts.len() >= src_idx + 4 {
@@ -690,7 +704,7 @@ fn infer_python_module_boundary(relative_path: &str) -> (String, String) {
 /// - `"cmd/server/main.go"` -> `("cmd/server", "server")`
 /// - `"internal/services/user.go"` -> `("internal/services", "services")`
 /// - `"main.go"` -> `("root", "root")`
-fn infer_go_module_boundary(relative_path: &str) -> (String, String) {
+pub fn infer_go_module_boundary(relative_path: &str) -> (String, String) {
     let parts: Vec<&str> = relative_path.split('/').collect();
     if parts.len() >= 2 {
         let dir_parts = &parts[..parts.len() - 1];
