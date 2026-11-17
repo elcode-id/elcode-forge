@@ -1,8 +1,9 @@
 //! Axum application router and server runner.
 
+use axum::http::{header, HeaderName, HeaderValue, Method};
 use axum::routing::{get, post};
 use axum::Router;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing::info;
 
@@ -25,8 +26,46 @@ use crate::routes::{
 };
 use crate::state::AppState;
 
+/// Builds a configurable CORS layer from allowed origin patterns.
+pub fn build_cors_layer(origins: &[String]) -> CorsLayer {
+    let allowed_methods = [
+        Method::GET,
+        Method::POST,
+        Method::PUT,
+        Method::DELETE,
+        Method::OPTIONS,
+    ];
+    let allowed_headers = [
+        header::AUTHORIZATION,
+        header::CONTENT_TYPE,
+        header::ACCEPT,
+        HeaderName::from_static("x-api-key"),
+        HeaderName::from_static("x-forwarded-user"),
+        HeaderName::from_static("x-forwarded-role"),
+        HeaderName::from_static("x-forwarded-email"),
+    ];
+
+    if origins.iter().any(|o| o == "*") {
+        CorsLayer::new()
+            .allow_origin(Any)
+            .allow_methods(allowed_methods)
+            .allow_headers(allowed_headers)
+    } else {
+        let parsed_origins: Vec<HeaderValue> = origins
+            .iter()
+            .filter_map(|o| HeaderValue::from_str(o).ok())
+            .collect();
+        CorsLayer::new()
+            .allow_origin(AllowOrigin::list(parsed_origins))
+            .allow_methods(allowed_methods)
+            .allow_headers(allowed_headers)
+    }
+}
+
 /// Constructs the primary Axum router.
 pub fn create_app(state: AppState) -> Router {
+    let cors_layer = build_cors_layer(&state.config.cors_allowed_origins);
+
     Router::new()
         .route("/api/v1/health", get(health_handler))
         .route("/api/v1/auth/token", post(token_handler))
@@ -64,7 +103,7 @@ pub fn create_app(state: AppState) -> Router {
             "/api/v1/webhooks/:id",
             axum::routing::delete(delete_webhook_handler),
         )
-        .layer(CorsLayer::permissive())
+        .layer(cors_layer)
         .layer(TraceLayer::new_for_http())
         .with_state(state)
 }
