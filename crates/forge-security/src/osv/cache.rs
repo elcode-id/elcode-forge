@@ -101,6 +101,22 @@ impl LocalAdvisoryCache {
         })?;
         Ok(())
     }
+
+    /// Checks whether the cached advisory file for `ecosystem` exists and was modified within `ttl_seconds`.
+    pub fn is_cache_fresh(repo_root: &Path, ecosystem: &str, ttl_seconds: u64) -> bool {
+        let norm_eco = normalize_ecosystem(ecosystem);
+        let file_path = Self::cache_dir(repo_root).join(format!("{norm_eco}.json"));
+        let Ok(metadata) = fs::metadata(&file_path) else {
+            return false;
+        };
+        let Ok(modified) = metadata.modified() else {
+            return false;
+        };
+        let Ok(elapsed) = modified.elapsed() else {
+            return false;
+        };
+        elapsed.as_secs() < ttl_seconds
+    }
 }
 
 /// Returns vetted embedded offline advisories for an ecosystem.

@@ -1,6 +1,7 @@
 //! OSV (Open Source Vulnerabilities) schema definitions and ecosystem normalization.
 
 pub mod cache;
+pub mod client;
 pub mod matcher;
 pub mod version;
 
@@ -8,6 +9,11 @@ use forge_core::Severity;
 use serde::{Deserialize, Serialize};
 
 pub use cache::LocalAdvisoryCache;
+pub use client::{
+    build_osv_batch_queries, clean_version_for_query, osv_api_ecosystem_name,
+    parse_batch_query_response, sync_dependencies_advisories, sync_ecosystem_advisories,
+    DEFAULT_OSV_CACHE_TTL_SECS,
+};
 pub use matcher::{VulnerabilityMatcher, RULE_VULNERABLE_DEPENDENCY};
 pub use version::Version;
 

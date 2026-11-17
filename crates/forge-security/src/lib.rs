@@ -124,11 +124,24 @@ impl SecurityScanner {
         Ok(all_findings)
     }
 
+    /// Evaluates resolved repository dependencies against OSV advisories with offline control.
+    /// When `offline` is false, synchronizes stale advisory caches via OSV.dev batch API.
+    pub fn scan_dependencies_with_options(
+        repo_root: &Path,
+        dependencies: &[Dependency],
+        offline: bool,
+    ) -> Vec<Finding> {
+        if !offline {
+            let _ = osv::client::sync_dependencies_advisories(repo_root, dependencies, None);
+        }
+        let matcher = VulnerabilityMatcher::load(repo_root);
+        matcher.match_dependencies(dependencies)
+    }
+
     /// Evaluates resolved repository dependencies against OSV advisories and returns
     /// deterministically sorted vulnerability [`Finding`]s.
     pub fn scan_dependencies(repo_root: &Path, dependencies: &[Dependency]) -> Vec<Finding> {
-        let matcher = VulnerabilityMatcher::load(repo_root);
-        matcher.match_dependencies(dependencies)
+        Self::scan_dependencies_with_options(repo_root, dependencies, true)
     }
 
     /// Evaluates project and dependency license compliance against policies.
