@@ -5,7 +5,9 @@
 # In our Cargo.lock, webpki-roots is upgraded to 1.0.10.
 # webpki-roots 0.26.11 is a shim re-exporting webpki-roots 1.0.10, but falsely matched by semver < 1.0.10.
 # RUSTSEC-2023-0071 flags rsa 0.9.10 (Marvin timing sidechannel in legacy RSA decryption; no fixed upgrade available in 0.9.x).
+# RUSTSEC-2026-0459 flags libsqlite3-sys 0.30.1 (CVE-2026-119375 local crafted DB + -wal pair); sqlx-sqlite (both 0.8.6 and 0.9.0) constrains libsqlite3-sys < 0.38.0, and forge-server only opens its operator-managed DB.
 ignore = [
     "RUSTSEC-2026-0381",
     "RUSTSEC-2023-0071",
+    "RUSTSEC-2026-0459",
 ]
