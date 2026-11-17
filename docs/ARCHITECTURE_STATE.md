@@ -1191,3 +1191,18 @@
 - **Invariants:**
   - Symmetric tokens and symmetric JWK entries are never accepted by external JWKS verification.
   - Remote JWKS fetches to non-HTTPS, non-loopback addresses are blocked prior to network dispatch.
+
+## Issue #263 & Release v1.2.0 — Phase 11 E2E Regression Suite, Docs Sync & Release (COMPLETED)
+- **Crates & Packages:** Workspace-wide (`crates/*`, `packages/*`, `apps/*`, `packaging/homebrew/eforge.rb`)
+- **Key Capabilities & Artifacts Added:**
+  - `crates/forge-cli/tests/phase11_hardening_e2e.rs`: Comprehensive end-to-end regression suite covering:
+    1. Quote-aware YAML comment stripping and `FileFindingsCache` serialization/retention.
+    2. Multiline TypeScript/JavaScript imports, UTF-8 emoji comments, and `tsconfig.json` path alias resolution.
+    3. PHP incremental AST caching and architecture graph assembly parity on `fixtures/laravel-app`.
+    4. Full vs incremental `eforge scan` security findings preservation on untouched files.
+    5. JSON-safe `eforge fix` removing the final dependency in `package.json` without trailing comma defects.
+  - Monorepo Version Bump to `1.2.0` across Rust workspace, TypeScript packages, Homebrew formula, and docs portal.
+  - Updated `CHANGELOG.md`, `README.md`, and documentation portal (`apps/docs`).
+- **Invariants:**
+  - Zero schema drift between `eforge schema` and `packages/forge-schema/report-bundle.schema.json`.
+  - All workspace crates compile, format, pass clippy without warnings, and pass 100% of unit/integration tests.
