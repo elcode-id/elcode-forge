@@ -36,10 +36,7 @@ pub fn is_python_unpinned(version_req: &str) -> bool {
         return true;
     }
     // Only less-than bounds without lower bound, e.g. "<2.0"
-    if trimmed.starts_with('<') && !trimmed.contains('>') && !trimmed.contains("==") {
-        return true;
-    }
-    false
+    trimmed.starts_with('<') && !trimmed.contains('>') && !trimmed.contains("==")
 }
 
 /// Parses a Python requirement specifier line (e.g. `fastapi>=0.100.0`, `requests[security] == 2.31.0; os_name != 'nt'`).

@@ -171,11 +171,7 @@ fn is_candidate_charset(s: &str) -> bool {
 
     // Exclude tokens that are purely lowercase letters and underscores (e.g. snake_case identifier)
     let only_lower_snake = s.chars().all(|c| c.is_ascii_lowercase() || c == '_');
-    if only_lower_snake {
-        return false;
-    }
-
-    true
+    !only_lower_snake
 }
 
 /// Scans `line` for candidate tokens exceeding `threshold` Shannon entropy and `min_len`.
