@@ -17,8 +17,9 @@ pub mod traits;
 pub mod untrusted;
 
 pub use cache::{
-    compute_analysis_cache_key, CacheMetadata, FileRemoteCacheAdapter, ForgeCache,
-    HttpRemoteCacheAdapter, InMemoryRemoteCacheAdapter, RemoteCacheAdapter, EFORGE_DIR,
+    compute_analysis_cache_key, CacheMetadata, CachedFileFindings, FileFindingsCache,
+    FileRemoteCacheAdapter, ForgeCache, HttpRemoteCacheAdapter, InMemoryRemoteCacheAdapter,
+    RemoteCacheAdapter, EFORGE_DIR, FILE_FINDINGS_CACHE_FILENAME,
 };
 pub use config::{
     load_config, parse_config_yaml, AiConfig, AiProviderKind, ForgeConfig, LicenseConfig,

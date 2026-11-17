@@ -1107,3 +1107,13 @@
   - Zero schema drift against `packages/forge-schema/report-bundle.schema.json`.
   - All `eforge fix --apply` writes are backed up atomically in `.eforge/tx/<tx_id>/` with byte-for-byte rollback support (`eforge fix --rollback`).
   - All 11 MCP tools remain strictly read-only on disk and wrap repository data in `UntrustedEnvelope<T>`.
+
+
+## Issue #257 — `forge-core` Quote-Aware YAML Comment Stripping & Per-File Findings Cache (COMPLETED)
+- **Crate:** `crates/forge-core` (`src/config.rs`, `src/policy.rs`, `src/cache.rs`, `src/lib.rs`)
+- **Public Types & Functions Added:**
+  - `forge_core::cache`: `FILE_FINDINGS_CACHE_FILENAME` (`"file_findings_index.json"`), `CachedFileFindings`, `FileFindingsCache` (`cache_path`, `load`, `retain_files`, `save`).
+  - `forge_core::config`: `strip_yaml_inline_comment(raw_line: &str) -> &str` shared across `parse_config_yaml` and `parse_policy_yaml`.
+- **Invariants:**
+  - `#` characters inside single- or double-quoted YAML strings are preserved intact; inline comments require whitespace or start-of-line outside quotes.
+  - `FileFindingsCache` invalidates deterministically when `config_hash` or `analyzer_version` changes and prunes deleted files cleanly.

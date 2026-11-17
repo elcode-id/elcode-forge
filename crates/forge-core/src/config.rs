@@ -258,10 +258,7 @@ pub fn parse_config_yaml(content: &str) -> Result<ForgeConfig, ForgeError> {
 
     for (idx, raw_line) in content.lines().enumerate() {
         let line_no = idx + 1;
-        let without_comment = match raw_line.find('#') {
-            Some(pos) => &raw_line[..pos],
-            None => raw_line,
-        };
+        let without_comment = strip_yaml_inline_comment(raw_line);
         let trimmed = without_comment.trim();
         if trimmed.is_empty() || trimmed == "---" {
             continue;
@@ -846,6 +843,55 @@ fn parse_inline_array(raw: &str) -> Option<Vec<String>> {
     }
 }
 
+/// Strips YAML `#` inline comments that occur outside quoted strings.
+///
+/// A `#` begins a comment only when outside single (`'...'`) or double (`"..."`) quotes
+/// and either at the start of the line or preceded by whitespace.
+pub(crate) fn strip_yaml_inline_comment(raw_line: &str) -> &str {
+    let mut in_single = false;
+    let mut in_double = false;
+    let mut escaped = false;
+    let mut prev_was_whitespace = true;
+
+    for (idx, ch) in raw_line.char_indices() {
+        if in_double {
+            if escaped {
+                escaped = false;
+            } else if ch == '\\' {
+                escaped = true;
+            } else if ch == '"' {
+                in_double = false;
+            }
+            prev_was_whitespace = false;
+            continue;
+        }
+        if in_single {
+            if ch == '\'' {
+                in_single = false;
+            }
+            prev_was_whitespace = false;
+            continue;
+        }
+
+        match ch {
+            '"' => {
+                in_double = true;
+                prev_was_whitespace = false;
+            }
+            '\'' => {
+                in_single = true;
+                prev_was_whitespace = false;
+            }
+            '#' if prev_was_whitespace => return &raw_line[..idx],
+            _ => {
+                prev_was_whitespace = ch.is_whitespace();
+            }
+        }
+    }
+
+    raw_line
+}
+
 fn unquote(input: &str) -> &str {
     if input.len() >= 2
         && ((input.starts_with('"') && input.ends_with('"'))
@@ -1219,5 +1265,25 @@ hooks:
         let bad_yaml = "version: not_a_number\n";
         let res = parse_config_yaml(bad_yaml);
         assert!(matches!(res, Err(ForgeError::Config { .. })));
+    }
+
+    #[test]
+    fn preserves_hash_inside_quoted_strings_and_strips_trailing_comments() {
+        let yaml = r#"
+version: 1 # inline comment
+project:
+  name: "forge#app" # comment after quoted string
+security:
+  allowlist: ["src/test#1.ts", 'docs/url#anchor.md'] # trailing comment
+"#;
+        let res = parse_config_yaml(yaml);
+        assert!(res.is_ok());
+        if let Ok(cfg) = res {
+            assert_eq!(cfg.project_name.as_deref(), Some("forge#app"));
+            assert!(cfg.security.is_some());
+            if let Some(sec) = cfg.security {
+                assert_eq!(sec.allowlist, vec!["src/test#1.ts", "docs/url#anchor.md"]);
+            }
+        }
     }
 }
