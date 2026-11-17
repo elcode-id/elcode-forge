@@ -1117,3 +1117,16 @@
 - **Invariants:**
   - `#` characters inside single- or double-quoted YAML strings are preserved intact; inline comments require whitespace or start-of-line outside quotes.
   - `FileFindingsCache` invalidates deterministically when `config_hash` or `analyzer_version` changes and prunes deleted files cleanly.
+
+## Issue #258 — `forge-analyzer` & `forge-security` UTF-8 Safe Comment Stripper, Multiline Imports & Comment-Aware Security Scanner (COMPLETED)
+- **Crates:** `crates/forge-analyzer` (`src/ts_imports.rs`), `crates/forge-security` (`src/patterns.rs`)
+- **Key Capabilities & Functions Added:**
+  - `forge_analyzer::ts_imports`:
+    - `strip_comments`: UTF-8 `char` iterator preserving multi-byte strings (Unicode, emojis, accents) and template literals (`` `https://...` ``) without byte-slicing corruption.
+    - `collect_logical_ts_statements`: Multiline accumulator supporting `import { ... } from '...'`, `export { ... } from '...'`, `import type`, and `export type`.
+    - `extract_named_export_list`: Extracts aliased and named export identifiers (`export { foo, bar as baz }`, `export type { User, Admin as Role }`).
+  - `forge_security::patterns`:
+    - `strip_js_comments_preserving_lines`: Line-preserving comment stripper emitting `\n` for comment blocks, eliminating false positives for code commented out inside `/* ... */` block comments without leading `*` characters while preserving original line numbers and evidence.
+- **Invariants:**
+  - Block comments (`/* ... */`) preserve exact newline counts (1:1 line correspondence) ensuring source locations on reported findings remain exact.
+  - Template literals with `//` URLs are never stripped as comments.

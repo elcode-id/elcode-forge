@@ -28,8 +28,10 @@ pub fn extract_ts_imports_and_exports(source: &str) -> (Vec<String>, Vec<String>
     let mut imports = BTreeSet::new();
     let mut exports = BTreeSet::new();
 
-    for raw_line in cleaned.lines() {
-        let line = raw_line.trim();
+    let statements = collect_logical_ts_statements(&cleaned);
+
+    for statement in &statements {
+        let line = statement.trim();
         if line.is_empty() {
             continue;
         }
@@ -60,6 +62,27 @@ pub fn extract_ts_imports_and_exports(source: &str) -> (Vec<String>, Vec<String>
             let rest = rest.trim_start();
             if rest.starts_with("default ") {
                 exports.insert("default".to_string());
+            } else if rest.starts_with('{') {
+                if let Some(close_brace) = rest.find('}') {
+                    let inside = &rest[1..close_brace];
+                    extract_named_export_list(inside, &mut exports);
+                }
+            } else if let Some(after_type) = rest.strip_prefix("type ") {
+                let after_type = after_type.trim_start();
+                if after_type.starts_with('{') {
+                    if let Some(close_brace) = after_type.find('}') {
+                        let inside = &after_type[1..close_brace];
+                        extract_named_export_list(inside, &mut exports);
+                    }
+                } else {
+                    let ident: String = after_type
+                        .chars()
+                        .take_while(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '$')
+                        .collect();
+                    if !ident.is_empty() {
+                        exports.insert(ident);
+                    }
+                }
             } else {
                 let rest = rest.strip_prefix("async ").unwrap_or(rest).trim_start();
                 for kw in [
@@ -69,7 +92,6 @@ pub fn extract_ts_imports_and_exports(source: &str) -> (Vec<String>, Vec<String>
                     "var ",
                     "class ",
                     "interface ",
-                    "type ",
                     "enum ",
                 ] {
                     if let Some(after_kw) = rest.strip_prefix(kw) {
@@ -213,44 +235,159 @@ fn extract_quoted_literal(input: &str) -> Option<String> {
     }
 }
 
+fn extract_named_export_list(list_content: &str, exports: &mut BTreeSet<String>) {
+    for part in list_content.split(',') {
+        let item = part.trim();
+        if item.is_empty() {
+            continue;
+        }
+        let item = item.strip_prefix("type ").unwrap_or(item).trim();
+        let target = if let Some((_, alias)) = item.split_once(" as ") {
+            alias.trim()
+        } else {
+            item
+        };
+        let ident: String = target
+            .chars()
+            .take_while(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '$')
+            .collect();
+        if !ident.is_empty() {
+            exports.insert(ident);
+        }
+    }
+}
+
+fn collect_logical_ts_statements(cleaned: &str) -> Vec<String> {
+    let mut statements = Vec::new();
+    let mut current_stmt = String::new();
+    let mut brace_depth: i32 = 0;
+    let mut in_import_or_export = false;
+
+    for raw_line in cleaned.lines() {
+        let line = raw_line.trim();
+        if line.is_empty() {
+            continue;
+        }
+
+        if in_import_or_export {
+            current_stmt.push(' ');
+            current_stmt.push_str(line);
+
+            for c in line.chars() {
+                if c == '{' {
+                    brace_depth += 1;
+                } else if c == '}' {
+                    brace_depth -= 1;
+                }
+            }
+
+            let has_from = current_stmt.contains(" from ")
+                || current_stmt.contains(" from'")
+                || current_stmt.contains(" from\"");
+            let ends_with_semicolon = line.ends_with(';');
+
+            if brace_depth <= 0 {
+                if current_stmt.starts_with("import ") || current_stmt.starts_with("import\t") {
+                    if has_from || ends_with_semicolon || line.starts_with("from ") {
+                        statements.push(current_stmt.trim().to_string());
+                        current_stmt.clear();
+                        brace_depth = 0;
+                        in_import_or_export = false;
+                    }
+                } else {
+                    statements.push(current_stmt.trim().to_string());
+                    current_stmt.clear();
+                    brace_depth = 0;
+                    in_import_or_export = false;
+                }
+            }
+        } else {
+            let starts_import = line.starts_with("import ") || line.starts_with("import\t");
+            let starts_export = line.starts_with("export ") || line.starts_with("export\t");
+
+            if starts_import || starts_export {
+                let mut line_braces = 0;
+                for c in line.chars() {
+                    if c == '{' {
+                        line_braces += 1;
+                    } else if c == '}' {
+                        line_braces -= 1;
+                    }
+                }
+
+                let has_from =
+                    line.contains(" from ") || line.contains(" from'") || line.contains(" from\"");
+                let ends_with_semicolon = line.ends_with(';');
+
+                if line_braces > 0 || (starts_import && !has_from && !ends_with_semicolon) {
+                    current_stmt = line.to_string();
+                    brace_depth = line_braces;
+                    in_import_or_export = true;
+                    continue;
+                }
+            }
+
+            statements.push(line.to_string());
+        }
+    }
+
+    if !current_stmt.is_empty() {
+        statements.push(current_stmt.trim().to_string());
+    }
+
+    statements
+}
+
 fn strip_comments(source: &str) -> String {
     let mut out = String::with_capacity(source.len());
-    let bytes = source.as_bytes();
-    let mut i = 0;
+    let mut chars = source.chars().peekable();
     let mut in_single = false;
     let mut in_double = false;
+    let mut in_template = false;
+    let mut escaped = false;
 
-    while i < bytes.len() {
-        let b = bytes[i];
-        if !in_single && !in_double && i + 1 < bytes.len() {
-            if b == b'/' && bytes[i + 1] == b'/' {
-                i += 2;
-                while i < bytes.len() && bytes[i] != b'\n' {
-                    i += 1;
-                }
-                continue;
-            }
-            if b == b'/' && bytes[i + 1] == b'*' {
-                i += 2;
-                while i + 1 < bytes.len() && !(bytes[i] == b'*' && bytes[i + 1] == b'/') {
-                    if bytes[i] == b'\n' {
-                        out.push('\n');
+    while let Some(c) = chars.next() {
+        if !in_single && !in_double && !in_template && c == '/' {
+            if let Some(&'/') = chars.peek() {
+                chars.next();
+                while let Some(&next_c) = chars.peek() {
+                    if next_c == '\n' {
+                        break;
                     }
-                    i += 1;
+                    chars.next();
                 }
-                i = (i + 2).min(bytes.len());
+                continue;
+            } else if let Some(&'*') = chars.peek() {
+                chars.next();
+                while let Some(bc) = chars.next() {
+                    if bc == '\n' {
+                        out.push('\n');
+                    } else if bc == '*' {
+                        if let Some(&'/') = chars.peek() {
+                            chars.next();
+                            break;
+                        }
+                    }
+                }
                 continue;
             }
         }
 
-        if b == b'\'' && !in_double {
-            in_single = !in_single;
-        } else if b == b'"' && !in_single {
-            in_double = !in_double;
+        if !escaped {
+            if c == '\\' && (in_single || in_double || in_template) {
+                escaped = true;
+            } else if c == '\'' && !in_double && !in_template {
+                in_single = !in_single;
+            } else if c == '"' && !in_single && !in_template {
+                in_double = !in_double;
+            } else if c == '`' && !in_single && !in_double {
+                in_template = !in_template;
+            }
+        } else {
+            escaped = false;
         }
 
-        out.push(b as char);
-        i += 1;
+        out.push(c);
     }
 
     out
@@ -349,5 +486,56 @@ export default UserCard;
         );
         assert_eq!(extract_npm_package_name("../db/client"), None);
         assert_eq!(extract_npm_package_name("@/services/userService"), None);
+    }
+
+    #[test]
+    fn extracts_multiline_imports_named_exports_and_preserves_utf8() {
+        let code = r#"
+// Single line comment with UTF-8: Halo Dunia 🇮🇩
+/* Multiline block comment
+   eval(forbidden);
+   with emoji 🚀 and umlauts äöü
+*/
+import {
+  UserService,
+  AuthGuard,
+} from '../services/userService';
+
+import type {
+  UserRole,
+  Permission,
+} from '@/types/auth';
+
+export {
+  UserService,
+  AuthGuard as Guard,
+};
+
+export type {
+  UserRole,
+  Permission as Perm,
+};
+
+export { helper } from './helpers';
+
+const apiUrl = `https://api.example.com/v1/auth`;
+const greeting = "Selamat Datang 🇮🇩";
+"#;
+
+        let (imports, exports) = extract_ts_imports_and_exports(code);
+        assert_eq!(
+            imports,
+            vec!["../services/userService", "./helpers", "@/types/auth"]
+        );
+        assert_eq!(
+            exports,
+            vec!["Guard", "Perm", "UserRole", "UserService", "helper"]
+        );
+
+        // Verify UTF-8 stripped comment integrity
+        let stripped = strip_comments(code);
+        assert!(!stripped.contains("Halo Dunia 🇮🇩"));
+        assert!(stripped.contains("https://api.example.com/v1/auth"));
+        assert!(stripped.contains("Selamat Datang 🇮🇩"));
     }
 }
