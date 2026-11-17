@@ -19,7 +19,6 @@ use crate::python_imports::{
 };
 use crate::ts_imports::{
     extract_npm_package_name, extract_sfc_script_content, extract_ts_imports_and_exports,
-    resolve_import_specifier,
 };
 
 /// Default filename inside `.eforge/cache/` storing per-file AST import/export summaries.
@@ -254,7 +253,7 @@ pub fn trace_cycle_call_chains(
 fn is_supported_source_file(file: &FileNode) -> bool {
     matches!(
         file.language.as_deref(),
-        Some("typescript" | "javascript" | "vue" | "svelte" | "python" | "go" | "rust")
+        Some("typescript" | "javascript" | "vue" | "svelte" | "python" | "go" | "rust" | "php")
     ) || file.relative_path.ends_with(".ts")
         || file.relative_path.ends_with(".tsx")
         || file.relative_path.ends_with(".js")
@@ -264,6 +263,7 @@ fn is_supported_source_file(file: &FileNode) -> bool {
         || file.relative_path.ends_with(".py")
         || file.relative_path.ends_with(".go")
         || file.relative_path.ends_with(".rs")
+        || file.relative_path.ends_with(".php")
 }
 
 fn parse_single_file_ast(repo_root: &Path, file: &FileNode) -> Result<CachedFileAst, ForgeError> {
@@ -340,6 +340,17 @@ fn parse_single_file_ast(repo_root: &Path, file: &FileNode) -> Result<CachedFile
                 });
             }
         }
+        "php" => {
+            let (_, uses) = crate::php_imports::extract_php_namespace_and_uses(&raw_content);
+            for u in uses {
+                let (line, column) = find_specifier_line_col(&raw_content, &u);
+                raw_imports.push(RawImportSpan {
+                    specifier: u,
+                    line,
+                    column,
+                });
+            }
+        }
         _ => {}
     }
 
@@ -371,6 +382,8 @@ fn detect_file_lang(file: &FileNode) -> &str {
         "go"
     } else if file.relative_path.ends_with(".rs") {
         "rust"
+    } else if file.relative_path.ends_with(".php") {
+        "php"
     } else {
         "unknown"
     }
@@ -407,6 +420,7 @@ fn assemble_graph_from_cache(
     let mut py_files = BTreeSet::new();
     let mut go_files = BTreeSet::new();
     let mut rs_files = BTreeSet::new();
+    let mut php_files = BTreeSet::new();
 
     for file in files {
         match detect_file_lang(file) {
@@ -422,9 +436,26 @@ fn assemble_graph_from_cache(
             "rust" => {
                 rs_files.insert(file.relative_path.clone());
             }
+            "php" => {
+                php_files.insert(file.relative_path.clone());
+            }
             _ => {}
         }
     }
+
+    let ts_configs = crate::ts_imports::ProjectTsConfigs::load_for_repo(repo_root, files);
+
+    let psr4_mappings = if !php_files.is_empty() {
+        if let Ok(manifest) = crate::composer_manifest::parse_composer_manifest(repo_root) {
+            manifest.psr4_mappings
+        } else {
+            let mut def = BTreeMap::new();
+            def.insert("App\\".to_string(), "app".to_string());
+            def
+        }
+    } else {
+        BTreeMap::new()
+    };
 
     let go_module_path = if !go_files.is_empty() && repo_root.join("go.mod").is_file() {
         crate::go_manifest::parse_go_manifest(repo_root)
@@ -464,8 +495,13 @@ fn assemble_graph_from_cache(
         for imp in &cached.raw_imports {
             let resolved_target = match lang {
                 "typescript" | "javascript" | "vue" | "svelte" => {
-                    let target =
-                        resolve_import_specifier(&file.relative_path, &imp.specifier, &ts_files);
+                    let tsconfig = ts_configs.get_for_file(&file.relative_path);
+                    let target = crate::ts_imports::resolve_import_specifier_with_paths(
+                        &file.relative_path,
+                        &imp.specifier,
+                        &ts_files,
+                        tsconfig,
+                    );
                     if target.is_none() {
                         if let Some(pkg) = extract_npm_package_name(&imp.specifier) {
                             external_imports.insert(pkg);
@@ -509,6 +545,21 @@ fn assemble_graph_from_cache(
                     if target.is_none() && !imp.specifier.starts_with("mod::") {
                         if let Some(pkg) =
                             crate::rust_imports::extract_rust_external_crate(&imp.specifier)
+                        {
+                            external_imports.insert(pkg);
+                        }
+                    }
+                    target
+                }
+                "php" => {
+                    let target = crate::php_imports::resolve_php_import(
+                        &imp.specifier,
+                        &psr4_mappings,
+                        &php_files,
+                    );
+                    if target.is_none() {
+                        if let Some(pkg) =
+                            crate::php_imports::extract_composer_package_name(&imp.specifier)
                         {
                             external_imports.insert(pkg);
                         }
@@ -567,72 +618,10 @@ fn assemble_graph_from_cache(
 pub(crate) fn infer_boundary_for_lang(relative_path: &str, lang: &str) -> (String, String) {
     match lang {
         "rust" => infer_rust_module_boundary(relative_path),
-        "go" => {
-            let parts: Vec<&str> = relative_path.split('/').collect();
-            if parts.len() >= 2 {
-                let dir_parts = &parts[..parts.len() - 1];
-                let id = dir_parts.join("/");
-                let name = dir_parts.last().unwrap_or(&"root").to_string();
-                (id, name)
-            } else {
-                ("root".to_string(), "root".to_string())
-            }
-        }
-        "python" => {
-            let parts: Vec<&str> = relative_path.split('/').collect();
-            if let Some(src_idx) = parts.iter().position(|&p| p == "src") {
-                if parts.len() >= src_idx + 4 {
-                    let id = parts[..=src_idx + 2].join("/");
-                    let name = parts[src_idx + 2].to_string();
-                    return (id, name);
-                } else if parts.len() >= src_idx + 3 {
-                    let id = parts[..=src_idx + 1].join("/");
-                    let name = parts[src_idx + 1].to_string();
-                    return (id, name);
-                }
-            }
-            if let Some(app_idx) = parts.iter().position(|&p| p == "app") {
-                if parts.len() >= app_idx + 3 {
-                    let id = parts[..=app_idx + 1].join("/");
-                    let name = parts[app_idx + 1].to_string();
-                    return (id, name);
-                } else if parts.len() >= app_idx + 2 {
-                    let id = parts[..=app_idx].join("/");
-                    let name = parts[app_idx].to_string();
-                    return (id, name);
-                }
-            }
-            if parts.len() >= 2 {
-                let dir_parts = &parts[..parts.len() - 1];
-                let id = dir_parts.join("/");
-                let name = dir_parts.last().unwrap_or(&"root").to_string();
-                (id, name)
-            } else {
-                ("root".to_string(), "root".to_string())
-            }
-        }
-        _ => {
-            let parts: Vec<&str> = relative_path.split('/').collect();
-            if let Some(src_idx) = parts.iter().position(|&p| p == "src") {
-                if parts.len() >= src_idx + 3 {
-                    let id = parts[..=src_idx + 1].join("/");
-                    let name = parts[src_idx + 1].to_string();
-                    return (id, name);
-                } else if parts.len() >= src_idx + 2 {
-                    let id = parts[..=src_idx].join("/");
-                    let name = parts[src_idx].to_string();
-                    return (id, name);
-                }
-            }
-            if parts.len() >= 2 {
-                let dir_parts = &parts[..parts.len() - 1];
-                let id = dir_parts.join("/");
-                let name = dir_parts.last().unwrap_or(&"root").to_string();
-                (id, name)
-            } else {
-                ("root".to_string(), "root".to_string())
-            }
-        }
+        "go" => crate::graph::infer_go_module_boundary(relative_path),
+        "python" => crate::graph::infer_python_module_boundary(relative_path),
+        "php" => crate::php_imports::infer_php_module_boundary(relative_path),
+        _ => crate::graph::infer_module_boundary(relative_path),
     }
 }
 
@@ -676,5 +665,35 @@ mod tests {
         assert_eq!(traces.len(), 1);
         assert!(traces[0].len() >= 2);
         assert!(traces[0].iter().any(|h| h.is_feedback_arc_candidate));
+    }
+
+    #[test]
+    fn test_php_laravel_app_incremental_and_polyglot_parity() {
+        let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("fixtures")
+            .join("laravel-app");
+
+        let discovery = scan_repository(&fixture, &[]);
+        assert!(discovery.is_ok());
+        let Ok(summary) = discovery else { return };
+
+        let mut cache = FileAstCache::default();
+        let inc_res = analyze_architecture_incremental(&fixture, &summary.files, &mut cache);
+        assert!(inc_res.is_ok());
+        let Ok(inc) = inc_res else { return };
+
+        let poly_res = crate::graph::build_polyglot_architecture_graph(&fixture, &summary.files);
+        assert!(poly_res.is_ok());
+        let Ok(poly) = poly_res else { return };
+
+        assert_eq!(inc.graph.modules.len(), poly.modules.len());
+        assert_eq!(inc.graph.circular_dependencies, poly.circular_dependencies);
+        assert_eq!(
+            inc.graph.high_centrality_modules,
+            poly.high_centrality_modules
+        );
+        assert_eq!(inc.graph.external_imports, poly.external_imports);
     }
 }

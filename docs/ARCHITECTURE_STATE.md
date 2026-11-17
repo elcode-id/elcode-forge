@@ -1130,3 +1130,19 @@
 - **Invariants:**
   - Block comments (`/* ... */`) preserve exact newline counts (1:1 line correspondence) ensuring source locations on reported findings remain exact.
   - Template literals with `//` URLs are never stripped as comments.
+
+## Issue #259 — `forge-analyzer` TSConfig Path Aliases, Monorepo Boundaries & PHP Incremental AST Parity (COMPLETED)
+- **Crate:** `crates/forge-analyzer` (`src/ts_imports.rs`, `src/graph.rs`, `src/incremental.rs`)
+- **Key Capabilities & Functions Added:**
+  - `forge_analyzer::ts_imports`:
+    - `TsConfigPaths`: Loader for `tsconfig.json` and `jsconfig.json` with JSONC comment/trailing-comma stripping, supporting `baseUrl`, `paths` mapping wildcards (`@app/*`), SvelteKit `$lib/*`, and Nuxt/Vite `~/*`.
+    - `ProjectTsConfigs`: Multi-project container resolving subproject `tsconfig.json` files under `apps/<name>/` and `packages/<name>/` with fallback to workspace root.
+    - `resolve_import_specifier_with_paths`: Enhanced specifier resolver accepting `Option<&TsConfigPaths>` with full backward-compatibility for `resolve_import_specifier`.
+  - `forge_analyzer::graph`:
+    - `infer_module_boundary`, `infer_python_module_boundary`, `infer_go_module_boundary`: Made public and enhanced for monorepo package structures (`apps/<pkg>/...`, `packages/<pkg>/...`).
+    - `build_ts_architecture_graph`: Wired with `ProjectTsConfigs` for automatic alias resolution.
+  - `forge_analyzer::incremental`:
+    - Full PHP (`.php`) incremental AST caching and architecture graph assembly parity with `build_polyglot_architecture_graph` on Laravel applications.
+- **Invariants:**
+  - `analyze_architecture_incremental` on `fixtures/laravel-app` produces byte-identical module counts, circular dependencies, high-centrality modules, and external Composer dependencies to `build_polyglot_architecture_graph`.
+  - SvelteKit `$lib/*` and framework aliases are resolved internally and never leaked as external npm packages.
