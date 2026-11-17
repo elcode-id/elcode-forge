@@ -1146,3 +1146,19 @@
 - **Invariants:**
   - `analyze_architecture_incremental` on `fixtures/laravel-app` produces byte-identical module counts, circular dependencies, high-centrality modules, and external Composer dependencies to `build_polyglot_architecture_graph`.
   - SvelteKit `$lib/*` and framework aliases are resolved internally and never leaked as external npm packages.
+
+## Issue #260 — `forge-security` & `forge-cli` Live OSV.dev HTTP Batch Client & Advisory Hydrator (COMPLETED)
+- **Crates:** `crates/forge-security` (`src/osv/client.rs`, `src/osv/cache.rs`, `src/osv/mod.rs`, `src/lib.rs`), `crates/forge-cli` (`src/commands/security.rs`)
+- **Key Capabilities & Functions Added:**
+  - `forge_security::osv::client`:
+    - `build_osv_batch_queries(ecosystem, dependencies) -> OsvBatchRequest`: Builds deduplicated batch query payloads mapping normalized ecosystems (`npm`, `pypi`, `go`, `cargo`, `composer`) to OSV API equivalents.
+    - `clean_version_for_query(raw_version) -> Option<String>`: Cleans version constraints (stripping `^`, `~`, `=`, `v`) for querying.
+    - `sync_ecosystem_advisories`: Queries `POST https://api.osv.dev/v1/querybatch` and hydrates stub records via `GET https://api.osv.dev/v1/vulns/<id>` with bounded reader (4 MiB) and timeouts.
+    - `LocalAdvisoryCache::is_cache_fresh(repo_root, ecosystem, ttl_seconds) -> bool`: 24-hour TTL check preventing repeated network lookups.
+  - `forge_security::SecurityScanner`:
+    - `scan_dependencies_with_options(repo_root, dependencies, offline)`: Controls live network synchronization during dependency audits while preserving default offline local-first performance.
+  - `forge_cli::commands::security`:
+    - Wired `offline` flag from CLI into `scan_dependencies_with_options` (`eforge security --audit --offline`).
+- **Invariants:**
+  - `eforge scan` makes 0 network calls and runs strictly local-first.
+  - Live OSV queries fail gracefully to local cache and embedded offline catalog on timeouts or network failure without panicking.
