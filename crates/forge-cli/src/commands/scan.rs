@@ -1,13 +1,13 @@
 //! `eforge scan` command — full and incremental repository intelligence pipeline.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
 use forge_analyzer::{
     analyze_polyglot_dependencies_cached, build_polyglot_architecture_graph_cached, scan_repository,
 };
 use forge_core::{
-    cache::{CacheMetadata, ForgeCache, EFORGE_DIR},
+    cache::{CacheMetadata, CachedFileFindings, FileFindingsCache, ForgeCache, EFORGE_DIR},
     config::load_config,
     scoring::calculate_health_score,
     FileNode, Finding, ForgeError, Repository,
@@ -65,38 +65,57 @@ pub fn execute_scan(opts: &ScanOptions) -> Result<(Repository, ExitCode), ForgeE
     let dependencies = dep_report.dependencies;
     let dep_findings = dep_report.findings;
 
-    let files_for_security: Vec<FileNode> = if opts.incremental {
+    let (files_for_security, file_findings_cache) = if opts.incremental {
         let cache = ForgeCache::init(&opts.repo_root)?;
-        let changed_paths = cache.diff_changed_files(&current_hashes, &config_hash);
+        let _changed_paths = cache.diff_changed_files(&current_hashes, &config_hash);
         let meta = CacheMetadata {
             analyzer_version: env!("CARGO_PKG_VERSION").to_string(),
-            config_hash,
+            config_hash: config_hash.clone(),
             file_hashes: current_hashes,
         };
         cache.save_metadata(&meta)?;
 
-        if changed_paths.is_empty() {
-            discovery.files.clone()
-        } else {
-            discovery
-                .files
-                .iter()
-                .filter(|f| changed_paths.binary_search(&f.relative_path).is_ok())
-                .cloned()
-                .collect()
-        }
+        let mut findings_cache = FileFindingsCache::load(&opts.repo_root, &config_hash);
+        let active_paths: BTreeSet<&str> = discovery
+            .files
+            .iter()
+            .map(|f| f.relative_path.as_str())
+            .collect();
+        findings_cache.retain_files(&active_paths);
+
+        let files_to_scan: Vec<FileNode> = discovery
+            .files
+            .iter()
+            .filter(|f| match findings_cache.entries.get(&f.relative_path) {
+                Some(entry) => entry.content_hash != f.content_hash,
+                None => true,
+            })
+            .cloned()
+            .collect();
+
+        (files_to_scan, Some(findings_cache))
     } else {
-        if opts.repo_root.join(EFORGE_DIR).is_dir() {
+        let findings_cache = if cache_opt.is_some() || opts.repo_root.join(EFORGE_DIR).is_dir() {
             if let Ok(cache) = ForgeCache::init(&opts.repo_root) {
                 let meta = CacheMetadata {
                     analyzer_version: env!("CARGO_PKG_VERSION").to_string(),
-                    config_hash,
+                    config_hash: config_hash.clone(),
                     file_hashes: current_hashes,
                 };
                 let _ = cache.save_metadata(&meta);
             }
-        }
-        discovery.files.clone()
+            let mut cache = FileFindingsCache::load(&opts.repo_root, &config_hash);
+            let active_paths: BTreeSet<&str> = discovery
+                .files
+                .iter()
+                .map(|f| f.relative_path.as_str())
+                .collect();
+            cache.retain_files(&active_paths);
+            Some(cache)
+        } else {
+            None
+        };
+        (discovery.files.clone(), findings_cache)
     };
 
     let repo_name = config.project_name.clone().unwrap_or_else(|| {
@@ -120,15 +139,56 @@ pub fn execute_scan(opts: &ScanOptions) -> Result<(Repository, ExitCode), ForgeE
         health: None,
     };
 
+    let newly_scanned_findings = if files_for_security.is_empty() {
+        Vec::new()
+    } else {
+        SecurityScanner::scan_repository_files_with_config(
+            &opts.repo_root,
+            &files_for_security,
+            config.security.as_ref(),
+        )?
+    };
+
+    let security_file_findings = if let Some(mut cache) = file_findings_cache {
+        let mut by_file: BTreeMap<String, Vec<Finding>> = BTreeMap::new();
+        for finding in newly_scanned_findings {
+            if let Some(loc) = &finding.location {
+                by_file
+                    .entry(loc.file_path.clone())
+                    .or_default()
+                    .push(finding);
+            }
+        }
+        for file in &files_for_security {
+            let file_findings = by_file.remove(&file.relative_path).unwrap_or_default();
+            cache.entries.insert(
+                file.relative_path.clone(),
+                CachedFileFindings {
+                    relative_path: file.relative_path.clone(),
+                    content_hash: file.content_hash.clone(),
+                    findings: file_findings,
+                },
+            );
+        }
+        let _ = cache.save(&opts.repo_root);
+
+        let mut all_file_findings = Vec::new();
+        for entry in cache.entries.values() {
+            all_file_findings.extend(entry.findings.clone());
+        }
+        for unassociated in by_file.into_values() {
+            all_file_findings.extend(unassociated);
+        }
+        all_file_findings
+    } else {
+        newly_scanned_findings
+    };
+
     let rule_engine = RuleEngine::from_config(&opts.repo_root, &config)?;
     let mut findings: Vec<Finding> = Vec::new();
     findings.extend(dep_findings);
     findings.extend(rule_engine.evaluate(&repo)?);
-    findings.extend(SecurityScanner::scan_repository_files_with_config(
-        &opts.repo_root,
-        &files_for_security,
-        config.security.as_ref(),
-    )?);
+    findings.extend(security_file_findings);
     findings.extend(SecurityScanner::scan_dependencies(
         &opts.repo_root,
         &repo.dependencies,
@@ -212,5 +272,93 @@ mod tests {
         assert!(inc_res.is_ok());
         assert!(root.join(EFORGE_DIR).join("metadata.json").is_file());
         let _ = fs::remove_dir_all(root.join(EFORGE_DIR));
+    }
+
+    #[test]
+    fn preserves_security_findings_in_incremental_scan_with_zero_or_single_file_change() {
+        use forge_core::cache::FILE_FINDINGS_CACHE_FILENAME;
+
+        let temp_dir = std::env::temp_dir().join("eforge_scan_incremental_security_test_994");
+        let _ = fs::remove_dir_all(&temp_dir);
+        let src_dir = temp_dir.join("src");
+        assert!(fs::create_dir_all(&src_dir).is_ok());
+
+        let cfg = "version: 1\nproject:\n  name: \"test-incremental-repo\"\n";
+        assert!(fs::write(temp_dir.join("eforge.config.yaml"), cfg).is_ok());
+
+        // File A contains a hardcoded API token/secret
+        let secret_file = src_dir.join("secrets.ts");
+        let secret_content = "export const token = 'ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';\n";
+        assert!(fs::write(&secret_file, secret_content).is_ok());
+
+        // File B is a plain untouched typescript file
+        let index_file = src_dir.join("index.ts");
+        let index_content = "export const greet = () => 'hello';\n";
+        assert!(fs::write(&index_file, index_content).is_ok());
+
+        // Step 1: Full scan populates FileFindingsCache
+        let full_opts = ScanOptions {
+            repo_root: temp_dir.clone(),
+            incremental: false,
+            format: OutputFormat::Json,
+        };
+        let full_res = execute_scan(&full_opts);
+        assert!(full_res.is_ok());
+        let Ok((full_repo, _)) = full_res else { return };
+        let secret_findings_initial = full_repo
+            .findings
+            .iter()
+            .filter(|f| f.rule_id.contains("secret") || f.category == "security")
+            .cloned()
+            .collect::<Vec<_>>();
+        assert!(!secret_findings_initial.is_empty());
+        assert!(temp_dir
+            .join(EFORGE_DIR)
+            .join("cache")
+            .join(FILE_FINDINGS_CACHE_FILENAME)
+            .is_file());
+
+        // Step 2: Incremental scan with 0 changes retains identical findings
+        let inc_opts = ScanOptions {
+            repo_root: temp_dir.clone(),
+            incremental: true,
+            format: OutputFormat::Json,
+        };
+        let inc_res_0 = execute_scan(&inc_opts);
+        assert!(inc_res_0.is_ok());
+        let Ok((inc_repo_0, _)) = inc_res_0 else {
+            return;
+        };
+        assert_eq!(inc_repo_0.findings, full_repo.findings);
+
+        // Step 3: Modify index.ts (only 1 file changed; secrets.ts untouched)
+        assert!(fs::write(
+            &index_file,
+            "export const greet = () => 'hello world modified';\n"
+        )
+        .is_ok());
+
+        let inc_res_1 = execute_scan(&inc_opts);
+        assert!(inc_res_1.is_ok());
+        let Ok((inc_repo_1, _)) = inc_res_1 else {
+            return;
+        };
+        let secret_findings_after = inc_repo_1
+            .findings
+            .iter()
+            .filter(|f| f.rule_id.contains("secret") || f.category == "security")
+            .cloned()
+            .collect::<Vec<_>>();
+        assert_eq!(secret_findings_initial, secret_findings_after);
+
+        // Parity: Run full scan on modified repo and assert identical findings
+        let full_mod_res = execute_scan(&full_opts);
+        assert!(full_mod_res.is_ok());
+        let Ok((full_repo_mod, _)) = full_mod_res else {
+            return;
+        };
+        assert_eq!(inc_repo_1.findings, full_repo_mod.findings);
+
+        let _ = fs::remove_dir_all(&temp_dir);
     }
 }

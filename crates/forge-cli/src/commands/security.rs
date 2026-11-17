@@ -18,7 +18,7 @@ pub fn run_security(
     repo_root: &Path,
     format: OutputFormat,
     audit: bool,
-    _offline: bool,
+    offline: bool,
     fail_on: Option<&str>,
 ) -> Result<(String, ExitCode), ForgeError> {
     let config = load_config(repo_root)?;
@@ -38,7 +38,8 @@ pub fn run_security(
         let dep_report =
             analyze_polyglot_dependencies(repo_root, &discovery.files, &external_imports)?;
         dependencies = dep_report.dependencies;
-        let vuln_findings = SecurityScanner::scan_dependencies(repo_root, &dependencies);
+        let vuln_findings =
+            SecurityScanner::scan_dependencies_with_options(repo_root, &dependencies, offline);
         findings.extend(vuln_findings);
     }
 

@@ -57,10 +57,7 @@ pub const PHP_BUILTIN_CLASSES: &[&str] = &[
 pub fn is_php_builtin(class_name: &str) -> bool {
     let clean = class_name.trim().trim_start_matches('\\');
     // If it has no namespace separator and matches built-in
-    if !clean.contains('\\') && PHP_BUILTIN_CLASSES.contains(&clean) {
-        return true;
-    }
-    false
+    !clean.contains('\\') && PHP_BUILTIN_CLASSES.contains(&clean)
 }
 
 /// Strips `//` and `#` line comments and `/* ... */` block comments from PHP source code,

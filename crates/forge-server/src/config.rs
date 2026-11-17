@@ -23,6 +23,8 @@ pub struct ServerConfig {
     pub trust_proxy_headers: bool,
     /// Optional JWKS endpoint URL for validating external JWTs.
     pub jwks_url: Option<String>,
+    /// Allowed origins for CORS (default: local dashboard origins, or configured list, or ["*"]).
+    pub cors_allowed_origins: Vec<String>,
 }
 
 impl Default for ServerConfig {
@@ -36,6 +38,14 @@ impl Default for ServerConfig {
             jwt_expiration_secs: 7 * 24 * 3600,
             trust_proxy_headers: false,
             jwks_url: None,
+            cors_allowed_origins: vec![
+                "http://localhost:5173".to_string(),
+                "http://127.0.0.1:5173".to_string(),
+                "http://localhost:4173".to_string(),
+                "http://127.0.0.1:4173".to_string(),
+                "http://localhost:3000".to_string(),
+                "http://127.0.0.1:3000".to_string(),
+            ],
         }
     }
 }
@@ -87,6 +97,17 @@ impl ServerConfig {
         if let Ok(url) = env::var("EFORGE_JWKS_URL") {
             if !url.trim().is_empty() {
                 config.jwks_url = Some(url);
+            }
+        }
+
+        if let Ok(origins_raw) = env::var("EFORGE_CORS_ALLOWED_ORIGINS") {
+            let origins: Vec<String> = origins_raw
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+            if !origins.is_empty() {
+                config.cors_allowed_origins = origins;
             }
         }
 

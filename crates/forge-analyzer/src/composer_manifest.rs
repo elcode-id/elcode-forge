@@ -77,10 +77,7 @@ pub fn is_composer_unpinned(version_req: &str) -> bool {
         return true;
     }
     // Unpinned dev branches without commit hash
-    if v == "dev-master" || v == "dev-main" {
-        return true;
-    }
-    false
+    v == "dev-master" || v == "dev-main"
 }
 
 /// Parses the contents of a `composer.json` file into a [`ParsedComposerManifest`].

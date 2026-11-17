@@ -300,3 +300,56 @@ async fn test_forge_server_tcp_http_client_roundtrip() -> Result<(), Box<dyn Err
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_cors_allowed_and_disallowed_origins() -> Result<(), Box<dyn Error>> {
+    let db = Db::connect_in_memory().await?;
+    let config = ServerConfig {
+        cors_allowed_origins: vec![
+            "http://localhost:5173".to_string(),
+            "https://dashboard.forge.elcode.id".to_string(),
+        ],
+        ..Default::default()
+    };
+    let state = AppState::new(db, config);
+    let app = create_app(state);
+
+    // 1. Allowed origin OPTIONS preflight
+    let preflight_allowed = Request::builder()
+        .method("OPTIONS")
+        .uri("/api/v1/health")
+        .header("Origin", "http://localhost:5173")
+        .header("Access-Control-Request-Method", "GET")
+        .header("Access-Control-Request-Headers", "authorization")
+        .body(Body::empty())?;
+
+    let resp_allowed = app.clone().oneshot(preflight_allowed).await?;
+    assert_eq!(resp_allowed.status(), StatusCode::OK);
+    assert_eq!(
+        resp_allowed
+            .headers()
+            .get("access-control-allow-origin")
+            .and_then(|v| v.to_str().ok()),
+        Some("http://localhost:5173")
+    );
+
+    // 2. Disallowed origin OPTIONS preflight
+    let preflight_disallowed = Request::builder()
+        .method("OPTIONS")
+        .uri("/api/v1/health")
+        .header("Origin", "https://evil.attack.net")
+        .header("Access-Control-Request-Method", "GET")
+        .header("Access-Control-Request-Headers", "authorization")
+        .body(Body::empty())?;
+
+    let resp_disallowed = app.oneshot(preflight_disallowed).await?;
+    assert!(
+        resp_disallowed
+            .headers()
+            .get("access-control-allow-origin")
+            .is_none(),
+        "disallowed origin must not receive Access-Control-Allow-Origin header"
+    );
+
+    Ok(())
+}

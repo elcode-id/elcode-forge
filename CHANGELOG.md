@@ -5,6 +5,37 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [1.2.0] — 2026-11-17 (Phase 11: Polyglot Precision, OSV Intelligence & Server Hardening)
+
+### Summary of v1.2.0 Release
+ELCODE Forge `v1.2.0` introduces comprehensive hardening across the parser, analyzer, security scanner, auto-fix engine, and backend server layers:
+- **Quote-Aware Config Parsing & Per-File Findings Cache Contract (#257)**:
+  - Robust `#` comment stripping preserving inline hashes inside quoted strings and comments.
+  - Standardized `FileFindingsCache` (`.eforge/cache/file_findings_index.json`) for file-level findings preservation.
+- **UTF-8 & Multiline Import Robustness (#258)**:
+  - Robust regex patterns handling multiline TypeScript/JavaScript imports (`import {\n  A,\n  B\n} from 'pkg'`).
+  - Safe byte-index UTF-8 comment slicing preventing multi-byte char-boundary panics.
+- **TsConfig Path Aliases & Monorepo PHP Parity (#259)**:
+  - Seamless resolution of `tsconfig.json` path aliases (`@/*`, `$lib/*`, `~/`) without leaking internal paths as external npm packages.
+  - Monorepo package boundary inference (`apps/*`, `packages/*`).
+  - Full PHP incremental AST caching and architecture graph assembly parity on Laravel projects.
+- **Live OSV.dev HTTP Batch Client & Advisory Cache (#260)**:
+  - Live OSV.dev batch querying (`OsvBatchRequest`) with bounded reader (4 MiB max) and timeouts.
+  - Automatic stub hydration and 24-hour cache TTL for offline-first local audits.
+  - Added `--offline` flag to `eforge security` audit pipeline.
+- **Incremental Security Findings Retention & JSON-Safe Autofix (#261)**:
+  - Incremental `eforge scan` retains cached security findings for untouched files and skips redundant scanning on 0-change runs.
+  - Trailing comma removal in `package.json` when removing the final dependency via `eforge fix`.
+  - Non-destructive comment-out fallback marked `is_safe_automated: false`.
+- **Server CORS Allowlist & Asymmetric JWKS Hardening (#262)**:
+  - Configurable `EFORGE_CORS_ALLOWED_ORIGINS` replacing permissive wildcard defaults.
+  - Outbound SSRF URL validation (`is_safe_jwks_url`) restricting JWKS endpoints to HTTPS or loopback HTTP.
+  - Asymmetric RSA algorithm enforcement (`RS256/384/512`) rejecting symmetric algorithms/keys and enforcing expiration checks.
+- **Phase 11 End-to-End Regression Suite (#263)**:
+  - Added comprehensive `phase11_hardening_e2e.rs` covering all Phase 11 invariants.
+
+---
+
 ## [1.1.0] — 2026-10-31 (Tactile Instrument, Active Remediation & Graph Heuristics)
 
 ### Summary of v1.1.0 Release

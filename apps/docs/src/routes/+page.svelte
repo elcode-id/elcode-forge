@@ -59,7 +59,7 @@
 </script>
 
 <p class="lead">
-  <strong>ELCODE Forge (<code>eforge</code> v1.1.0)</strong> is a local-first, deterministic codebase intelligence layer, tactile terminal instrument (<code>eforge ui</code> &amp; <code>eforge watch</code>), active remediation engine (<code>eforge fix</code> &amp; <code>eforge simulate</code>), polyglot architecture analyzer, Policy-as-Code gate, and native Model Context Protocol (MCP) server built in Rust by <a href="https://elcode.id" target="_blank" rel="noreferrer">ELCODE</a>.
+  <strong>ELCODE Forge (<code>eforge</code> v1.2.0)</strong> is a local-first, deterministic codebase intelligence layer, tactile terminal instrument (<code>eforge ui</code> &amp; <code>eforge watch</code>), active remediation engine (<code>eforge fix</code> &amp; <code>eforge simulate</code>), polyglot architecture analyzer, Policy-as-Code gate, and native Model Context Protocol (MCP) server built in Rust by <a href="https://elcode.id" target="_blank" rel="noreferrer">ELCODE</a>.
 </p>
 
 <QuickLinks>
@@ -173,7 +173,7 @@ npm install -g elcode-forge</code></pre>
 curl -fsSL https://raw.githubusercontent.com/elcode-id/elcode-forge/main/scripts/install.sh | sh
 
 # Pin a specific release version or custom directory:
-EFORGE_VERSION=v1.1.0 EFORGE_INSTALL_DIR=/usr/local/bin \
+EFORGE_VERSION=v1.2.0 EFORGE_INSTALL_DIR=/usr/local/bin \
   curl -fsSL https://raw.githubusercontent.com/elcode-id/elcode-forge/main/scripts/install.sh | sh</code></pre>
 
 <h3 id="install-windows">3. Windows PowerShell Installer</h3>

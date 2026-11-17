@@ -1107,3 +1107,102 @@
   - Zero schema drift against `packages/forge-schema/report-bundle.schema.json`.
   - All `eforge fix --apply` writes are backed up atomically in `.eforge/tx/<tx_id>/` with byte-for-byte rollback support (`eforge fix --rollback`).
   - All 11 MCP tools remain strictly read-only on disk and wrap repository data in `UntrustedEnvelope<T>`.
+
+
+## Issue #257 — `forge-core` Quote-Aware YAML Comment Stripping & Per-File Findings Cache (COMPLETED)
+- **Crate:** `crates/forge-core` (`src/config.rs`, `src/policy.rs`, `src/cache.rs`, `src/lib.rs`)
+- **Public Types & Functions Added:**
+  - `forge_core::cache`: `FILE_FINDINGS_CACHE_FILENAME` (`"file_findings_index.json"`), `CachedFileFindings`, `FileFindingsCache` (`cache_path`, `load`, `retain_files`, `save`).
+  - `forge_core::config`: `strip_yaml_inline_comment(raw_line: &str) -> &str` shared across `parse_config_yaml` and `parse_policy_yaml`.
+- **Invariants:**
+  - `#` characters inside single- or double-quoted YAML strings are preserved intact; inline comments require whitespace or start-of-line outside quotes.
+  - `FileFindingsCache` invalidates deterministically when `config_hash` or `analyzer_version` changes and prunes deleted files cleanly.
+
+## Issue #258 — `forge-analyzer` & `forge-security` UTF-8 Safe Comment Stripper, Multiline Imports & Comment-Aware Security Scanner (COMPLETED)
+- **Crates:** `crates/forge-analyzer` (`src/ts_imports.rs`), `crates/forge-security` (`src/patterns.rs`)
+- **Key Capabilities & Functions Added:**
+  - `forge_analyzer::ts_imports`:
+    - `strip_comments`: UTF-8 `char` iterator preserving multi-byte strings (Unicode, emojis, accents) and template literals (`` `https://...` ``) without byte-slicing corruption.
+    - `collect_logical_ts_statements`: Multiline accumulator supporting `import { ... } from '...'`, `export { ... } from '...'`, `import type`, and `export type`.
+    - `extract_named_export_list`: Extracts aliased and named export identifiers (`export { foo, bar as baz }`, `export type { User, Admin as Role }`).
+  - `forge_security::patterns`:
+    - `strip_js_comments_preserving_lines`: Line-preserving comment stripper emitting `\n` for comment blocks, eliminating false positives for code commented out inside `/* ... */` block comments without leading `*` characters while preserving original line numbers and evidence.
+- **Invariants:**
+  - Block comments (`/* ... */`) preserve exact newline counts (1:1 line correspondence) ensuring source locations on reported findings remain exact.
+  - Template literals with `//` URLs are never stripped as comments.
+
+## Issue #259 — `forge-analyzer` TSConfig Path Aliases, Monorepo Boundaries & PHP Incremental AST Parity (COMPLETED)
+- **Crate:** `crates/forge-analyzer` (`src/ts_imports.rs`, `src/graph.rs`, `src/incremental.rs`)
+- **Key Capabilities & Functions Added:**
+  - `forge_analyzer::ts_imports`:
+    - `TsConfigPaths`: Loader for `tsconfig.json` and `jsconfig.json` with JSONC comment/trailing-comma stripping, supporting `baseUrl`, `paths` mapping wildcards (`@app/*`), SvelteKit `$lib/*`, and Nuxt/Vite `~/*`.
+    - `ProjectTsConfigs`: Multi-project container resolving subproject `tsconfig.json` files under `apps/<name>/` and `packages/<name>/` with fallback to workspace root.
+    - `resolve_import_specifier_with_paths`: Enhanced specifier resolver accepting `Option<&TsConfigPaths>` with full backward-compatibility for `resolve_import_specifier`.
+  - `forge_analyzer::graph`:
+    - `infer_module_boundary`, `infer_python_module_boundary`, `infer_go_module_boundary`: Made public and enhanced for monorepo package structures (`apps/<pkg>/...`, `packages/<pkg>/...`).
+    - `build_ts_architecture_graph`: Wired with `ProjectTsConfigs` for automatic alias resolution.
+  - `forge_analyzer::incremental`:
+    - Full PHP (`.php`) incremental AST caching and architecture graph assembly parity with `build_polyglot_architecture_graph` on Laravel applications.
+- **Invariants:**
+  - `analyze_architecture_incremental` on `fixtures/laravel-app` produces byte-identical module counts, circular dependencies, high-centrality modules, and external Composer dependencies to `build_polyglot_architecture_graph`.
+  - SvelteKit `$lib/*` and framework aliases are resolved internally and never leaked as external npm packages.
+
+## Issue #260 — `forge-security` & `forge-cli` Live OSV.dev HTTP Batch Client & Advisory Hydrator (COMPLETED)
+- **Crates:** `crates/forge-security` (`src/osv/client.rs`, `src/osv/cache.rs`, `src/osv/mod.rs`, `src/lib.rs`), `crates/forge-cli` (`src/commands/security.rs`)
+- **Key Capabilities & Functions Added:**
+  - `forge_security::osv::client`:
+    - `build_osv_batch_queries(ecosystem, dependencies) -> OsvBatchRequest`: Builds deduplicated batch query payloads mapping normalized ecosystems (`npm`, `pypi`, `go`, `cargo`, `composer`) to OSV API equivalents.
+    - `clean_version_for_query(raw_version) -> Option<String>`: Cleans version constraints (stripping `^`, `~`, `=`, `v`) for querying.
+    - `sync_ecosystem_advisories`: Queries `POST https://api.osv.dev/v1/querybatch` and hydrates stub records via `GET https://api.osv.dev/v1/vulns/<id>` with bounded reader (4 MiB) and timeouts.
+    - `LocalAdvisoryCache::is_cache_fresh(repo_root, ecosystem, ttl_seconds) -> bool`: 24-hour TTL check preventing repeated network lookups.
+  - `forge_security::SecurityScanner`:
+    - `scan_dependencies_with_options(repo_root, dependencies, offline)`: Controls live network synchronization during dependency audits while preserving default offline local-first performance.
+  - `forge_cli::commands::security`:
+    - Wired `offline` flag from CLI into `scan_dependencies_with_options` (`eforge security --audit --offline`).
+- **Invariants:**
+  - `eforge scan` makes 0 network calls and runs strictly local-first.
+  - Live OSV queries fail gracefully to local cache and embedded offline catalog on timeouts or network failure without panicking.
+
+## Issue #261 — `forge-cli` & `forge-rules` Preserved Incremental Security Findings & JSON-Safe Autofix (COMPLETED)
+- **Crates:** `crates/forge-cli` (`src/commands/scan.rs`), `crates/forge-rules` (`src/autofix.rs`)
+- **Key Capabilities & Functions Added:**
+  - `forge_cli::commands::scan::execute_scan`:
+    - Wired with `FileFindingsCache` for both full and incremental repository intelligence scans.
+    - Incremental scans diff files against `.eforge/cache/file_findings_index.json` and only re-scan modified/new files while untouched files retain cached findings.
+    - Zero-change incremental runs perform 0 redundant security file scans.
+  - `forge_rules::autofix`:
+    - `build_unused_dep_fix`: Strips the trailing comma on line `n-1` when deleting the last property in `package.json`, guaranteeing valid JSON parsing via `serde_json`.
+    - `build_forbidden_import_fix`: Emits `is_safe_automated: false` on comment-out fallback edits, reserving `true` strictly for real service layer import rewrites.
+- **Invariants:**
+  - Full scan and subsequent incremental scan on identical repository states produce byte-for-byte identical JSON/SARIF output and identical finding lists.
+  - Applying `deps/unused-dependency` autofix to any JSON manifest produces strictly valid JSON without trailing commas.
+
+## Issue #262 — `forge-server` Configurable CORS Allowlist & Asymmetric-Only JWKS Hardening (COMPLETED)
+- **Crates:** `crates/forge-server` (`src/config.rs`, `src/app.rs`, `src/auth/jwks.rs`, `tests/`)
+- **Key Capabilities & Functions Added:**
+  - `forge_server::config::ServerConfig`:
+    - Added `cors_allowed_origins: Vec<String>` parsed from `EFORGE_CORS_ALLOWED_ORIGINS` (comma-separated), with default dashboard origins (`http://localhost:5173`, `http://127.0.0.1:5173`, etc.) replacing permissive wildcard.
+  - `forge_server::app::build_cors_layer`:
+    - Constructs `tower_http::cors::CorsLayer` with origin list filtering and allowed methods/headers. Supports explicit `*` wildcard when explicitly configured.
+  - `forge_server::auth::jwks`:
+    - `is_safe_jwks_url(url: &str) -> bool`: Validates outbound JWKS endpoints, requiring `https://` or loopback `http://` (`localhost`, `127.0.0.1`, `[::1]`) to mitigate SSRF.
+    - `JwksCache`: Persistent shared `reqwest::Client` field avoiding per-request client allocations.
+    - `verify_token`: Restricts accepted token algorithms to asymmetric `Algorithm::RS256 | Algorithm::RS384 | Algorithm::RS512`. Rejects symmetric algorithms (`HS256`, etc.) and `jwk.k` symmetric keys to prevent algorithm confusion attacks, and strictly enforces `validation.validate_exp = true`.
+- **Invariants:**
+  - Symmetric tokens and symmetric JWK entries are never accepted by external JWKS verification.
+  - Remote JWKS fetches to non-HTTPS, non-loopback addresses are blocked prior to network dispatch.
+
+## Issue #263 & Release v1.2.0 — Phase 11 E2E Regression Suite, Docs Sync & Release (COMPLETED)
+- **Crates & Packages:** Workspace-wide (`crates/*`, `packages/*`, `apps/*`, `packaging/homebrew/eforge.rb`)
+- **Key Capabilities & Artifacts Added:**
+  - `crates/forge-cli/tests/phase11_hardening_e2e.rs`: Comprehensive end-to-end regression suite covering:
+    1. Quote-aware YAML comment stripping and `FileFindingsCache` serialization/retention.
+    2. Multiline TypeScript/JavaScript imports, UTF-8 emoji comments, and `tsconfig.json` path alias resolution.
+    3. PHP incremental AST caching and architecture graph assembly parity on `fixtures/laravel-app`.
+    4. Full vs incremental `eforge scan` security findings preservation on untouched files.
+    5. JSON-safe `eforge fix` removing the final dependency in `package.json` without trailing comma defects.
+  - Monorepo Version Bump to `1.2.0` across Rust workspace, TypeScript packages, Homebrew formula, and docs portal.
+  - Updated `CHANGELOG.md`, `README.md`, and documentation portal (`apps/docs`).
+- **Invariants:**
+  - Zero schema drift between `eforge schema` and `packages/forge-schema/report-bundle.schema.json`.
+  - All workspace crates compile, format, pass clippy without warnings, and pass 100% of unit/integration tests.

@@ -5,10 +5,13 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::error::ForgeError;
-use crate::ir::FileNode;
+use crate::ir::{FileNode, Finding};
 
 /// Local directory name for ELCODE Forge incremental cache and index (`.eforge/`).
 pub const EFORGE_DIR: &str = ".eforge";
+
+/// Default filename inside `.eforge/cache/` storing per-file security findings.
+pub const FILE_FINDINGS_CACHE_FILENAME: &str = "file_findings_index.json";
 
 /// Persisted metadata stored at `.eforge/metadata.json` for cache invalidation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -433,6 +436,81 @@ impl ForgeCache {
     }
 }
 
+/// Cached security findings for a single repository file keyed by its BLAKE3 content hash.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CachedFileFindings {
+    pub relative_path: String,
+    pub content_hash: String,
+    pub findings: Vec<Finding>,
+}
+
+/// Persistent per-file security findings cache stored in `.eforge/cache/file_findings_index.json`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FileFindingsCache {
+    pub config_hash: String,
+    pub analyzer_version: String,
+    pub entries: BTreeMap<String, CachedFileFindings>,
+}
+
+impl FileFindingsCache {
+    /// Returns the canonical path to `.eforge/cache/file_findings_index.json` for `repo_root`.
+    #[must_use]
+    pub fn cache_path(repo_root: &Path) -> PathBuf {
+        repo_root
+            .join(EFORGE_DIR)
+            .join("cache")
+            .join(FILE_FINDINGS_CACHE_FILENAME)
+    }
+
+    /// Loads the per-file findings cache if present and matching `expected_config_hash` and
+    /// current analyzer version; otherwise returns a fresh empty cache bound to `expected_config_hash`.
+    #[must_use]
+    pub fn load(repo_root: &Path, expected_config_hash: &str) -> Self {
+        let current_version = env!("CARGO_PKG_VERSION");
+        let path = Self::cache_path(repo_root);
+        if let Ok(raw) = fs::read_to_string(&path) {
+            if let Ok(parsed) = serde_json::from_str::<Self>(&raw) {
+                if parsed.config_hash == expected_config_hash
+                    && parsed.analyzer_version == current_version
+                {
+                    return parsed;
+                }
+            }
+        }
+        Self {
+            config_hash: expected_config_hash.to_string(),
+            analyzer_version: current_version.to_string(),
+            entries: BTreeMap::new(),
+        }
+    }
+
+    /// Retains only entries whose relative path exists in `active_paths`.
+    pub fn retain_files(&mut self, active_paths: &BTreeSet<&str>) {
+        self.entries
+            .retain(|path, _| active_paths.contains(path.as_str()));
+    }
+
+    /// Saves the per-file findings cache deterministically to `.eforge/cache/file_findings_index.json`.
+    pub fn save(&self, repo_root: &Path) -> Result<PathBuf, ForgeError> {
+        let path = Self::cache_path(repo_root);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|source| ForgeError::Io {
+                path: parent.to_path_buf(),
+                source,
+            })?;
+        }
+        let serialized =
+            serde_json::to_string_pretty(self).map_err(|err| ForgeError::Serialization {
+                message: format!("failed to serialize file findings cache: {err}"),
+            })?;
+        fs::write(&path, serialized).map_err(|source| ForgeError::Io {
+            path: path.clone(),
+            source,
+        })?;
+        Ok(path)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -560,6 +638,64 @@ mod tests {
                 assert!(local_path.exists());
             }
         }
+
+        let _ = fs::remove_dir_all(&repo);
+    }
+
+    #[test]
+    fn file_findings_cache_roundtrip_and_invalidation() {
+        use crate::ir::{Confidence, Severity};
+
+        let repo = unique_temp_dir("findings_cache");
+        let mut cache = FileFindingsCache::load(&repo, "cfg_a");
+        assert!(cache.entries.is_empty());
+
+        let finding = Finding {
+            id: "SEC-1".to_string(),
+            category: "security".to_string(),
+            severity: Severity::High,
+            confidence: Confidence::Certain,
+            title: "Test finding".to_string(),
+            description: "desc".to_string(),
+            evidence: "ev".to_string(),
+            location: None,
+            recommendation: "fix".to_string(),
+            rule_id: "security/no-eval".to_string(),
+        };
+
+        cache.entries.insert(
+            "src/a.ts".to_string(),
+            CachedFileFindings {
+                relative_path: "src/a.ts".to_string(),
+                content_hash: "h1".to_string(),
+                findings: vec![finding.clone()],
+            },
+        );
+        cache.entries.insert(
+            "src/deleted.ts".to_string(),
+            CachedFileFindings {
+                relative_path: "src/deleted.ts".to_string(),
+                content_hash: "h2".to_string(),
+                findings: Vec::new(),
+            },
+        );
+
+        let mut active = BTreeSet::new();
+        active.insert("src/a.ts");
+        cache.retain_files(&active);
+        assert_eq!(cache.entries.len(), 1);
+        assert!(cache.save(&repo).is_ok());
+
+        let loaded = FileFindingsCache::load(&repo, "cfg_a");
+        assert_eq!(loaded.entries.len(), 1);
+        assert_eq!(
+            loaded.entries.get("src/a.ts").map(|e| &e.findings),
+            Some(&vec![finding])
+        );
+
+        // Different config hash invalidates cache
+        let invalidated = FileFindingsCache::load(&repo, "cfg_b");
+        assert!(invalidated.entries.is_empty());
 
         let _ = fs::remove_dir_all(&repo);
     }

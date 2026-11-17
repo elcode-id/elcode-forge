@@ -92,14 +92,10 @@ pub fn is_sensitive_path(path: &str) -> bool {
     {
         return true;
     }
-    if lower.starts_with(".git/")
+    lower.starts_with(".git/")
         || lower.contains("/.git/")
         || lower.starts_with(".eforge/")
         || lower.contains("/.eforge/")
-    {
-        return true;
-    }
-    false
 }
 
 /// Verifies whether `source` cited by the AI matches a known fact in the repository.
@@ -125,15 +121,9 @@ pub fn verify_claim_source(source: &str, repo: &Repository) -> bool {
     }
 
     // Check findings (id or rule_id)
-    if repo
-        .findings
+    repo.findings
         .iter()
         .any(|f| f.id == trimmed || f.rule_id == trimmed)
-    {
-        return true;
-    }
-
-    false
 }
 
 /// Converts UNIX timestamp to `YYYY-MM-DD` date string deterministically without external crates.

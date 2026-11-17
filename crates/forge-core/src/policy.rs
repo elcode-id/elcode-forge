@@ -219,10 +219,7 @@ pub fn parse_policy_yaml(content: &str) -> Result<PolicyDocument, ForgeError> {
 
     for (idx, raw_line) in content.lines().enumerate() {
         let line_no = idx + 1;
-        let without_comment = match raw_line.find('#') {
-            Some(pos) => &raw_line[..pos],
-            None => raw_line,
-        };
+        let without_comment = crate::config::strip_yaml_inline_comment(raw_line);
         let trimmed = without_comment.trim();
         if trimmed.is_empty() || trimmed == "---" {
             continue;

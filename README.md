@@ -1,4 +1,4 @@
-# ELCODE Forge (`eforge`) v1.1.0
+# ELCODE Forge (`eforge`) v1.2.0
 
 > **Know your code. Ship with confidence.**  
 > Deterministic Codebase Intelligence, Tactile Terminal Instrument, Active Remediation, Architecture Analysis, Change Blast-Radius & Native Closed-Loop MCP Engine — built in Rust by **[ELCODE](https://elcode.id/)**.
@@ -137,17 +137,17 @@ cargo install --path crates/forge-cli
 Verify installation:
 ```bash
 eforge --version
-# ELCODE Forge (eforge) v1.1.0
+# ELCODE Forge (eforge) v1.2.0
 ```
 
 ### 4. Cryptographic Provenance & SLSA Level 3 Verification
 All pre-compiled release binaries and archives are cryptographically signed using GitHub Artifact Attestations (Sigstore) and accompanied by SLSA Build Level 3 provenance. You can verify integrity before running:
 ```bash
 # Verify with GitHub CLI (Sigstore Fulcio/Rekor)
-gh attestation verify eforge-v1.1.0-x86_64-unknown-linux-gnu.tar.gz --owner elcode-id
+gh attestation verify eforge-v1.2.0-x86_64-unknown-linux-gnu.tar.gz --owner elcode-id
 
 # Or verify with OpenSSF slsa-verifier
-slsa-verifier verify-artifact eforge-v1.1.0-x86_64-unknown-linux-gnu.tar.gz \
+slsa-verifier verify-artifact eforge-v1.2.0-x86_64-unknown-linux-gnu.tar.gz \
   --provenance-path multiple.intoto.jsonl \
   --source-uri github.com/elcode-id/elcode-forge
 ```
