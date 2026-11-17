@@ -87,9 +87,53 @@ fn build_unused_dep_fix(repo_root: &Path, finding: &Finding) -> Option<FixSugges
     let content = fs::read_to_string(&full_path).ok()?;
     let needle = format!("\"{pkg_name}\"");
 
-    for (idx, line) in content.lines().enumerate() {
+    let lines: Vec<&str> = content.lines().collect();
+    for (idx, line) in lines.iter().enumerate() {
         if line.contains(&needle) && line.contains(':') {
             let line_num = idx as u32 + 1;
+            let trimmed = line.trim_end();
+            let has_trailing_comma = trimmed.ends_with(',');
+            let is_json = loc.file_path.ends_with(".json") || content.trim_start().starts_with('{');
+
+            let edit = if is_json && !has_trailing_comma && idx > 0 {
+                let mut prev_idx = idx - 1;
+                while prev_idx > 0 && lines[prev_idx].trim().is_empty() {
+                    prev_idx -= 1;
+                }
+                let prev_trimmed = lines[prev_idx].trim_end();
+                if let Some(prev_without_comma) = prev_trimmed.strip_suffix(',') {
+                    let prev_line_num = prev_idx as u32 + 1;
+                    TextEdit {
+                        file_path: loc.file_path.clone(),
+                        start_line: prev_line_num,
+                        end_line: line_num,
+                        original_text: lines[prev_idx..=idx].join("\n"),
+                        replacement_text: prev_without_comma.to_string(),
+                        description: format!(
+                            "Remove unused dependency '{pkg_name}' and trailing comma"
+                        ),
+                    }
+                } else {
+                    TextEdit {
+                        file_path: loc.file_path.clone(),
+                        start_line: line_num,
+                        end_line: line_num,
+                        original_text: line.to_string(),
+                        replacement_text: String::new(),
+                        description: format!("Remove unused dependency '{pkg_name}'"),
+                    }
+                }
+            } else {
+                TextEdit {
+                    file_path: loc.file_path.clone(),
+                    start_line: line_num,
+                    end_line: line_num,
+                    original_text: line.to_string(),
+                    replacement_text: String::new(),
+                    description: format!("Remove unused dependency '{pkg_name}'"),
+                }
+            };
+
             return Some(FixSuggestion {
                 rule_id: finding.rule_id.clone(),
                 title: format!(
@@ -100,14 +144,7 @@ fn build_unused_dep_fix(repo_root: &Path, finding: &Finding) -> Option<FixSugges
                     "Deletes unused package entry '{pkg_name}' from manifest {}.",
                     loc.file_path
                 ),
-                edits: vec![TextEdit {
-                    file_path: loc.file_path.clone(),
-                    start_line: line_num,
-                    end_line: line_num,
-                    original_text: line.to_string(),
-                    replacement_text: String::new(),
-                    description: format!("Remove unused dependency '{pkg_name}'"),
-                }],
+                edits: vec![edit],
                 is_safe_automated: true,
             });
         }
@@ -249,10 +286,13 @@ fn build_forbidden_import_fix(repo_root: &Path, finding: &Finding) -> Option<Fix
     }
 
     let line_num = matched_line_num?;
-    let replacement = if matched_line_text.contains("../db/") {
-        matched_line_text.replace("../db/", "../services/")
+    let (replacement, is_safe_automated) = if matched_line_text.contains("../db/") {
+        (matched_line_text.replace("../db/", "../services/"), true)
     } else {
-        format!("// [eforge-fix: boundary violation isolated] {matched_line_text}")
+        (
+            format!("// [eforge-fix: boundary violation isolated] {matched_line_text}"),
+            false,
+        )
     };
 
     Some(FixSuggestion {
@@ -270,7 +310,7 @@ fn build_forbidden_import_fix(repo_root: &Path, finding: &Finding) -> Option<Fix
             replacement_text: replacement,
             description: "Rewrite forbidden import boundary".to_string(),
         }],
-        is_safe_automated: true,
+        is_safe_automated,
     })
 }
 
@@ -364,6 +404,7 @@ mod tests {
 
         let updated_pkg = fs::read_to_string(&pkg_path).unwrap_or_default();
         assert!(!updated_pkg.contains("unused-sdk"));
+        assert!(updated_pkg.contains("\"react\": \"^18.2.0\"\n"));
         assert!(serde_json::from_str::<serde_json::Value>(&updated_pkg).is_ok());
         assert!(temp_dir.join("src/services/billing.test.ts").is_file());
 
@@ -374,6 +415,112 @@ mod tests {
         let restored_pkg = fs::read_to_string(&pkg_path).unwrap_or_default();
         assert_eq!(restored_pkg, original_pkg);
         assert!(!temp_dir.join("src/services/billing.test.ts").exists());
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn removes_sole_dependency_in_package_json_yielding_valid_json() {
+        let temp_dir = std::env::temp_dir().join("eforge_autofix_sole_dep_test_992");
+        let _ = fs::remove_dir_all(&temp_dir);
+        assert!(fs::create_dir_all(&temp_dir).is_ok());
+
+        let pkg_path = temp_dir.join("package.json");
+        let original_pkg = "{\n  \"name\": \"sole-dep-app\",\n  \"dependencies\": {\n    \"unused-sdk\": \"^1.0.0\"\n  }\n}\n";
+        assert!(fs::write(&pkg_path, original_pkg).is_ok());
+
+        let finding = Finding {
+            id: "F-DEP-SOLE".to_string(),
+            category: "dependencies".to_string(),
+            severity: Severity::Medium,
+            confidence: Confidence::Certain,
+            title: "Unused dependency 'unused-sdk'".to_string(),
+            description: "Package 'unused-sdk' is declared but never imported.".to_string(),
+            evidence: "\"unused-sdk\": \"^1.0.0\"".to_string(),
+            location: Some(SourceLocation {
+                file_path: "package.json".to_string(),
+                start_line: Some(4),
+                end_line: Some(4),
+            }),
+            recommendation: "Remove unused-sdk".to_string(),
+            rule_id: "deps/unused-dependency".to_string(),
+        };
+
+        let fix = build_unused_dep_fix(&temp_dir, &finding);
+        assert!(fix.is_some());
+        if let Some(sug) = fix {
+            let res = apply_fix_plan_transactional(&temp_dir, &[sug]);
+            assert!(res.is_ok());
+            let updated = fs::read_to_string(&pkg_path).unwrap_or_default();
+            assert!(!updated.contains("unused-sdk"));
+            assert!(serde_json::from_str::<serde_json::Value>(&updated).is_ok());
+        }
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn forbidden_import_distinguishes_safe_rewrite_vs_unsafe_comment_out() {
+        let temp_dir = std::env::temp_dir().join("eforge_autofix_forbidden_imp_993");
+        let _ = fs::remove_dir_all(&temp_dir);
+        assert!(fs::create_dir_all(&temp_dir).is_ok());
+
+        let file_path = temp_dir.join("view.ts");
+        fs::write(
+            &file_path,
+            "import { queryUser } from '../db/user';\nimport { rawSql } from 'database-driver';\n",
+        )
+        .ok();
+
+        // 1. Safe rewrite path with ../db/
+        let finding1 = Finding {
+            id: "F-IMP-1".to_string(),
+            category: "arch".to_string(),
+            severity: Severity::High,
+            confidence: Confidence::Certain,
+            title: "Forbidden import '../db/user'".to_string(),
+            description: "Direct DB import".to_string(),
+            evidence: "import { queryUser } from '../db/user';".to_string(),
+            location: Some(SourceLocation {
+                file_path: "view.ts".to_string(),
+                start_line: Some(1),
+                end_line: Some(1),
+            }),
+            recommendation: "Use service layer".to_string(),
+            rule_id: "arch/no-direct-db-in-ui".to_string(),
+        };
+        let fix1 = build_forbidden_import_fix(&temp_dir, &finding1);
+        assert!(fix1.is_some());
+        if let Some(sug1) = fix1 {
+            assert!(sug1.is_safe_automated);
+            assert!(sug1.edits[0].replacement_text.contains("../services/user"));
+        }
+
+        // 2. Unsafe comment-out fallback
+        let finding2 = Finding {
+            id: "F-IMP-2".to_string(),
+            category: "arch".to_string(),
+            severity: Severity::High,
+            confidence: Confidence::Certain,
+            title: "Forbidden import 'database-driver'".to_string(),
+            description: "Direct DB driver import".to_string(),
+            evidence: "import { rawSql } from 'database-driver';".to_string(),
+            location: Some(SourceLocation {
+                file_path: "view.ts".to_string(),
+                start_line: Some(2),
+                end_line: Some(2),
+            }),
+            recommendation: "Isolate driver".to_string(),
+            rule_id: "arch/no-direct-db-in-ui".to_string(),
+        };
+        let fix2 = build_forbidden_import_fix(&temp_dir, &finding2);
+        assert!(fix2.is_some());
+        if let Some(sug2) = fix2 {
+            assert!(!sug2.is_safe_automated);
+            assert!(sug2.edits[0]
+                .replacement_text
+                .starts_with("// [eforge-fix: boundary violation isolated]"));
+        }
 
         let _ = fs::remove_dir_all(&temp_dir);
     }
