@@ -1162,3 +1162,17 @@
 - **Invariants:**
   - `eforge scan` makes 0 network calls and runs strictly local-first.
   - Live OSV queries fail gracefully to local cache and embedded offline catalog on timeouts or network failure without panicking.
+
+## Issue #261 — `forge-cli` & `forge-rules` Preserved Incremental Security Findings & JSON-Safe Autofix (COMPLETED)
+- **Crates:** `crates/forge-cli` (`src/commands/scan.rs`), `crates/forge-rules` (`src/autofix.rs`)
+- **Key Capabilities & Functions Added:**
+  - `forge_cli::commands::scan::execute_scan`:
+    - Wired with `FileFindingsCache` for both full and incremental repository intelligence scans.
+    - Incremental scans diff files against `.eforge/cache/file_findings_index.json` and only re-scan modified/new files while untouched files retain cached findings.
+    - Zero-change incremental runs perform 0 redundant security file scans.
+  - `forge_rules::autofix`:
+    - `build_unused_dep_fix`: Strips the trailing comma on line `n-1` when deleting the last property in `package.json`, guaranteeing valid JSON parsing via `serde_json`.
+    - `build_forbidden_import_fix`: Emits `is_safe_automated: false` on comment-out fallback edits, reserving `true` strictly for real service layer import rewrites.
+- **Invariants:**
+  - Full scan and subsequent incremental scan on identical repository states produce byte-for-byte identical JSON/SARIF output and identical finding lists.
+  - Applying `deps/unused-dependency` autofix to any JSON manifest produces strictly valid JSON without trailing commas.
