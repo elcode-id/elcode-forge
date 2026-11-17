@@ -1176,3 +1176,18 @@
 - **Invariants:**
   - Full scan and subsequent incremental scan on identical repository states produce byte-for-byte identical JSON/SARIF output and identical finding lists.
   - Applying `deps/unused-dependency` autofix to any JSON manifest produces strictly valid JSON without trailing commas.
+
+## Issue #262 — `forge-server` Configurable CORS Allowlist & Asymmetric-Only JWKS Hardening (COMPLETED)
+- **Crates:** `crates/forge-server` (`src/config.rs`, `src/app.rs`, `src/auth/jwks.rs`, `tests/`)
+- **Key Capabilities & Functions Added:**
+  - `forge_server::config::ServerConfig`:
+    - Added `cors_allowed_origins: Vec<String>` parsed from `EFORGE_CORS_ALLOWED_ORIGINS` (comma-separated), with default dashboard origins (`http://localhost:5173`, `http://127.0.0.1:5173`, etc.) replacing permissive wildcard.
+  - `forge_server::app::build_cors_layer`:
+    - Constructs `tower_http::cors::CorsLayer` with origin list filtering and allowed methods/headers. Supports explicit `*` wildcard when explicitly configured.
+  - `forge_server::auth::jwks`:
+    - `is_safe_jwks_url(url: &str) -> bool`: Validates outbound JWKS endpoints, requiring `https://` or loopback `http://` (`localhost`, `127.0.0.1`, `[::1]`) to mitigate SSRF.
+    - `JwksCache`: Persistent shared `reqwest::Client` field avoiding per-request client allocations.
+    - `verify_token`: Restricts accepted token algorithms to asymmetric `Algorithm::RS256 | Algorithm::RS384 | Algorithm::RS512`. Rejects symmetric algorithms (`HS256`, etc.) and `jwk.k` symmetric keys to prevent algorithm confusion attacks, and strictly enforces `validation.validate_exp = true`.
+- **Invariants:**
+  - Symmetric tokens and symmetric JWK entries are never accepted by external JWKS verification.
+  - Remote JWKS fetches to non-HTTPS, non-loopback addresses are blocked prior to network dispatch.

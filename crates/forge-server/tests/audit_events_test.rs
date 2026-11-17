@@ -282,7 +282,7 @@ async fn test_audit_event_lifecycle_and_filters() -> Result<(), Box<dyn Error>> 
 async fn test_jwks_cache_static_key_verification() -> Result<(), Box<dyn Error>> {
     let (_app, state) = setup_app(false).await?;
 
-    // Symmetric key loaded into JWKS
+    // 1. Symmetric key loaded into JWKS must be rejected (algorithm confusion defense)
     let kid = "static-test-key-001";
     let key_secret = "static-jwk-secret-key-that-is-at-least-32-bytes";
 
@@ -318,8 +318,41 @@ async fn test_jwks_cache_static_key_verification() -> Result<(), Box<dyn Error>>
         &jsonwebtoken::EncodingKey::from_secret(key_secret.as_bytes()),
     )?;
 
-    // Verify token directly against JwksCache
-    let verified_claims = state.jwks.verify_token(&token, None).await?;
+    // Verify token directly against JwksCache: must be rejected with ServerError::Auth
+    let res = state.jwks.verify_token(&token, None).await;
+    assert!(res.is_err(), "symmetric HS256 tokens must be rejected");
+
+    // 2. Asymmetric RSA key loaded into JWKS
+    let rsa_kid = "rsa-test-key-002";
+    let rsa_n = "1eTlCM0RzKpt7--ONr5L5DZxkQVNWh5-765386_pZQUEaquTzs6yQwXD0jUf3IHw4VEro76IhjGC53v4TNV93nFswDiUvRcOy5jeHHWjsGy0swgAB4fkihxKp8PJm3oibKAzQqZWcqlruqYDvPv74BeUhplUz9yU_nXBD1EBNSjN08S_InFQrDu7rfhGC3aV5ixpRJcqYZyaAs20DzlmaDMnd4c8t_uVXnu6M39EZof4FH4Ad1_IdhnwGgclkEuF5q8BPXIzvYn0g9c338aSvcr-qLYIuzuhkDWkJ-WJhVZI036h1-aVcIEelu-MUQZnGYH8RVHIGC6FNzhYFsHsbQ";
+    let rsa_e = "AQAB";
+
+    let rsa_jwk = JwkKey {
+        kty: "RSA".to_string(),
+        kid: Some(rsa_kid.to_string()),
+        alg: Some("RS256".to_string()),
+        n: Some(rsa_n.to_string()),
+        e: Some(rsa_e.to_string()),
+        k: None,
+    };
+    state
+        .jwks
+        .load_static_keys(JwksDocument {
+            keys: vec![rsa_jwk],
+        })
+        .await;
+
+    let rsa_pem = b"-----BEGIN PRIVATE KEY-----\nMIIEuwIBADANBgkqhkiG9w0BAQEFAASCBKUwggShAgEAAoIBAQDV5OUIzRHMqm3v\n7442vkvkNnGRBU1aHn7vrnfzr+llBQRqq5POzrJDBcPSNR/cgfDhUSujvoiGMYLn\ne/hM1X3ecWzAOJS9Fw7LmN4cdaOwbLSzCAAHh+SKHEqnw8mbeiJsoDNCplZyqWu6\npgO8+/vgF5SGmVTP3JT+dcEPUQE1KM3TxL8icVCsO7ut+EYLdpXmLGlElyphnJoC\nzbQPOWZoMyd3hzy3+5Vee7ozf0Rmh/gUfgB3X8h2GfAaByWQS4XmrwE9cjO9ifSD\n1zffxpK9yv6otgi7O6GQNaQn5YmFVkjTfqHX5pVwgR6W74xRBmcZgfxFUcgYLoU3\nOFgWwextAgMBAAECggEARCZO9zPnlO9EYetQw450Pb0/B/bJg4ot5Y4QN/t3gLFN\ni/Mo//6Je6NNlh9JDIf2SMQFBIIDm8YQsFKmdUyccxBulvwwH+NF2obVVfoBcofg\nNx64a63Xmk2TV8qg5MHQUA3m5zh6WMQ0R973V/JteSPqNcyK4kOk0UKRhaDIorfN\nUpm9doN21Ggj2FgXVnoi83CVz+g5o0hSTAlbwTi3Lq4Idn2Clc3nC88S7bs7ac8W\nBVUReS0ut9vm6dQYOslHqGqrWHOBkDNqZHIRtTB+v6aKiJ3v1c5Hs7jIRaLFy2e5\nNxmHIjTc7ILKcBOZbSKbqQLScJo56+z7hPBb9N+PHQKBgQDx2qdcVa21MXBgmiCO\ns7/z2iFrcd6DHiYydMp/8xyl2G1GQoExrxw/5ZvhWphkbeq8lEEB1b86cJz0c19G\ndt3mz/j05HuVt1g0cRySJSNStmUSuR8+WwyUfWGRlmpxkSK1qGmqr1GprvwaShtG\n738OYaisIwt3wR10rb/QiDM73wKBgQDiZ5ai1JleG6IMhacMTzL+H9xW3HFndN7g\nbvZYbc6NpCV4AqXWnpjgtkIs0WvbVh1c/W+Om/R82EDvwxxp8djK32osoGEeiV0h\nh3mU+pIiz8iQG2A0JTyOKJV5KqsZJziU4wiH8IRbK3YY2XNJ5VjlZ98OsoReBTVJ\ni/YJMNLhMwJ/XJVXfAFQfgxu+IwH6pjk4nSeVoNAqvDfrnEHE/P9A3/WVQ8gZeSi\n69L52UrVC50IPyiBujIZAkYZz3pa/p6CU9lJdHYC2U1WdrzWMxwEaaVpC8HSNAym\nxDE7KIBsPw1QPDo8ORrkKBDUcTvtNTp5aQf5ievgd/d1TzU0OJ/q/QKBgFAfar7b\nUB9u1g1qazC/AoPOkLKotvVu9cUlX8bxrUyRD7WF8lyeqem0dnzX7DymICQdiJJG\nfOKFwY1YVkDkFt3M7Q04AMbGxA+umwdvGbJ6KDdfiM9Lcj+4+xTzVbPEHpEKO6Wo\nJ58AJX4rzlITeT9OYDEaWh/P5gjOIFcmUSrjAoGBAO+S+JzPEIo/2QVknZDIfKiR\nbER7YO+EyCWNtnKLUAc7Lyvbn9Jo02hTJmgnNMRP3BiQMxWLrtcyZEemvHNonB8t\nu3FAR+dqeDIPIqdupWBBLBAfYbg7lxdCaXxIX19avIXrRq9mwHqO/VwrhvJNsjV/\n+u3Trui+5eFqBryOxLHY\n-----END PRIVATE KEY-----";
+
+    let rsa_header = jsonwebtoken::Header {
+        alg: jsonwebtoken::Algorithm::RS256,
+        kid: Some(rsa_kid.to_string()),
+        ..Default::default()
+    };
+    let encoding_key = jsonwebtoken::EncodingKey::from_rsa_pem(rsa_pem)?;
+    let rsa_token = jsonwebtoken::encode(&rsa_header, &claims, &encoding_key)?;
+
+    let verified_claims = state.jwks.verify_token(&rsa_token, None).await?;
     assert_eq!(verified_claims.sub, "jwks_auditor");
     assert_eq!(verified_claims.role, "auditor");
 
